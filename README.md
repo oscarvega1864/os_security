@@ -1,130 +1,259 @@
-# OS Security — Fase 0.1
+# OS Security — Device Core 0.2.0
 
-Recurso base standalone para comprobar el entorno local de FiveM con GTA V Legacy,
-FXServer y txAdmin. Versión inicial: `0.1.0`.
+Recurso standalone para FiveM y GTA V Legacy. Esta fase añade un registro lógico
+persistente de dispositivos, exclusivamente en el servidor. Conserva `/oshello`,
+`osstatus` y los registros `[OS SECURITY]`.
 
-Esta fase contiene únicamente configuración, comandos de prueba y registros de
-inicio y detención. No incluye cámaras, alarmas, cerraduras, bodycams,
-localizadores, minijuegos ni NUI propia.
+No incluye modelos 3D, instalación física, CCTV funcional, alarmas, cerraduras,
+NUI, minijuegos, cálculos de desgaste ni temporizadores. FXServer no requiere
+frameworks, oxmysql ni librerías externas.
 
-## Estructura
+## Archivos y arquitectura
+
+| Archivo | Responsabilidad |
+| --- | --- |
+| `fxmanifest.lua` | `cerulean`, `gta5` y carga explícita por contexto. |
+| `config/config.lua` | Versión `0.2.0` y depuración compartidas; nunca guardar secretos aquí. |
+| `config/server.lua` | ACE, almacenamiento y límites, solo en servidor. |
+| `shared/constants.lua` | Prefijos del chat y los registros. |
+| `client/main.lua` | Saludo local `/oshello`. |
+| `server/main.lua` | Adaptadores FiveM, carga inicial, `osstatus` y ciclo de vida. |
+| `server/core/util.lua` | Copia de datos, comparación y comprobaciones de tipos. |
+| `server/devices/catalog.lua` | Tipos, modelo lógico predeterminado y esquemas de metadatos. |
+| `server/devices/states.lua` | Máquina de estados y transiciones. |
+| `server/devices/validation.lua` | Contratos de creación, dispositivos, historial y snapshots. |
+| `server/devices/registry.lua` | Creación, consultas paginadas, transiciones y retirada. |
+| `server/storage/codec.lua` | Adaptación al JSON FiveM; rechaza errores y contenido adicional. |
+| `server/storage/json.lua` | Snapshots alternos y verificación de escritura. |
+| `server/security/permissions.lua` | Autorización ACE y límites de solicitudes. |
+| `server/commands/devices.lua` | Subcomandos `osdev` y respuestas al solicitante. |
+| `data/.gitkeep` | Conserva vacío el directorio de almacenamiento en Git. |
+| `tests/core_spec.lua`, `tests/run.cjs` | Pruebas Lua 5.4 y APIs FiveM simuladas. |
+| `package.json`, `package-lock.json` | Wasmoon, dependencia solo de desarrollo para pruebas. |
+| `.npmrc` | Mantiene la cache de npm dentro del repositorio. |
+| `AGENTS.md`, `.gitignore`, `CHANGELOG.md` | Reglas, exclusiones e historial de versiones. |
+
+Los scripts del servidor y los datos JSON no se declaran como archivos de
+cliente. No se registran eventos de red ni exports administrativos.
+
+## Catálogo y contratos de datos
+
+Tipos admitidos: `cctv_camera`, `alarm_panel`, `alarm_sensor`, `smart_lock`,
+`vehicle_tracker`, `bodycam`, `security_monitor`. Son definiciones de datos;
+no implementan todavía los módulos correspondientes.
+
+Cada dispositivo contiene:
+
+- `id`: formato `osd_0000000001`, secuencia persistente sin reutilización normal tras reinicios.
+- `type`, `model`, `state`, `schemaVersion` (actualmente `1`).
+- `createdAt`, `updatedAt`: segundos Unix. Una actualización no retrocede si cambia el reloj.
+- `owner`, `propertyId` o `vehicleId`: opcionales, textos de hasta 128 bytes.
+  Propiedad y vehículo son mutuamente excluyentes.
+- `position`, `rotation`: opcionales, objetos `{ x, y, z }` numéricos finitos;
+  posición dentro de ±1.000.000 y rotación en grados dentro de ±360.
+- `metadata`: objeto plano de hasta 32 propiedades admitidas por su esquema.
+- `history`: eventos `{ from?, to, at }` desde la creación; se conservan al retirar.
+- `installation`: contrato separado con `quality` opcional entre 0 y 100.
+- `condition.components`: hasta 32 componentes por identificador, con `health`
+  y `wear` opcionales entre 0 y 100, `expectedLifetimeHours` entre 0 y 1.000.000,
+  y hasta 16 códigos de avería `faults` de 64 bytes.
+- `maintenance.events`: contrato reservado para hasta 128 eventos `fault`,
+  `repair` o `replacement`, con `componentId`, `at`, `notes?` y `replacementId?`.
+  `replacementId` solo se admite para `replacement` y referencia una pieza
+  lógica; no reactiva un dispositivo retirado.
+
+Los contratos de mantenimiento se crean vacíos; no hay operaciones ni cálculos
+que los rellenen. La salud nunca se modifica implícitamente al cambiar el estado.
+El modelo predeterminado `generic` es lógico, no un modelo GTA. No se inventan
+propietarios ni coordenadas al crear desde consola.
+
+Los siete tipos admiten inicialmente metadatos vacíos: se rechaza cualquier clave
+desconocida. Los futuros módulos podrán añadir en su entrada del catálogo
+descriptores `string` (`maxLength`, máximo 256 bytes), `number` (`min`/`max`,
+finitos), `boolean` y `required`, sin modificar la validación genérica.
+
+La creación rechaza campos reservados como `id`, `state` e `history`. Las
+consultas devuelven copias; no existe una API para sustituir libremente un
+registro completo. Solo se implementan creaciones y transiciones.
+
+API interna para scripts de servidor del mismo recurso, cargados después de
+`server/main.lua`: `OSSecurity.Registry.create(source, input)`, `get(source, id)`,
+`list(source, offset?, limit?)`, `setState(source, id, target)` y `retire(source, id)`.
+Se llaman con punto; devuelven datos o `nil, error`. Todas comprueban permisos y
+rechazan operaciones antes de la carga inicial. `source = 0` se reserva a trabajo
+de servidor de confianza; nunca debe derivarse de un argumento enviado por cliente.
+
+## Máquina de estados
+
+| Origen | Destinos permitidos |
+| --- | --- |
+| `registered` | `installing`, `retired` |
+| `installing` | `installed`, `registered`, `retired` |
+| `installed` | `active`, `maintenance`, `fault`, `retired` |
+| `active` | `maintenance`, `fault`, `retired` |
+| `maintenance` | `installed`, `active`, `fault`, `retired` |
+| `fault` | `maintenance`, `retired` |
+| `retired` | Ninguno. |
+
+Repetir el estado actual es un error. `remove` aplica `retired` sin borrar el ID,
+el registro ni el historial. No hay sustitución ni reactivación. `fault` es una
+excepción del ciclo operativo; `condition` describe la salud de los componentes
+como un contrato independiente.
+
+## Permisos, límites y comandos
+
+La consola (`source == 0`) puede administrar. Para jugadores se comprueba el ACE
+`ossecurity.admin` en cada operación, incluidas las consultas. Pertenecer a
+`group.admin` no concede automáticamente ese permiso. El comando valida este
+ACE internamente, en lugar del objeto diferente `command.osdev`.
+
+Un administrador puede concederlo explícitamente a un grupo ya configurado,
+ejecutando en la consola del servidor:
 
 ```text
-os_security/
-├── fxmanifest.lua
-├── config/
-│   └── config.lua
-├── client/
-│   └── main.lua
-├── server/
-│   └── main.lua
-├── shared/
-│   └── constants.lua
-├── README.md
-└── .gitignore
+add_ace group.admin ossecurity.admin allow
 ```
 
-| Archivo | Función |
+Este proyecto no ejecuta esa concesión ni modifica `server.cfg`. Para conservarla
+tras reiniciar el servidor hay que guardarla mediante su administración habitual.
+Las respuestas dentro del juego requieren el recurso `chat` estándar y se envían
+solo al solicitante. Las consultas en consola no necesitan `chat`.
+
+| Comando en consola | Resultado |
 | --- | --- |
-| `fxmanifest.lua` | Declara `cerulean`, `gta5` y las rutas de los scripts. Carga constantes y configuración antes de los scripts de cada contexto. |
-| `config/config.lua` | Centraliza `Version` y `Debug` en `OSSecurity.Config`. |
-| `shared/constants.lua` | Define el prefijo de registros y el título del chat en `OSSecurity.Constants`. |
-| `client/main.lua` | Registra `/oshello` y muestra un saludo en el chat local. |
-| `server/main.lua` | Registra `/osstatus` y los mensajes de inicio y detención del recurso. |
-| `.gitignore` | Excluye archivos locales de editores, registros, temporales y archivos `.env`. |
-| `README.md` | Describe configuración, instalación y comprobaciones manuales. |
+| `osstatus` | Estado, versión y disponibilidad del Device Core. |
+| `osdev list [offset] [limit]` | Lista por ID, total y paginación desde offset 0. |
+| `osdev create <type>` | Crea y persiste un dispositivo `registered`. |
+| `osdev info <id>` | Tipo, modelo, estado, fechas, vínculos y metadatos, sin volcar el historial completo. |
+| `osdev state <id> <state>` | Aplica y persiste una transición válida. |
+| `osdev remove <id>` | Retira y persiste sin borrar el registro. |
 
-## Configuración
+En el chat usar `/osdev ...` con ACE explícito. `/oshello` y `/osstatus` se
+conservan sin permiso administrativo.
 
-Editar `config/config.lua` y reiniciar el recurso para aplicar los cambios:
+Límites predeterminados en `config/server.lua`: 1.000 dispositivos incluyendo
+retirados, páginas de 20 con máximo 100, 256 eventos de estado, 128 de mantenimiento
+y 8 MiB por snapshot. El último evento de estado se reserva para retirar.
+Cada jugador autorizado dispone de 30 consultas y 5 mutaciones por ventana de
+10 segundos; también cuentan intentos inválidos que llegan al registro. La consola
+está exenta del límite temporal y respeta los demás. No hay guardados por frame.
 
-```lua
-OSSecurity.Config = {
-    Version = '0.1.0',
-    Debug = false
-}
+## Persistencia y errores
+
+La interfaz `store.load()`, `store.save(snapshot)` y `store.isBlocked()` permite
+cambiar el adaptador en una futura fase. No se implementa MySQL.
+
+`data/devices.a.json` y `data/devices.b.json` están excluidos de Git. Cada snapshot
+contiene `schemaVersion`, `revision`, `nextId` y `devices` indexados por ID.
+Si se comprueba que ambos archivos están ausentes, se inicia un registro vacío
+sin escribir hasta la primera mutación. Un fallo de acceso no se trata como ausencia.
+
+Al iniciar se validan todos los archivos presentes y se selecciona la mayor
+revisión. Si existen ambos, deben ser consecutivos y representar una sola creación
+o transición, conservando datos anteriores. JSON corrupto, esquemas desconocidos,
+IDs inconsistentes o historial alterado bloquean el registro. Incluso si el otro
+snapshot es válido, no se sobrescribe ni se recupera silenciosamente el corrupto.
+
+Cada mutación prepara una copia, valida y serializa, comprueba que los archivos
+no hayan cambiado externamente, escribe en el slot alterno con `SaveResourceFile`
+y verifica los bytes con `LoadResourceFile`. Solo entonces publica el nuevo estado
+en memoria y responde `Persistido`. La revisión confirmada anterior permanece en
+el otro slot. No hay yields entre escritura y comprobación.
+
+Los errores de IO producen registros `[OS SECURITY] [ERROR]`; un fallo de escritura
+o verificación devuelve error y bloquea consultas y mutaciones para evitar exponer
+un estado ambiguo. `osstatus` sigue funcionando. Un fallo de serialización anterior
+a la escritura conserva disponible el estado confirmado.
+
+Ante corrupción o bloqueo:
+
+1. Detener el recurso y conservar copias de **ambos** archivos para diagnóstico.
+2. Revisar consola, permisos, espacio y contenido de los archivos.
+3. Restaurar un conjunto verificado con intervención del administrador, conservando
+   historial y la secuencia máxima de IDs utilizados.
+4. Reiniciar, consultar `osstatus`, `osdev list` y los IDs conocidos.
+
+No borrar archivos para desbloquear ni restaurar un contador obsoleto sin revisar
+los IDs ya usados. La eliminación de ambos archivos o una restauración antigua
+pueden perder datos y reutilizar IDs; no hay recuperación que adivine datos perdidos.
+
+Riesgos del adaptador: no ofrece aquí una transacción con `fsync` ni garantiza
+protección ante cualquier fallo físico. Un guardado que devuelve error podría haber
+escrito datos completos: al reiniciar puede recuperarse una operación que antes
+no se confirmó. Consultar el registro antes de reintentar creaciones tras un fallo.
+Debe existir un único escritor; no editar los archivos con el recurso iniciado.
+Se copia y serializa el conjunto completo por mutación: este adaptador se dirige
+a esta fase acotada y no a alta frecuencia o gran volumen.
+
+Las rutas de montaje y APIs utilizadas corresponden al
+[sandbox documentado de Cfx.re](https://docs.fivem.net/docs/developers/sandbox/).
+
+## Pruebas automatizadas
+
+Node.js 22 o posterior y npm son necesarios **solo en desarrollo**. Instalar la
+herramienta y su caché dentro del repositorio:
+
+```powershell
+npm.cmd ci --cache .tools/npm-cache --ignore-scripts --no-audit --no-fund
+npm.cmd test
 ```
 
-`Version` es la fuente de la versión mostrada en registros y en `/osstatus`.
-`Debug = true` añade un registro con el nombre del recurso al iniciarlo.
-La configuración compartida se envía a los clientes: no debe contener secretos.
+Wasmoon ejecuta Lua 5.4 compilado a WebAssembly. El ejecutor monta el código en
+memoria, valida sintaxis con `loadfile` y ejecuta lógica, persistencia y conexión
+simulada de las APIs FiveM. No escribe fixtures reales ni inicia FXServer.
 
-## Requisitos
+Por defecto usa un puente `JSON.stringify`/`JSON.parse`. También puede leerse
+la biblioteca JSON de un FXServer local sin modificarla:
 
-- FXServer con soporte para `cerulean` y GTA V (`gta5`).
-- Cliente FiveM para GTA V Legacy.
-- Sin frameworks ni librerías externas.
-- Para ver los mensajes en el juego, debe estar iniciado el recurso `chat`
-  estándar incluido con FXServer, que atiende el evento `chat:addMessage`.
-  La consulta y los registros de consola funcionan sin el chat.
+```powershell
+node tests/run.cjs --codec 'E:\Fivem-DEV\server\citizen\scripting\lua\json.lua'
+```
 
-## Instalación y prueba manual
+Esa ruta opcional se ajusta en otros equipos; no se distribuye una copia de la
+biblioteca. La suite cubre creación, tipos, IDs persistentes, estados, serialización,
+recarga, corrupción, metadatos, ACE, límites, fallos de IO, cambios externos y retirada.
+Las pruebas con dobles de FiveM no equivalen a ejecutar un servidor real.
 
-La carpeta de desarrollo por sí sola no hace que FXServer descubra el recurso.
-Cuando se quiera probar, colocar una copia de `os_security` dentro de la carpeta
-`resources` del perfil activo de txAdmin, conservando el nombre `os_security`.
-Este proyecto no modifica `server.cfg` ni instala archivos en el servidor.
+## Validación manual pendiente en FiveM
 
-1. En la consola del servidor o en la consola en vivo de txAdmin, ejecutar:
+Según la confirmación del proyecto, la fase 0.1.0 ya funciona en FiveM. La fase
+0.2.0 requiere todavía pruebas en FXServer y en el cliente real.
 
-   ```text
-   refresh
-   ensure os_security
-   osstatus
-   ```
+Colocar una copia en `resources` del perfil local de txAdmin con el directorio
+`data` incluido. Al actualizar no sobrescribir los datos de una instalación previa.
+Este trabajo no instala nada fuera del repositorio ni cambia el servidor.
 
-2. Comprobar estos mensajes en la consola (FiveM puede añadir su propio prefijo):
+En la consola del servidor o la consola en vivo de txAdmin:
 
-   ```text
-   [OS SECURITY] Recurso iniciado. Version: 0.1.0
-   [OS SECURITY] Estado: started | Version: 0.1.0
-   ```
+```text
+refresh
+ensure os_security
+osstatus
+osdev create cctv_camera
+osdev list
+osdev info osd_0000000001
+osdev state osd_0000000001 installing
+osdev state osd_0000000001 installed
+osdev state osd_0000000001 active
+restart os_security
+osdev info osd_0000000001
+osdev create bodycam
+osdev remove osd_0000000001
+osdev state osd_0000000001 active
+```
 
-3. Conectarse al servidor y escribir `/oshello` en el chat del juego. Debe mostrar
-   `OS SECURITY` seguido de `Hola. OS Security esta funcionando.`
-4. Escribir `/osstatus` en el chat. Debe mostrar el estado y la versión al jugador
-   que ejecuta el comando y registrar la consulta en la consola del servidor.
-5. Ejecutar `restart os_security` desde la consola. Deben aparecer los registros
-   de detención e inicio con el prefijo `[OS SECURITY]`.
-6. Ejecutar `stop os_security`. Debe aparecer el registro de detención y los
-   comandos dejarán de estar disponibles. Ejecutar `ensure os_security` para
-   volver a iniciarlo.
-7. Para comprobar depuración, cambiar `Debug` a `true`, reiniciar y verificar
-   `[OS SECURITY] [DEBUG] Nombre del recurso: os_security`. Restaurar `false`
-   y reiniciar al terminar.
+Si ya existen datos, usar los IDs realmente devueltos. Comprobar que el primer
+dispositivo sigue `active` tras reiniciar, que el segundo tiene otro ID, que
+`remove` conserva el registro `retired` y que la última transición se rechaza.
+Comprobar también:
 
-## Comandos
+- `/oshello` y `/osstatus` con `chat` iniciado.
+- `/osdev list` denegado sin el ACE, incluso para un grupo administrativo que no
+  tenga concedido `ossecurity.admin`; con ACE, respuestas solo al solicitante.
+- Tipo inexistente, salto `registered -> active` y páginas fuera de límites rechazados.
+- `Debug = true` añade el nombre del recurso al inicio; restaurar después `false`.
+- `stop os_security` y `ensure os_security` registran el ciclo de vida y recargan IDs.
 
-| Comando | Dónde ejecutarlo | Resultado |
-| --- | --- | --- |
-| `/oshello` | Chat del juego | Saludo local de comprobación. |
-| `/osstatus` | Chat del juego | Estado y versión; responde al solicitante y registra la consulta en el servidor. |
-| `osstatus` | Consola del servidor o txAdmin | Estado y versión en la consola, sin barra inicial. |
-
-Los comandos son de diagnóstico y no requieren permisos ACE. Solo están
-disponibles mientras el recurso está iniciado. Los registros de ciclo de vida
-pertenecen al servidor y filtran los eventos de otros recursos.
-
-## Validación y límites
-
-Comprobaciones realizadas durante la creación:
-
-- Sintaxis de los cinco archivos Lua validada con `luaparse` 0.3.1 en modo
-  Lua 5.3; el código utiliza sintaxis común compatible con Lua 5.4. No se
-  dispone de `lua`/`luac` local para una comprobación con el compilador nativo.
-- Rutas del manifiesto y orden de carga de los scripts compartidos verificados.
-- Declaraciones `cerulean` y `gta5`, ausencia de NUI y de dependencias declaradas
-  verificadas.
-- Reglas de `.gitignore` comprobadas para configuración de editor, registros
-  y archivos `.env`; los scripts del recurso no quedan excluidos.
-
-Las pruebas manuales anteriores describen el resultado esperado. La ejecución
-real en FXServer y en el cliente FiveM queda pendiente; crear o revisar estos
-archivos no equivale a haber probado el recurso en el juego.
-
-Si no aparece el saludo, comprobar que `chat` está iniciado y que la consola F8
-no muestra errores. Si FXServer no encuentra el recurso, revisar la ubicación
-de la copia dentro de `resources` y ejecutar `refresh`.
-
-El repositorio Git es local a esta carpeta; no se configura ningún remoto ni se
-modifican otros repositorios.
+Las comprobaciones de corrupción y errores de disco reales deben realizarse solo
+sobre una copia de prueba con respaldo. La suite ya inyecta esos errores en memoria.
+No se afirma haber superado estas pruebas reales de la fase 0.2.0 en FiveM.

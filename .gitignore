@@ -14,3 +14,10 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+
+# Datos persistentes locales y herramientas de pruebas (nunca se distribuyen).
+/data/*
+!/data/.gitkeep
+/node_modules/
+/.tools/
+server.cfg
