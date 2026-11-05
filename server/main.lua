@@ -7,19 +7,12 @@ local function storageLog(message)
     print(('%s [ERROR] %s'):format(constants.LOG_PREFIX, message))
 end
 
-local function readResourceFile(path)
-    local content = LoadResourceFile(resourceName, path)
-    if content ~= nil then return content end
-    -- LoadResourceFile devuelve nil tanto por ausencia como por errores de
-    -- acceso. io.open solo distingue esos casos; no sustituye la lectura nativa.
-    local file, _, code = io.open(('@%s/%s'):format(resourceName, path), 'rb')
-    if file then
-        file:close()
-        return nil, 'El archivo existe pero LoadResourceFile no pudo leerlo.'
-    end
-    if code == 2 then return nil end -- ENOENT: primera ejecucion sin datos.
-    return nil, 'No se pudo comprobar la ausencia del archivo (acceso/IO).'
-end
+local resourceFiles = OSSecurity.ResourceFiles.new({
+    resource = resourceName,
+    load = LoadResourceFile,
+    save = SaveResourceFile,
+    open = function(...) return io.open(...) end
+})
 
 local permissions = OSSecurity.Permissions.new({
     ace = serverConfig.AdminAce,
@@ -31,13 +24,14 @@ local permissions = OSSecurity.Permissions.new({
 local store = OSSecurity.JsonStorage.new({
     base = serverConfig.StorageBase,
     limits = serverConfig,
-    read = readResourceFile,
-    write = function(path, content)
-        return SaveResourceFile(resourceName, path, content, #content)
-    end,
+    read = resourceFiles.read,
+    write = resourceFiles.write,
     encode = OSSecurity.JsonCodec.encode,
     decode = OSSecurity.JsonCodec.decode,
-    log = storageLog
+    log = storageLog,
+    trace = config.Debug and function(message)
+        print(('%s [DEBUG] %s'):format(constants.LOG_PREFIX, message))
+    end or nil
 })
 
 -- API interna del servidor; sin exports ni eventos de red administrativos.

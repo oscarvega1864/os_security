@@ -24,11 +24,12 @@ frameworks, oxmysql ni librerías externas.
 | `server/devices/validation.lua` | Contratos de creación, dispositivos, historial y snapshots. |
 | `server/devices/registry.lua` | Creación, consultas paginadas, transiciones y retirada. |
 | `server/storage/codec.lua` | Adaptación al JSON FiveM; rechaza errores y contenido adicional. |
+| `server/storage/resource_files.lua` | Adapta los retornos nativos y diferencia ausencia, lectura y permisos detectados. |
 | `server/storage/json.lua` | Snapshots alternos y verificación de escritura. |
 | `server/security/permissions.lua` | Autorización ACE y límites de solicitudes. |
 | `server/commands/devices.lua` | Subcomandos `osdev` y respuestas al solicitante. |
 | `data/.gitkeep` | Conserva vacío el directorio de almacenamiento en Git. |
-| `tests/core_spec.lua`, `tests/storage_json_spec.lua`, `tests/run.cjs` | Pruebas Lua 5.4, regresiones JSON y APIs FiveM simuladas. |
+| `tests/core_spec.lua`, `tests/storage_json_spec.lua`, `tests/storage_write_spec.lua`, `tests/run.cjs` | Pruebas Lua 5.4, regresiones JSON/escritura y APIs FiveM simuladas. |
 | `package.json`, `package-lock.json` | Wasmoon, dependencia solo de desarrollo para pruebas. |
 | `.npmrc` | Mantiene la cache de npm dentro del repositorio. |
 | `AGENTS.md`, `.gitignore`, `CHANGELOG.md` | Reglas, exclusiones e historial de versiones. |
@@ -160,10 +161,29 @@ y verifica los bytes con `LoadResourceFile`. Solo entonces publica el nuevo esta
 en memoria y responde `Persistido`. La revisión confirmada anterior permanece en
 el otro slot. No hay yields entre escritura y comprobación.
 
+El adaptador convierte los resultados nativos `true` y `1` a éxito booleano,
+rechazando cualquier otro valor. La longitud enviada es `#content` (bytes Lua),
+incluido UTF-8. El retorno nativo por sí solo nunca sustituye la relectura exacta.
+
 Los errores de IO producen registros `[OS SECURITY] [ERROR]`; un fallo de escritura
 o verificación devuelve error y bloquea consultas y mutaciones para evitar exponer
 un estado ambiguo. `osstatus` sigue funcionando. Un fallo de serialización anterior
 a la escritura conserva disponible el estado confirmado.
+
+Los errores contienen una etiqueta `[storage:<etapa>]`: `validation`,
+`serialization`, `corruption`, `permission`, `write`, `read` o `integrity`.
+Con `Debug = true`, las trazas muestran antes/después de escribir: revisión,
+slot, bytes previos/esperados/leídos y tipo/valor seguro del retorno nativo.
+No registran snapshots, propietarios ni textos de excepciones. `permission`
+requiere errno 13 o una excepción explícita de acceso denegado. Si la native
+solo devuelve fallo sin errno, se registra como `write`; no se deduce si fue
+ACL, sandbox, espacio o apertura del archivo.
+
+En Windows, que el recurso esté enlazado mediante Junction no demuestra una
+denegación de escritura. Durante la investigación los dos snapshots existentes
+contenían revisiones consecutivas válidas, aunque el código había rechazado el
+retorno. No se cambia el Junction, las ACL ni las reglas del sandbox. Si persiste
+un fallo real, revisar la etapa y el retorno registrados, sin borrar los datos.
 
 Ante corrupción o bloqueo:
 
@@ -218,6 +238,11 @@ decodificación, también cuando se pasan `nil`, y la regresión de creación de
 snapshot. La corrección normaliza solo los marcadores propios del códec,
 incluidos contenedores vacíos, sin relajar los contratos del dominio.
 Las pruebas con dobles no ejecutan el módulo C++ ni equivalen a probar FXServer.
+Las regresiones de escritura cubren el retorno entero `1`, los fallos `0`/`nil`,
+longitud UTF-8, lectura posterior, integridad y diagnóstico sin datos sensibles.
+El intento de ejecutar un FXServer aislado con un recurso de prueba mediante
+Junction no llegó a ejecutar Lua porque faltaba una licencia en ese entorno.
+No se reutilizaron credenciales ni se modificó el perfil local de txAdmin.
 
 ## Validación manual pendiente en FiveM
 
@@ -250,6 +275,9 @@ osdev state osd_0000000001 active
 Si ya existen datos, usar los IDs realmente devueltos. Comprobar que el primer
 dispositivo sigue `active` tras reiniciar, que el segundo tiene otro ID, que
 `remove` conserva el registro `retired` y que la última transición se rechaza.
+Si el recurso estaba bloqueado por el retorno entero de `SaveResourceFile`,
+reiniciarlo y consultar primero `osdev list`: la operación que mostró error
+puede estar ya en disco. No repetir creaciones sin comprobarlo.
 Comprobar también:
 
 - `/oshello` y `/osstatus` con `chat` iniciado.

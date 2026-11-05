@@ -2,6 +2,34 @@
 
 ## 0.2.0 — Device Core
 
+### Corrección del resultado de SaveResourceFile y diagnóstico de persistencia
+
+- El adaptador propagaba el resultado nativo sin normalizar. El almacen exigia
+  `true` literal y rechazaba el entero `1` del binding Lua aun cuando el archivo
+  ya estaba escrito. La regresion de arranque/comandos reprodujo ese bloqueo.
+  La inspeccion de solo lectura encontro revisiones consecutivas 1 y 2, con
+  uno y dos dispositivos, en los snapshots del recurso enlazado por Junction.
+- Nuevo adaptador `resource_files.lua`: convierte exclusivamente `true` y `1`
+  a exito booleano. Conserva la longitud `#content` en bytes. No hay escrituras
+  alternativas con `io`, cambios de rutas, extensiones, esquema o sandbox.
+- Se conservan snapshots alternos y verificacion integra por relectura antes de
+  confirmar. Un resultado falso o ambiguo no se convierte en exito por encontrar
+  bytes escritos; sigue bloqueando el registro para su revision.
+- Diagnosticos por etapa: `validation`, `serialization`, `corruption`, `permission`,
+  `write`, `read` e `integrity`. Incluyen revision, slot, tamanos y tipo/resultado
+  nativo; las trazas de exito requieren `Debug`. No incluyen JSON ni excepciones.
+  Se identifica permiso denegado por errno 13 o una excepcion explicita de acceso;
+  un retorno fallido sin errno se informa como escritura de causa no determinada.
+- 44 pruebas pasan con cada codec de desarrollo. Cubren enteros/booleanos,
+  longitud UTF-8, persistencia, corrupcion y diagnosticos. Los datos reales se
+  inspeccionan sin modificarlos; no se borran ni reinicializan archivos.
+- Se intento arrancar una copia aislada del FXServer local con un recurso de
+  prueba enlazado mediante Junction, sin configuracion ni credenciales del perfil
+  habitual. El binario exigio licencia antes de ejecutar el recurso: la prueba
+  nativa queda pendiente. No se atribuye el fallo al Junction ni se cambian ACL.
+- Referencias: [native de escritura](https://github.com/citizenfx/fivem/blob/master/code/components/citizen-scripting-core/src/MetadataScriptFunctions.cpp)
+  y [control de escritura por recurso](https://github.com/citizenfx/fivem/blob/master/code/components/citizen-scripting-core/src/FilesystemPermissions.cpp).
+
 ### Corrección de compatibilidad JSON de FXServer
 
 - Causa: `store.save()` comprobaba el JSON generado con `codec.decode()` y

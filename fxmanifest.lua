@@ -18,6 +18,7 @@ server_scripts {
     'server/devices/states.lua',
     'server/devices/validation.lua',
     'server/storage/codec.lua',
+    'server/storage/resource_files.lua',
     'server/storage/json.lua',
     'server/security/permissions.lua',
     'server/devices/registry.lua',

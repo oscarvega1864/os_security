@@ -470,8 +470,9 @@ end)
 -- Integration wiring with FiveM API doubles. Does not start FXServer.
 test('FiveM wiring: startup, commands, restart persistence and safe file errors', function()
     local files, handlers, commands, logs = {}, {}, {}, {}
+    local readUnavailable = false
     local originalPrint, originalOpen = print, io.open
-    local function boot()
+    local function boot(nativeReturn)
         handlers, commands = {}, {}
         RegisterNetEvent = function() error('Administrative network event is forbidden') end
         RegisterCommand = function(name, callback) commands[name] = callback end
@@ -481,10 +482,14 @@ test('FiveM wiring: startup, commands, restart persistence and safe file errors'
         IsPlayerAceAllowed = function(source, ace) return source == 7 and ace == 'ossecurity.admin' end
         TriggerClientEvent = function(_, source) assert(source > 0) end
         TriggerEvent = function(name, payload) assert(name == 'chat:addMessage' and payload.args[1] == 'OS SECURITY') end
-        LoadResourceFile = function(resource, file) assert(resource == 'os_security'); return files[file] end
+        LoadResourceFile = function(resource, file)
+            assert(resource == 'os_security')
+            if readUnavailable then return nil end
+            return files[file]
+        end
         SaveResourceFile = function(resource, file, content, length)
             assert(resource == 'os_security' and length == #content)
-            files[file] = content; return true
+            files[file] = content; return nativeReturn or true
         end
         io.open = function(mount, mode)
             assert(mount:match('^@os_security/data/') and mode == 'rb')
@@ -499,10 +504,11 @@ test('FiveM wiring: startup, commands, restart persistence and safe file errors'
         assert(OSSecurity.Registry.status())
     end
     local ok, err = pcall(function()
-        boot()
+        boot(1) -- El binding local devuelve el BOOL nativo como entero.
         commands.oshello(0, {})
         commands.osdev(9, { 'create', 'bodycam' }); assert(next(files) == nil)
         commands.osdev(0, { 'create', 'bodycam' })
+        assert(OSSecurity.Registry.status(), 'SaveResourceFile wrote the snapshot and returned integer 1, but the core blocked it')
         commands.osdev(7, { 'list' })
         commands.osstatus(0, {})
         local logCount = #logs
@@ -513,12 +519,11 @@ test('FiveM wiring: startup, commands, restart persistence and safe file errors'
         commands.osdev(0, { 'create', 'bodycam' })
         assert(OSSecurity.Registry.get(0, 'osd_0000000002'))
         source = 7; handlers.playerDropped()
-        local savedRead = LoadResourceFile
-        LoadResourceFile = function() return nil end
+        readUnavailable = true
         io.open = function() return nil, 'permission denied', 13 end
         assert(not OSSecurity.Registry.load())
         assert(not OSSecurity.Registry.create(0, { type = 'bodycam' }))
-        LoadResourceFile = savedRead
+        readUnavailable = false
     end)
     print, io.open = originalPrint, originalOpen
     assert(ok, err)
@@ -527,6 +532,7 @@ end)
 -- Compartir el mismo banco de pruebas con las regresiones del adaptador JSON.
 StorageTest = { test = test, fixture = fixture, create = create, equal = equal }
 dofile(root .. 'tests/storage_json_spec.lua')
+dofile(root .. 'tests/storage_write_spec.lua')
 StorageTest = nil
 
 print(('Tests: %d | Passed: %d | Failed: %d'):format(total, total - failures, failures))
