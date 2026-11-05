@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://os_security; img-src 'self'; base-uri 'none'; object-src 'none'">
+  <title>Gruppe Sechs</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main id="app" class="tablet" hidden aria-label="Gruppe Sechs">
+    <aside class="sidebar">
+      <div class="brand-lockup"><div id="monogram" class="monogram"></div><div><div id="brand" class="brand-name"></div><div id="edition" class="edition"></div></div></div>
+      <div id="profile" class="profile"></div>
+      <nav id="navigation" aria-label="Modulos"></nav>
+      <div class="sidebar-footer"><span class="status-dot"></span><span id="session-label"></span><small id="expiry"></small></div>
+    </aside>
+    <section class="workspace">
+      <header class="toolbar"><div><span id="overline" class="overline"></span><h1 id="heading"></h1></div><div class="toolbar-actions"><button id="refresh" class="quiet" type="button"></button><button id="close" class="close" type="button"></button></div></header>
+      <div id="message" class="message" role="status" hidden></div>
+      <div id="content" class="content"></div>
+      <footer class="page-footer"><span id="footer-label"></span><div><button id="previous" type="button"></button><span id="page-label"></span><button id="next" type="button"></button></div></footer>
+    </section>
+  </main>
+</body>
+</html>

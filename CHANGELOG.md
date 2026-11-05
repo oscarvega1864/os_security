@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.4.1 — Gruppe Sechs, doble tablet e instalación CCTV
+
+- Marca centralizada Gruppe Sechs: nombres, identificación visual de empleados y
+  dispositivos, temas, textos y denominaciones. El recurso sigue siendo
+  `os_security`; se conservan IDs, tablas, snapshots y contratos anteriores.
+- Dos ítems independientes: `g6_client_tablet` y `g6_operations_tablet`. NUI local
+  original con tema claro Client y oscuro Operations, controlador común, tablet
+  en mano, callbacks acotados y limpieza de foco/props al cancelar o detener.
+- Autorización del servidor mediante identidad `license`, ítem, ACE profesional
+  y alcance por dispositivo. Sesiones ligadas al origen con caducidad, secuencia,
+  límites de solicitudes y revalidación en cada operación. Ningún rol del cliente
+  ni nombre visible concede permisos. Salt nativo de sesión calculado una vez,
+  evitando repetir bcrypt en cada apertura. Los nonces no llegan a la NUI.
+- Inventario standalone con catálogo y metadatos vacíos validados, cantidades
+  acotadas y almacenamiento alterno independiente `data/inventory.a/b.json`.
+  Reutiliza el journal existente mediante validación/estado inicial inyectables;
+  conserva relectura, rechazo de corrupción y bloqueo por fallos de escritura.
+- Colocación CCTV con previsualización local, orientación, cancelación y montaje
+  autorizado. El servidor comprueba asignación, posición OneSync, bucket, radio,
+  plano, materiales y herramientas; el raycast del cliente es solo visual. No
+  hay raycast del mundo ejecutado por el servidor ni montajes ficticios iniciales.
+- Reserva persistente antes de crear el dispositivo, vínculo opcional
+  `metadata.installationId`, transiciones reales del Core y confirmación del
+  consumo. Recuperación de reservas tras interrupciones, compensación comprobada
+  y rechazo de duplicados/resultados ambiguos. No se borran datos existentes.
+- Props CCTV locales reconstruidos por proximidad y bucket, separados de la
+  autorización de consulta. Nunca se emite el registro completo a clientes.
+- Mantenimiento existente accesible según perfil y alcance, conservando intactos
+  los cálculos de desgaste y las validaciones de las fases 0.2/0.3. Comandos
+  `osg6` administrativos y `/g6inventory`, `/g6client`, `/g6operations`.
+- Módulos futuros y adaptadores ESX/QBCore/Qbox/ox_inventory identificados como
+  no disponibles. Contratos para propiedades, vehículos, personal, servicios,
+  instalaciones, mantenimiento, CCTV y bodycams. Vídeo remoto expresamente no
+  implementado: separados registro, permisos, sesión, representación y señal.
+- 96 pruebas Lua pasan con ambos códecs de desarrollo y 6 pruebas NUI pasan en
+  Chromium con APIs simuladas. Incluyen sesiones, acceso, reservas, consumo,
+  compensación, reinicios, corrupción, IO ambiguo, limpieza y seguridad DOM.
+  Validación real de FiveM/CEF, animación, geometría, OneSync y rendimiento pendiente.
+
 ## 0.3.0 — Componentes y mantenimiento
 
 - Catálogo configurable de piezas y modelos compatibles por slot y tipo de

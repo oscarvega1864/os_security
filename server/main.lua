@@ -3,6 +3,11 @@ local constants = OSSecurity.Constants
 local resourceName = GetCurrentResourceName()
 local serverConfig = OSSecurity.ServerConfig
 
+local function isAceAllowed(player, permission)
+    local result = IsPlayerAceAllowed(player, permission)
+    return result == true or result == 1
+end
+
 local function storageLog(message)
     print(('%s [ERROR] %s'):format(constants.LOG_PREFIX, message))
 end
@@ -17,7 +22,7 @@ local resourceFiles = OSSecurity.ResourceFiles.new({
 local permissions = OSSecurity.Permissions.new({
     ace = serverConfig.AdminAce,
     limits = serverConfig,
-    isAceAllowed = IsPlayerAceAllowed,
+    isAceAllowed = isAceAllowed,
     now = os.time
 })
 
@@ -59,8 +64,57 @@ local commandOptions = {
 OSSecurity.DeviceCommands.register(commandOptions)
 OSSecurity.MaintenanceCommands.register(commandOptions)
 
+local function world(source)
+    local ped = GetPlayerPed(source)
+    if not ped or ped == 0 then return nil, nil end
+    local position = GetEntityCoords(ped)
+    if not position then return nil, nil end
+    return { x = position.x, y = position.y, z = position.z }, GetPlayerRoutingBucket(source)
+end
+
+-- El salt nativo se obtiene una sola vez: bcrypt no debe bloquear cada apertura.
+-- El nonce siempre se valida junto al source, secuencia, identidad, item y ACE.
+local sessionSalt
+local gameplay = OSSecurity.Gameplay.new({
+    registry = registry, files = resourceFiles, permissions = permissions,
+    register = RegisterCommand, reply = commandOptions.reply, now = os.time,
+    connected = function(source) return GetPlayerName(source) ~= nil end,
+    identifier = function(source) return GetPlayerIdentifierByType(source, 'license') end,
+    ace = isAceAllowed,
+    alive = function(source)
+        local ped = GetPlayerPed(source)
+        return ped ~= nil and ped ~= 0 and GetEntityHealth(ped) > 0
+    end,
+    world = world,
+    schedule = function(callback) SetTimeout(500, callback) end,
+    token = function(source, counter)
+        if not sessionSalt then sessionSalt = GetPasswordHash(('g6:%d:%d'):format(source, os.time())) end
+        return ('%s:%d:%d'):format(sessionSalt, source, counter)
+    end,
+    employeeId = function(principal) return OSSecurity.Brand.EmployeePrefix .. '-' .. ('%08X'):format(GetHashKey(principal) & 0xffffffff) end,
+    log = storageLog,
+    audit = function(action, source, deviceId)
+        local safeId = OSSecurity.DeviceValidation.id(deviceId) and deviceId or '-'
+        print(('%s [G6 AUDIT] action=%s source=%d device=%s'):format(constants.LOG_PREFIX, action, source, safeId))
+    end
+})
+
+RegisterNetEvent('os_security:g6:request', function(request)
+    local player = source -- La identidad proviene del origen real, nunca del payload.
+    if not OSSecurity.Util.integer(player, 1, 2147483647) then return end
+    local requestId = type(request) == 'table' and request.id or nil
+    if not OSSecurity.Util.integer(requestId, 1, 2147483647) then return end
+    local ok, response = pcall(gameplay.handle, player, request)
+    if not ok then
+        storageLog('Fallo de solicitud G6; no se registra el payload ni la excepcion.')
+        response = { ok = false, error = OSSecurity.Brand.Text.failed, close = true }
+    end
+    TriggerClientEvent('os_security:g6:response', player, requestId, response)
+end)
+
 AddEventHandler('playerDropped', function()
     permissions.forget(tonumber(source))
+    gameplay.drop(tonumber(source))
 end)
 
 RegisterCommand('osstatus', function(source)
@@ -95,6 +149,9 @@ AddEventHandler('onResourceStart', function(startedResource)
         storageLog('Device Core bloqueado: ' .. tostring(err))
     end
 
+    local gameLoaded, gameError = gameplay.load()
+    if not gameLoaded then storageLog('Flujo Gruppe Sechs bloqueado: ' .. tostring(gameError)) end
+
     if config.Debug then
         print(('%s [DEBUG] Nombre del recurso: %s'):format(constants.LOG_PREFIX, resourceName))
     end
@@ -104,6 +161,8 @@ AddEventHandler('onResourceStop', function(stoppedResource)
     if stoppedResource ~= resourceName then
         return
     end
+
+    gameplay.clear()
 
     print(('%s Recurso detenido. Version: %s'):format(constants.LOG_PREFIX, config.Version))
 end)

@@ -9,6 +9,7 @@ end
 local root = '/repo/'
 local scripts, clientScripts, sharedScripts = {}, {}, {}
 local declarations = {}
+local nuiPage, nuiFiles, strictMode
 local manifestEnvironment = setmetatable({
     fx_version = function(value) declarations.fx_version = value end,
     game = function(value) declarations.game = value end,
@@ -16,6 +17,10 @@ local manifestEnvironment = setmetatable({
     description = function() end,
     shared_scripts = function(value) sharedScripts = value end,
     client_script = function(value) clientScripts = { value } end,
+    client_scripts = function(value) clientScripts = value end,
+    ui_page = function(value) nuiPage = value end,
+    files = function(value) nuiFiles = value end,
+    nui_callback_strict_mode = function(value) strictMode = value end,
     server_scripts = function(value) scripts = value end
 }, { __index = function(_, key) error('Unexpected manifest declaration: ' .. key) end })
 assert(loadfile(root .. 'fxmanifest.lua', 't', manifestEnvironment))()
@@ -88,7 +93,9 @@ test('Manifest paths, loading order, version and Lua 5.4 syntax', function()
     equal(declarations, { fx_version = 'cerulean', game = 'gta5' })
     for _, file in ipairs(__luaFiles) do assert(loadfile(root .. file)) end
     for _, file in ipairs(clientScripts) do assert(loadfile(root .. file)) end
-    assert(OSSecurity.Config.Version == '0.3.0')
+    assert(OSSecurity.Config.Version == '0.4.1')
+    assert(nuiPage == 'web/index.html' and strictMode == 'true')
+    for _, file in ipairs(nuiFiles) do local handle = assert(io.open(root .. file, 'rb')); handle:close() end
     assert(#scripts > 0 and scripts[#scripts] == 'server/main.lua')
 end)
 
@@ -477,14 +484,14 @@ test('FiveM wiring: startup, commands, restart persistence and safe file errors'
     local originalPrint, originalOpen = print, io.open
     local function boot(nativeReturn)
         handlers, commands = {}, {}
-        RegisterNetEvent = function() error('Administrative network event is forbidden') end
+        RegisterNetEvent = function(name) assert(name == 'os_security:g6:request', 'Unexpected network event') end
         RegisterCommand = function(name, callback) commands[name] = callback end
         AddEventHandler = function(name, callback) handlers[name] = callback end
         GetCurrentResourceName = function() return 'os_security' end
         GetResourceState = function() return 'started' end
         IsPlayerAceAllowed = function(source, ace) return source == 7 and ace == 'ossecurity.admin' end
         TriggerClientEvent = function(_, source) assert(source > 0) end
-        TriggerEvent = function(name, payload) assert(name == 'chat:addMessage' and payload.args[1] == 'OS SECURITY') end
+        TriggerEvent = function(name, payload) assert(name == 'chat:addMessage' and payload.args[1] == OSSecurity.Brand.Name) end
         LoadResourceFile = function(resource, file)
             assert(resource == 'os_security')
             if readUnavailable then return nil end
@@ -537,6 +544,8 @@ StorageTest = { test = test, fixture = fixture, create = create, equal = equal, 
 dofile(root .. 'tests/storage_json_spec.lua')
 dofile(root .. 'tests/storage_write_spec.lua')
 dofile(root .. 'tests/maintenance_spec.lua')
+dofile(root .. 'tests/gameplay_spec.lua')
+dofile(root .. 'tests/client_spec.lua')
 StorageTest = nil
 
 print(('Tests: %d | Passed: %d | Failed: %d'):format(total, total - failures, failures))

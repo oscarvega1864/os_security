@@ -6,7 +6,7 @@ OSSecurity.JsonStorage = {}
 function OSSecurity.JsonStorage.new(options)
     assert(type(options.base) == 'string' and options.base:match('^data/[%w_%-]+$'),
         'La ruta JSON debe permanecer dentro de data/ del recurso.')
-    local validation = OSSecurity.DeviceValidation
+    local validation = options.validation or OSSecurity.DeviceValidation
     local paths = { options.base .. '.a.json', options.base .. '.b.json' }
     local active, current, blocked = nil, nil, 'Almacenamiento sin inicializar.'
     local known = {}
@@ -93,7 +93,7 @@ function OSSecurity.JsonStorage.new(options)
         else
             active = snapshots[1] and 1 or (snapshots[2] and 2 or nil)
         end
-        local data = active and snapshots[active] or {
+        local data = active and snapshots[active] or options.initialSnapshot or {
             schemaVersion = validation.SchemaVersion, revision = 0, nextId = 1, devices = {}
         }
         current, blocked = OSSecurity.Util.copy(data), nil

@@ -8,6 +8,9 @@ for _, id in ipairs({
     definitions[id] = { id = id, defaultModel = 'generic', metadataSchema = {} }
 end
 
+-- Correlacion de una instalacion confirmada por el servidor, sin cambiar IDs.
+definitions.cctv_camera.metadataSchema.installationId = { type = 'string', maxLength = 64 }
+
 OSSecurity.DeviceCatalog = {}
 
 function OSSecurity.DeviceCatalog.get(id)

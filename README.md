@@ -1,11 +1,17 @@
-# OS Security — Componentes y mantenimiento 0.3.0
+# Gruppe Sechs — OS Security 0.4.1
 
-Recurso standalone para FiveM y GTA V Legacy. Incluye Device Core persistente,
-componentes independientes, desgaste determinista, diagnóstico y mantenimiento.
-No requiere frameworks ni MySQL. Conserva `/oshello`, `osstatus` y `osdev`.
+Recurso standalone para FiveM y GTA V Legacy. La experiencia comercial pertenece
+a Gruppe Sechs; el nombre técnico sigue siendo `os_security`. Incluye Device Core,
+componentes, mantenimiento, inventario persistente, dos tablets y colocación física
+CCTV. No requiere frameworks ni MySQL. Conserva los comandos anteriores.
 
-No hay objetos físicos, instalación visual, NUI, minijuegos ni módulos funcionales
-de CCTV, alarmas o cerraduras. Las piezas y sus modelos son referencias lógicas.
+`g6_client_tablet` abre G6 Client; `g6_operations_tablet` abre G6 Operations. Cada
+tablet exige su propio ítem y autorización del servidor. El catálogo CCTV y los
+props colocados son funcionales; **no hay transmisión de vídeo remoto**. Alarmas,
+cerraduras, GPS, bodycams, contratos y demás servicios futuros aparecen pendientes.
+No se implementan minijuegos. Las piezas siguen siendo referencias lógicas.
+
+Consultar [arquitectura, permisos y prueba completa de las tablets y colocación](docs/g6-tablets.md).
 
 ## Arquitectura
 
@@ -13,6 +19,8 @@ de CCTV, alarmas o cerraduras. Las piezas y sus modelos son referencias lógicas
 | --- | --- |
 | `fxmanifest.lua` | `cerulean`, `gta5` y orden explícito de scripts por contexto. |
 | `config/config.lua` | Versión y depuración compartidas; no introducir secretos. |
+| `config/brand.lua`, `shared/items.lua` | Marca, temas, textos, módulos e ítems distintos de cada tablet. |
+| `config/gameplay.lua` | Perfiles, sesiones, materiales, colocación e inventario; solo servidor. |
 | `config/server.lua` | ACE, límites y ubicación del almacenamiento, solo servidor. |
 | `config/components.lua` | Catálogo de piezas, modelos, slots compatibles y políticas de mantenimiento. |
 | `shared/constants.lua`, `client/main.lua` | Prefijos y saludo local `/oshello`. |
@@ -31,14 +39,23 @@ de CCTV, alarmas o cerraduras. Las piezas y sus modelos son referencias lógicas
 | `server/security/permissions.lua` | ACE y límites temporales de solicitudes. |
 | `server/commands/devices.lua`, `maintenance.lua` | Subcomandos `osdev` y `osmaint`. |
 | `server/main.lua` | Conexión con FiveM, arranque, detención y `osstatus`. |
-| `tests/` | Núcleo, regresiones JSON/escritura y mantenimiento bajo Lua 5.4. |
+| `server/inventory/` | Dominio validado y adaptador standalone con snapshots propios. |
+| `server/security/identity.lua`, `server/tablet/` | Identidad estable, autorización, sesiones, DTO y controlador compartido. |
+| `server/installation/`, `server/gameplay.lua` | Reserva persistente, instalación CCTV y recuperación entre almacenes. |
+| `server/integrations/contracts.lua` | Contratos y capacidades explícitas de futuras integraciones. |
+| `server/commands/gameplay.lua` | Administración ACE de ítems, accesos y montajes. |
+| `client/tablet.lua`, `view.lua`, `boot.lua` | Controlador, foco NUI, tablet en mano y conexión con FiveM. |
+| `client/placement.lua`, `props.lua` | Previsualización por raycast y props locales cercanos. |
+| `web/` | Interfaz original compartida con temas Client y Operations. |
+| `tests/` | Núcleo, JSON, mantenimiento, inventario, permisos, sesiones, colocación y navegador. |
 | `package.json`, `package-lock.json`, `.npmrc` | Herramientas de prueba y caché dentro del repositorio. |
 | `data/.gitkeep`, `.gitignore` | Directorio vacío versionado y exclusión de datos locales. |
 | `AGENTS.md`, `CHANGELOG.md` | Reglas de trabajo e historial de versiones. |
 
-Todo el mantenimiento se ejecuta en el servidor. No hay eventos de red ni exports
-administrativos. Los clientes no reciben el registro ni pueden enviar objetos que
-sustituyan dispositivos o salud. Las consultas internas devuelven copias.
+Todo el mantenimiento se ejecuta en el servidor. Un único evento de solicitud G6
+centraliza la validación de origen, sesión, secuencia, ítem, ACE y alcance. Los
+clientes reciben DTO filtrados; no pueden sustituir dispositivos ni enviar salud
+arbitraria. No hay exports administrativos. Las consultas internas devuelven copias.
 
 ## Dispositivos y componentes
 
@@ -49,7 +66,8 @@ Se conservan ID persistente `osd_0000000001`, tipo, modelo lógico, estado,
 propietario opcional, `propertyId` o `vehicleId`, posición/rotación opcionales,
 fechas Unix, metadatos validados e historial administrativo. Posición finita dentro
 de ±1.000.000 y rotación dentro de ±360 grados. Los metadatos admiten solo las
-propiedades declaradas por tipo; los esquemas iniciales siguen vacíos.
+propiedades declaradas por tipo. CCTV admite ahora el vínculo opcional
+`installationId`; los demás contratos anteriores se conservan.
 
 Los dispositivos nuevos usan `schemaVersion = 2` y reciben un kit lógico:
 
@@ -86,7 +104,7 @@ Estados de salud:
 
 ## Configuración y desgaste
 
-La versión es `0.3.0`. `Debug = true` activa trazas técnicas de almacenamiento;
+La versión es `0.4.1`. `Debug = true` activa trazas técnicas de almacenamiento;
 reiniciar el recurso para aplicar cambios de configuración.
 
 Valores iniciales de `config/components.lua`:
@@ -273,19 +291,29 @@ WebAssembly, con fixtures en memoria y caché dentro del repositorio:
 npm.cmd ci --cache .tools/npm-cache --ignore-scripts --no-audit --no-fund
 npm.cmd test
 node tests/run.cjs --codec 'E:\Fivem-DEV\server\citizen\scripting\lua\json.lua'
+npm.cmd run test:ui
 ```
 
 El segundo modo lee dkjson heredado, sin modificarlo; ese archivo no es el módulo
 RapidJSON nativo de FXServer. La suite incluye dobles de sus metatablas y de los
 retornos de archivos, además de regresiones de precisión, desgaste, reinicio,
 reparación, sustitución, historial, migración, permisos y fallos de persistencia.
-Ninguna de estas pruebas equivale a ejecutar el servidor o el cliente FiveM.
+Las suites Lua pasan 96/96 con cada códec de desarrollo. La prueba de interfaz
+pasa 6/6 en Chromium local y deja capturas en `.tools/g6-browser/`. Requiere
+Chrome/Edge o `G6_BROWSER_PATH`; utiliza respuestas de servidor simuladas. No se
+añaden dependencias de navegador al recurso. Los scripts JavaScript se comprueban
+también con `node --check`. Ninguna prueba equivale a ejecutar servidor o cliente
+FiveM, ni el códec RapidJSON nativo.
 
 ## Comprobación pendiente en FiveM
 
 Esta fase no se ha ejecutado en FiveM. No se modifican el perfil txAdmin ni sus
 credenciales, configuración o recursos externos. Para probar, usar una instalación
 local de prueba con respaldo y un único recurso que escriba en estos datos.
+
+Para inventario, permisos, montaje físico, reinicio y limpieza de las tablets,
+seguir la [secuencia de validación 0.4.1](docs/g6-tablets.md#comprobación-pendiente-en-fivem).
+Requiere OneSync y puntos de montaje reales registrados por un administrador.
 
 Con un ID nuevo realmente devuelto por `create`:
 
