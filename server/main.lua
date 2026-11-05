@@ -40,7 +40,7 @@ OSSecurity.Registry = OSSecurity.DeviceRegistry.new({
 })
 local registry = OSSecurity.Registry
 
-OSSecurity.DeviceCommands.register({
+local commandOptions = {
     registry = registry,
     permissions = permissions,
     register = RegisterCommand,
@@ -55,7 +55,9 @@ OSSecurity.DeviceCommands.register({
             })
         end
     end
-})
+}
+OSSecurity.DeviceCommands.register(commandOptions)
+OSSecurity.MaintenanceCommands.register(commandOptions)
 
 AddEventHandler('playerDropped', function()
     permissions.forget(tonumber(source))

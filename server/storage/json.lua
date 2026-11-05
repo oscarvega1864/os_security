@@ -88,7 +88,7 @@ function OSSecurity.JsonStorage.new(options)
             active = snapshots[1].revision > snapshots[2].revision and 1 or 2
             local older = snapshots[3 - active]
             local newer = snapshots[active]
-            local valid, err = validation.successor(older, newer)
+            local valid, err = validation.successor(older, newer, options.limits)
             if not valid then return fail('integrity', 'Secuencia de snapshots inconsistente: ' .. err) end
         else
             active = snapshots[1] and 1 or (snapshots[2] and 2 or nil)
@@ -104,7 +104,7 @@ function OSSecurity.JsonStorage.new(options)
         if blocked then return nil, blocked end
         local valid, err = validation.snapshot(snapshot, options.limits)
         if not valid then return reject('validation', err) end
-        local consecutive, sequenceError = validation.successor(current, snapshot)
+        local consecutive, sequenceError = validation.successor(current, snapshot, options.limits)
         if not consecutive then return reject('validation', sequenceError) end
         local ok, encoded = pcall(options.encode, snapshot)
         if not ok or type(encoded) ~= 'string' or #encoded > options.limits.MaxFileBytes then

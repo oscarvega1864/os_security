@@ -50,10 +50,11 @@ function OSSecurity.DeviceRegistry.new(options)
         local id = ('osd_%010d'):format(data.nextId)
         normalized.id, normalized.state = id, 'registered'
         normalized.createdAt, normalized.updatedAt = now, now
-        normalized.schemaVersion = validation.SchemaVersion
         normalized.installation, normalized.condition = {}, { components = {} }
-        normalized.maintenance = { events = {} }
         normalized.history = { { to = 'registered', at = now } }
+        local kit, kitError = OSSecurity.ComponentCatalog.kit(normalized)
+        if not kit then return nil, kitError end
+        OSSecurity.ComponentLifecycle.initialize(normalized, kit, now)
         local candidate = util.copy(data)
         candidate.devices[id], candidate.nextId = normalized, data.nextId + 1
         return commit(candidate, id)
@@ -99,13 +100,55 @@ function OSSecurity.DeviceRegistry.new(options)
         local maximum = options.limits.MaxHistory - (target == 'retired' and 0 or 1)
         if #device.history >= maximum then return nil, 'Limite de historial alcanzado; retirar el dispositivo.' end
         local candidate = util.copy(data)
-        local updated = candidate.devices[id]
         local now = math.max(options.now(), device.updatedAt)
+        local updated = OSSecurity.ComponentLifecycle.onStateChange(device, now)
+        candidate.devices[id] = updated
         updated.history[#updated.history + 1] = { from = device.state, to = target, at = now }
         updated.state, updated.updatedAt = target, now
         return commit(candidate, id)
     end
 
     function registry.retire(source, id) return registry.setState(source, id, 'retired') end
+
+    function registry.service(source, id, kind, args)
+        local allowed, err = access(source, true)
+        if not allowed then return nil, err end
+        local device, reason = find(id)
+        if not device then return nil, reason end
+        local at = math.max(options.now(), device.updatedAt)
+        local op, operationError = OSSecurity.ComponentLifecycle.operation(device, kind, args, at)
+        if not op then return nil, operationError end
+        local updated, serviceError = OSSecurity.ComponentLifecycle.apply(device, op, options.limits)
+        if not updated then return nil, serviceError end
+        if util.equal(updated, device) then return util.copy(device) end
+        local candidate = util.copy(data)
+        candidate.devices[id] = updated
+        return commit(candidate, id)
+    end
+
+    function registry.serviceHistory(source, id, offset, limit)
+        local allowed, err = access(source, false)
+        if not allowed then return nil, err end
+        local device, reason = find(id)
+        if not device then return nil, reason end
+        if offset == nil then offset = 0 end
+        if limit == nil then limit = options.limits.DefaultPageSize end
+        if not util.integer(offset, 0, 2 * options.limits.MaxMaintenanceEvents)
+            or not util.integer(limit, 1, options.limits.MaxPageSize) then return nil, 'Paginacion de historial invalida.' end
+        local events = {}
+        local legacy = device.schemaVersion == 2 and device.maintenance.legacy.events or device.maintenance.events
+        for _, event in ipairs(legacy) do
+            local item = util.copy(event)
+            item.legacy = true
+            events[#events + 1] = item
+        end
+        if device.schemaVersion == 2 then
+            for _, event in ipairs(device.maintenance.events) do events[#events + 1] = event end
+        end
+        local items = {}
+        for index = offset + 1, math.min(offset + limit, #events) do items[#items + 1] = util.copy(events[index]) end
+        return { items = items, total = #events, offset = offset, limit = limit,
+            legacyEvents = #legacy }
+    end
     return registry
 end

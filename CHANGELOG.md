@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.3.0 — Componentes y mantenimiento
+
+- Catálogo configurable de piezas y modelos compatibles por slot y tipo de
+  dispositivo. Identidades por generación y contratos completos de componente.
+- Desgaste determinista en servidor, calculado bajo demanda por intervalos
+  persistentes. Incluye horas, intensidad, calidad de instalación y de pieza,
+  entorno, límites de tiempo acumulado y registro de horas descartadas.
+- Estados de salud `healthy`, `worn`, `degraded`, `critical`, `failed`, con causas
+  derivadas del uso y parámetros. Independientes del estado administrativo.
+- Inspección, diagnóstico, simulación controlada, reparación limitada y sustitución
+  explícita. Historial con parámetros y resultados antes/después; sin reemplazos
+  aleatorios, bucles por dispositivo, objetos físicos, NUI ni minijuegos.
+- Comando servidor `osmaint`, protegido por `ossecurity.admin`, con consultas e
+  historial paginado; se conservan los comandos anteriores y sus permisos.
+- Dispositivos nuevos con esquema 2 y kit lógico. Migración explícita de registros
+  de esquema 1 mediante `osmaint provision`, conservando datos e intervenciones
+  heredados. El contenedor de snapshots sigue en esquema 1 y admite convivencia.
+- Cada servicio persistido se reproduce desde el snapshot anterior antes de
+  aceptarlo, incluidas las migraciones. Se mantienen snapshots alternos, rechazo
+  de corrupción, comprobación por relectura y normalización de retornos nativos.
+- Escalares de mantenimiento normalizados a 12 cifras significativas para evitar
+  pérdida de precisión con dkjson, manteniendo la comparación exacta de integridad.
+- Pruebas automatizadas de compatibilidad, desgaste, reinicio, límites, averías,
+  reparación, sustitución, historial, permisos, migración y fallos de persistencia.
+  La ejecución real de esta fase en FiveM queda pendiente.
+
 ## 0.2.0 — Device Core
 
 ### Corrección del resultado de SaveResourceFile y diagnóstico de persistencia

@@ -88,7 +88,7 @@ test('Manifest paths, loading order, version and Lua 5.4 syntax', function()
     equal(declarations, { fx_version = 'cerulean', game = 'gta5' })
     for _, file in ipairs(__luaFiles) do assert(loadfile(root .. file)) end
     for _, file in ipairs(clientScripts) do assert(loadfile(root .. file)) end
-    assert(OSSecurity.Config.Version == '0.2.0')
+    assert(OSSecurity.Config.Version == '0.3.0')
     assert(#scripts > 0 and scripts[#scripts] == 'server/main.lua')
 end)
 
@@ -309,8 +309,11 @@ test('Invalid loaded records, counters, history and coordinates are rejected', f
     end
 end)
 
-test('Component health and installation quality are independent data contracts', function()
+test('Legacy component health and installation quality remain readable independently', function()
     local c = fixture(); local d = create(c)
+    d.schemaVersion = 1
+    d.condition = { components = {} }
+    d.maintenance = { events = {} }
     d.installation.quality = 85
     d.condition.components.sensor = { health = 45, wear = 55, expectedLifetimeHours = 1200, faults = { 'pending' } }
     d.maintenance.events = {
@@ -530,9 +533,10 @@ test('FiveM wiring: startup, commands, restart persistence and safe file errors'
 end)
 
 -- Compartir el mismo banco de pruebas con las regresiones del adaptador JSON.
-StorageTest = { test = test, fixture = fixture, create = create, equal = equal }
+StorageTest = { test = test, fixture = fixture, create = create, equal = equal, transition = transition }
 dofile(root .. 'tests/storage_json_spec.lua')
 dofile(root .. 'tests/storage_write_spec.lua')
+dofile(root .. 'tests/maintenance_spec.lua')
 StorageTest = nil
 
 print(('Tests: %d | Passed: %d | Failed: %d'):format(total, total - failures, failures))

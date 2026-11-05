@@ -1,292 +1,318 @@
-# OS Security — Device Core 0.2.0
+# OS Security — Componentes y mantenimiento 0.3.0
 
-Recurso standalone para FiveM y GTA V Legacy. Esta fase añade un registro lógico
-persistente de dispositivos, exclusivamente en el servidor. Conserva `/oshello`,
-`osstatus` y los registros `[OS SECURITY]`.
+Recurso standalone para FiveM y GTA V Legacy. Incluye Device Core persistente,
+componentes independientes, desgaste determinista, diagnóstico y mantenimiento.
+No requiere frameworks ni MySQL. Conserva `/oshello`, `osstatus` y `osdev`.
 
-No incluye modelos 3D, instalación física, CCTV funcional, alarmas, cerraduras,
-NUI, minijuegos, cálculos de desgaste ni temporizadores. FXServer no requiere
-frameworks, oxmysql ni librerías externas.
+No hay objetos físicos, instalación visual, NUI, minijuegos ni módulos funcionales
+de CCTV, alarmas o cerraduras. Las piezas y sus modelos son referencias lógicas.
 
-## Archivos y arquitectura
+## Arquitectura
 
-| Archivo | Responsabilidad |
+| Archivo o directorio | Responsabilidad |
 | --- | --- |
-| `fxmanifest.lua` | `cerulean`, `gta5` y carga explícita por contexto. |
-| `config/config.lua` | Versión `0.2.0` y depuración compartidas; nunca guardar secretos aquí. |
-| `config/server.lua` | ACE, almacenamiento y límites, solo en servidor. |
-| `shared/constants.lua` | Prefijos del chat y los registros. |
-| `client/main.lua` | Saludo local `/oshello`. |
-| `server/main.lua` | Adaptadores FiveM, carga inicial, `osstatus` y ciclo de vida. |
-| `server/core/util.lua` | Copia de datos, comparación y comprobaciones de tipos. |
-| `server/devices/catalog.lua` | Tipos, modelo lógico predeterminado y esquemas de metadatos. |
-| `server/devices/states.lua` | Máquina de estados y transiciones. |
-| `server/devices/validation.lua` | Contratos de creación, dispositivos, historial y snapshots. |
-| `server/devices/registry.lua` | Creación, consultas paginadas, transiciones y retirada. |
-| `server/storage/codec.lua` | Adaptación al JSON FiveM; rechaza errores y contenido adicional. |
-| `server/storage/resource_files.lua` | Adapta los retornos nativos y diferencia ausencia, lectura y permisos detectados. |
-| `server/storage/json.lua` | Snapshots alternos y verificación de escritura. |
-| `server/security/permissions.lua` | Autorización ACE y límites de solicitudes. |
-| `server/commands/devices.lua` | Subcomandos `osdev` y respuestas al solicitante. |
-| `data/.gitkeep` | Conserva vacío el directorio de almacenamiento en Git. |
-| `tests/core_spec.lua`, `tests/storage_json_spec.lua`, `tests/storage_write_spec.lua`, `tests/run.cjs` | Pruebas Lua 5.4, regresiones JSON/escritura y APIs FiveM simuladas. |
-| `package.json`, `package-lock.json` | Wasmoon, dependencia solo de desarrollo para pruebas. |
-| `.npmrc` | Mantiene la cache de npm dentro del repositorio. |
-| `AGENTS.md`, `.gitignore`, `CHANGELOG.md` | Reglas, exclusiones e historial de versiones. |
+| `fxmanifest.lua` | `cerulean`, `gta5` y orden explícito de scripts por contexto. |
+| `config/config.lua` | Versión y depuración compartidas; no introducir secretos. |
+| `config/server.lua` | ACE, límites y ubicación del almacenamiento, solo servidor. |
+| `config/components.lua` | Catálogo de piezas, modelos, slots compatibles y políticas de mantenimiento. |
+| `shared/constants.lua`, `client/main.lua` | Prefijos y saludo local `/oshello`. |
+| `server/core/util.lua` | Validación de tipos, comparación y copia de datos. |
+| `server/devices/catalog.lua`, `states.lua` | Tipos de dispositivo y máquina administrativa. |
+| `server/devices/validation.lua` | Contratos de dispositivo/snapshot y reproducción de cambios entre revisiones. |
+| `server/devices/registry.lua` | API de dispositivos, servicio, paginación y confirmación de persistencia. |
+| `server/components/catalog.lua` | Resuelve kits y modelos compatibles con cada slot. |
+| `server/components/wear.lua` | Fórmula pura, umbrales de salud y evaluación temporal. |
+| `server/components/migration.lua` | Promoción explícita de dispositivo v1 a v2, conservando datos heredados. |
+| `server/components/lifecycle.lua` | Inspección, reparación, sustitución, simulación y resultados de intervención. |
+| `server/components/validation.lua` | Contratos de piezas, políticas, operaciones y referencias de historial. |
+| `server/storage/codec.lua` | Compatibilidad RapidJSON/dkjson y control de JSON completo. |
+| `server/storage/resource_files.lua` | APIs FiveM, longitudes en bytes y retornos `true`/`1`. |
+| `server/storage/json.lua` | Snapshots alternos, integridad y diagnósticos por etapa. |
+| `server/security/permissions.lua` | ACE y límites temporales de solicitudes. |
+| `server/commands/devices.lua`, `maintenance.lua` | Subcomandos `osdev` y `osmaint`. |
+| `server/main.lua` | Conexión con FiveM, arranque, detención y `osstatus`. |
+| `tests/` | Núcleo, regresiones JSON/escritura y mantenimiento bajo Lua 5.4. |
+| `package.json`, `package-lock.json`, `.npmrc` | Herramientas de prueba y caché dentro del repositorio. |
+| `data/.gitkeep`, `.gitignore` | Directorio vacío versionado y exclusión de datos locales. |
+| `AGENTS.md`, `CHANGELOG.md` | Reglas de trabajo e historial de versiones. |
 
-Los scripts del servidor y los datos JSON no se declaran como archivos de
-cliente. No se registran eventos de red ni exports administrativos.
+Todo el mantenimiento se ejecuta en el servidor. No hay eventos de red ni exports
+administrativos. Los clientes no reciben el registro ni pueden enviar objetos que
+sustituyan dispositivos o salud. Las consultas internas devuelven copias.
 
-## Catálogo y contratos de datos
+## Dispositivos y componentes
 
-Tipos admitidos: `cctv_camera`, `alarm_panel`, `alarm_sensor`, `smart_lock`,
-`vehicle_tracker`, `bodycam`, `security_monitor`. Son definiciones de datos;
-no implementan todavía los módulos correspondientes.
+Tipos: `cctv_camera`, `alarm_panel`, `alarm_sensor`, `smart_lock`, `vehicle_tracker`,
+`bodycam`, `security_monitor`.
 
-Cada dispositivo contiene:
+Se conservan ID persistente `osd_0000000001`, tipo, modelo lógico, estado,
+propietario opcional, `propertyId` o `vehicleId`, posición/rotación opcionales,
+fechas Unix, metadatos validados e historial administrativo. Posición finita dentro
+de ±1.000.000 y rotación dentro de ±360 grados. Los metadatos admiten solo las
+propiedades declaradas por tipo; los esquemas iniciales siguen vacíos.
 
-- `id`: formato `osd_0000000001`, secuencia persistente sin reutilización normal tras reinicios.
-- `type`, `model`, `state`, `schemaVersion` (actualmente `1`).
-- `createdAt`, `updatedAt`: segundos Unix. Una actualización no retrocede si cambia el reloj.
-- `owner`, `propertyId` o `vehicleId`: opcionales, textos de hasta 128 bytes.
-  Propiedad y vehículo son mutuamente excluyentes.
-- `position`, `rotation`: opcionales, objetos `{ x, y, z }` numéricos finitos;
-  posición dentro de ±1.000.000 y rotación en grados dentro de ±360.
-- `metadata`: objeto plano de hasta 32 propiedades admitidas por su esquema.
-- `history`: eventos `{ from?, to, at }` desde la creación; se conservan al retirar.
-- `installation`: contrato separado con `quality` opcional entre 0 y 100.
-- `condition.components`: hasta 32 componentes por identificador, con `health`
-  y `wear` opcionales entre 0 y 100, `expectedLifetimeHours` entre 0 y 1.000.000,
-  y hasta 16 códigos de avería `faults` de 64 bytes.
-- `maintenance.events`: contrato reservado para hasta 128 eventos `fault`,
-  `repair` o `replacement`, con `componentId`, `at`, `notes?` y `replacementId?`.
-  `replacementId` solo se admite para `replacement` y referencia una pieza
-  lógica; no reactiva un dispositivo retirado.
+Los dispositivos nuevos usan `schemaVersion = 2` y reciben un kit lógico:
 
-Los contratos de mantenimiento se crean vacíos; no hay operaciones ni cálculos
-que los rellenen. La salud nunca se modifica implícitamente al cambiar el estado.
-El modelo predeterminado `generic` es lógico, no un modelo GTA. No se inventan
-propietarios ni coordenadas al crear desde consola.
-
-Los siete tipos admiten inicialmente metadatos vacíos: se rechaza cualquier clave
-desconocida. Los futuros módulos podrán añadir en su entrada del catálogo
-descriptores `string` (`maxLength`, máximo 256 bytes), `number` (`min`/`max`,
-finitos), `boolean` y `required`, sin modificar la validación genérica.
-
-La creación rechaza campos reservados como `id`, `state` e `history`. Las
-consultas devuelven copias; no existe una API para sustituir libremente un
-registro completo. Solo se implementan creaciones y transiciones.
-
-API interna para scripts de servidor del mismo recurso, cargados después de
-`server/main.lua`: `OSSecurity.Registry.create(source, input)`, `get(source, id)`,
-`list(source, offset?, limit?)`, `setState(source, id, target)` y `retire(source, id)`.
-Se llaman con punto; devuelven datos o `nil, error`. Todas comprueban permisos y
-rechazan operaciones antes de la carga inicial. `source = 0` se reserva a trabajo
-de servidor de confianza; nunca debe derivarse de un argumento enviado por cliente.
-
-## Máquina de estados
-
-| Origen | Destinos permitidos |
+| Dispositivo | Slots y tipos de pieza |
 | --- | --- |
-| `registered` | `installing`, `retired` |
-| `installing` | `installed`, `registered`, `retired` |
-| `installed` | `active`, `maintenance`, `fault`, `retired` |
-| `active` | `maintenance`, `fault`, `retired` |
-| `maintenance` | `installed`, `active`, `fault`, `retired` |
-| `fault` | `maintenance`, `retired` |
-| `retired` | Ninguno. |
+| Cámara CCTV | `power`: `power_supply`; `optics`: `optical_module` |
+| Panel de alarma | `power`: `power_supply`; `controller`: `control_board` |
+| Sensor | `power`: `power_supply`; `sensor`: `signal_sensor` |
+| Cerradura | `power`: `power_supply`; `actuator`: `lock_actuator` |
+| Localizador | `power`: `power_supply`; `radio`: `radio_module` |
+| Bodycam | `power`: `power_supply`; `optics`: `optical_module`; `storage`: `storage_module` |
+| Monitor | `power`: `power_supply`; `display`: `display_panel` |
 
-Repetir el estado actual es un error. `remove` aplica `retired` sin borrar el ID,
-el registro ni el historial. No hay sustitución ni reactivación. `fault` es una
-excepción del ciclo operativo; `condition` describe la salud de los componentes
-como un contrato independiente.
+Cada pieza contiene `id`, `generation`, `type`, `model`, `state`, `health` (0–100),
+`quality`, `installedAt`, `lastMaintenanceAt` opcional, `expectedLifetimeHours`,
+parámetros `wear` e índices `history` de sus intervenciones. El ID incluye
+`<deviceId>:<slot>:<generation>`; una sustitución incrementa la generación.
+Las fechas describen el ciclo lógico del registro, sin afirmar instalación física.
 
-## Permisos, límites y comandos
+`installation.quality` pertenece a la instalación. La salud de piezas está en
+`condition.components`. Ningún cambio de salud cambia automáticamente el estado
+administrativo del dispositivo; un `active` puede tener una pieza `failed`.
+El diagnóstico global utiliza la salud mínima de las piezas.
 
-La consola (`source == 0`) puede administrar. Para jugadores se comprueba el ACE
-`ossecurity.admin` en cada operación, incluidas las consultas. Pertenecer a
-`group.admin` no concede automáticamente ese permiso. El comando valida este
-ACE internamente, en lugar del objeto diferente `command.osdev`.
+Estados de salud:
 
-Un administrador puede concederlo explícitamente a un grupo ya configurado,
-ejecutando en la consola del servidor:
+| Salud | Estado |
+| --- | --- |
+| 80–100 | `healthy` |
+| 60–menos de 80 | `worn` |
+| 30–menos de 60 | `degraded` |
+| Mayor que 0–menos de 30 | `critical` |
+| 0 | `failed` |
+
+## Configuración y desgaste
+
+La versión es `0.3.0`. `Debug = true` activa trazas técnicas de almacenamiento;
+reiniciar el recurso para aplicar cambios de configuración.
+
+Valores iniciales de `config/components.lua`:
+
+| Parámetro | Valor |
+| --- | --- |
+| Intervalo de evaluación | 60 segundos |
+| Máximo de tiempo por evaluación | 72 horas |
+| Máximo por simulación solicitada | 24 horas |
+| Intensidad de uso / factor ambiental | 1 / 1 |
+| Calidad de instalación predeterminada | 75 sobre 100 |
+| Recuperación por reparación | Hasta 25 puntos |
+| Techo de salud por reparación | 90 |
+| Reparar una pieza `failed` | Desactivado; requiere sustitución |
+
+El catálogo define calidad y vida nominal por modelo. La calidad de instalación
+usa la del dispositivo si existe; en otro caso usa el valor predeterminado.
+Todos estos parámetros se copian a la pieza al crearla o sustituirla: editar los
+valores predeterminados no altera retroactivamente el desgaste de piezas existentes.
+No eliminar ni reasignar modelos o slots que estén en uso sin una migración:
+la compatibilidad forma parte del contrato validado de los datos.
+
+La pérdida de salud es:
+
+```text
+horas × (100 / vidaNominalHoras) × intensidad × ambiente
+      × (2 - calidadInstalacion / 100) × (2 - calidadPieza / 100)
+```
+
+Se aplica únicamente cuando el estado administrativo es `active`. La vida nominal
+corresponde a calidades 100, intensidad 1 y ambiente 1. No hay azar. El diagnóstico
+expone causas como tiempo de operación, intensidad alta, entorno, calidad y fin de
+vida útil. La vida estimada no garantiza una fecha de avería.
+
+La evaluación es **bajo demanda**: `inspect`/`diagnose`, intervenciones y cambios
+de estado usan marcas persistidas, sin bucles por dispositivo ni dependencia del
+FPS. `list` muestra la última condición confirmada y no recalcula. Las inspecciones
+consumen intervalos completos; al cambiar de estado se liquida también la fracción
+activa para no perder tiempo entre pausas. El tiempo inactivo queda excluido.
+
+Un estado `active` persistido acumula tiempo entre evaluaciones, también durante
+una parada del servidor. Se limita a 72 horas por defecto y el exceso se registra
+en `discardedHours`, avanzando la marca para no volver a aplicarlo. No representa
+una medición de uptime del proceso. El reloj no retrocede respecto al último cambio.
+
+`simulate` añade horas controladas sin adelantar el reloj real ni su marca futura.
+Es una herramienta administrativa deliberada y queda registrada. Los escalares
+nuevos de mantenimiento se normalizan a 12 cifras significativas para permitir una
+serialización exacta con los códecs de prueba. Se mantiene la comparación estricta
+entre el candidato y el JSON recuperado.
+
+## Mantenimiento, historial y migración
+
+Reparar o sustituir exige el estado administrativo `maintenance`. La reparación
+conserva identidad, horas y fecha de instalación; aumenta salud hasta los límites
+configurados y actualiza la fecha de mantenimiento. Si no puede mejorar la salud,
+se rechaza. La sustitución requiere un modelo compatible, crea otra generación con
+salud 100 y horas 0, y conserva los resultados históricos de la pieza anterior.
+No hay sustituciones automáticas.
+
+`maintenance.events` conserva operación, parámetros y resultados antes/después,
+con IDs, modelos, salud, estado y horas. `component.history` referencia las entradas
+que afectan a esa identidad. Una pieza nueva empieza su propio historial; las
+intervenciones de las anteriores siguen en el historial del dispositivo.
+La evaluación temporal no llena ese historial: usa un contador de servicio y su
+última operación reproducible. Una inspección sin cambios no escribe.
+
+Los registros de esquema 1 de la fase 0.2 se leen sin escribir ni cambiar sus
+componentes reservados. Para equiparlos explícitamente:
+
+```text
+osmaint provision <id>
+```
+
+Requiere `registered`, `installed` o `maintenance`. Si el dispositivo antiguo está
+`active` o `fault`, pasarlo primero a `maintenance` con `osdev state`. `provision`
+crea el kit lógico nuevo y conserva los componentes/eventos antiguos íntegros en
+`maintenance.legacy`. No convierte automáticamente piezas sin tipo conocido ni
+borra el historial administrativo. El comando no se puede repetir en un v2.
+
+El contenedor JSON mantiene esquema 1 porque su estructura no cambia; pueden
+convivir dispositivos v1 y v2. Cada promoción se guarda como una operación normal
+y solo se publica tras verificar la escritura. Los fallos conservan la revisión
+confirmada. El historial paginado incluye primero los eventos heredados.
+
+## Permisos y comandos
+
+La consola (`source == 0`) puede administrar. Los jugadores requieren el ACE
+`ossecurity.admin` en consultas y mutaciones; `group.admin` no lo concede por sí
+solo. Un administrador puede concederlo explícitamente en su consola:
 
 ```text
 add_ace group.admin ossecurity.admin allow
 ```
 
-Este proyecto no ejecuta esa concesión ni modifica `server.cfg`. Para conservarla
-tras reiniciar el servidor hay que guardarla mediante su administración habitual.
-Las respuestas dentro del juego requieren el recurso `chat` estándar y se envían
-solo al solicitante. Las consultas en consola no necesitan `chat`.
+Este recurso no ejecuta esa concesión ni modifica `server.cfg`. Las respuestas del
+juego se envían solo al solicitante mediante el `chat` estándar. En el chat se
+antepone `/` a los comandos; `/oshello` y `/osstatus` conservan su comportamiento.
 
-| Comando en consola | Resultado |
+| Comando de consola | Resultado |
 | --- | --- |
-| `osstatus` | Estado, versión y disponibilidad del Device Core. |
-| `osdev list [offset] [limit]` | Lista por ID, total y paginación desde offset 0. |
-| `osdev create <type>` | Crea y persiste un dispositivo `registered`. |
-| `osdev info <id>` | Tipo, modelo, estado, fechas, vínculos y metadatos, sin volcar el historial completo. |
-| `osdev state <id> <state>` | Aplica y persiste una transición válida. |
-| `osdev remove <id>` | Retira y persiste sin borrar el registro. |
+| `osstatus` | Estado, versión y disponibilidad del núcleo. |
+| `osdev list [offset] [limit]` | Dispositivos ordenados por ID. |
+| `osdev create <type>` | Dispositivo nuevo v2 con kit lógico compatible. |
+| `osdev info <id>` | Resumen del dispositivo. |
+| `osdev state <id> <state>` | Transición administrativa válida. |
+| `osdev remove <id>` | `retired` conservando datos e historial. |
+| `osmaint list <id>` | Componentes y condición guardada. |
+| `osmaint inspect <id>` | Evalúa intervalos pendientes y persiste si hay cambios. |
+| `osmaint diagnose <id>` | Inspección con estados y causas; mismo cálculo. |
+| `osmaint simulate <id> <horas>` | Horas adicionales controladas; exige `active`. |
+| `osmaint repair <id> <slot>` | Recuperación limitada; exige `maintenance`. |
+| `osmaint replace <id> <slot> [modelo]` | Sustitución compatible; exige `maintenance`. |
+| `osmaint history <id> [offset] [limit]` | Intervenciones y resultados paginados. |
+| `osmaint provision <id>` | Migración/equipamiento lógico explícito de un v1. |
 
-En el chat usar `/osdev ...` con ACE explícito. `/oshello` y `/osstatus` se
-conservan sin permiso administrativo.
+Los estados administrativos conservan estas transiciones:
 
-Límites predeterminados en `config/server.lua`: 1.000 dispositivos incluyendo
-retirados, páginas de 20 con máximo 100, 256 eventos de estado, 128 de mantenimiento
-y 8 MiB por snapshot. El último evento de estado se reserva para retirar.
-Cada jugador autorizado dispone de 30 consultas y 5 mutaciones por ventana de
-10 segundos; también cuentan intentos inválidos que llegan al registro. La consola
-está exenta del límite temporal y respeta los demás. No hay guardados por frame.
+```text
+registered  -> installing, retired
+installing  -> installed, registered, retired
+installed   -> active, maintenance, fault, retired
+active      -> maintenance, fault, retired
+maintenance -> installed, active, fault, retired
+fault       -> maintenance, retired
+retired     -> (ninguno)
+```
 
-## Persistencia y errores
+La API interna usa punto en scripts del mismo recurso cargados después de `main`:
+`OSSecurity.Registry.create/get/list/setState/retire`,
+`service(source, id, kind, args)` y `serviceHistory(source, id, offset?, limit?)`.
+Devuelve datos copiados o `nil, error`; `service` recibe argumentos específicos,
+sin permitir objetos completos o salud arbitraria. `source = 0` solo debe originarse
+en trabajo de servidor de confianza, nunca en argumentos del cliente.
 
-La interfaz `store.load()`, `store.save(snapshot)` y `store.isBlocked()` permite
-cambiar el adaptador en una futura fase. No se implementa MySQL.
+## Persistencia, límites y recuperación
 
-`data/devices.a.json` y `data/devices.b.json` están excluidos de Git. Cada snapshot
-contiene `schemaVersion`, `revision`, `nextId` y `devices` indexados por ID.
-Si se comprueba que ambos archivos están ausentes, se inicia un registro vacío
-sin escribir hasta la primera mutación. Un fallo de acceso no se trata como ausencia.
+Se mantienen `data/devices.a.json` y `data/devices.b.json`, excluidos de Git. Cada
+cambio escribe en el slot alterno con `SaveResourceFile`, enviando `#content` en
+bytes y aceptando solo `true` o `1` del binding. Se verifica después con
+`LoadResourceFile`. Cada revisión cambia un solo dispositivo mediante una creación,
+transición o servicio reproducible desde la anterior. La revisión cuenta eventos
+administrativos y operaciones de servicio; no se permiten sustituciones libres.
 
-Al iniciar se validan todos los archivos presentes y se selecciona la mayor
-revisión. Si existen ambos, deben ser consecutivos y representar una sola creación
-o transición, conservando datos anteriores. JSON corrupto, esquemas desconocidos,
-IDs inconsistentes o historial alterado bloquean el registro. Incluso si el otro
-snapshot es válido, no se sobrescribe ni se recupera silenciosamente el corrupto.
+Se validan ambos snapshots al cargar. Un archivo corrupto, versiones incompatibles,
+IDs inconsistentes, cambios externos o historial alterado bloquean el registro.
+No hay recuperación silenciosa ni sobrescritura de datos corruptos. Un fallo de
+escritura o relectura impide confirmar la operación y bloquea el núcleo. Un fallo
+de serialización previo a escribir conserva disponible el estado confirmado.
 
-Cada mutación prepara una copia, valida y serializa, comprueba que los archivos
-no hayan cambiado externamente, escribe en el slot alterno con `SaveResourceFile`
-y verifica los bytes con `LoadResourceFile`. Solo entonces publica el nuevo estado
-en memoria y responde `Persistido`. La revisión confirmada anterior permanece en
-el otro slot. No hay yields entre escritura y comprobación.
+Los diagnósticos `[storage:<etapa>]` distinguen validación, serialización, corrupción,
+permisos detectados, escritura, lectura e integridad. No registran datos sensibles
+ni textos de excepciones. `Debug` muestra revisión, slot, bytes y retorno nativo.
+Un fallo nativo sin errno se informa como escritura de causa indeterminada; no se
+supone que sea un error del Junction o de permisos.
 
-El adaptador convierte los resultados nativos `true` y `1` a éxito booleano,
-rechazando cualquier otro valor. La longitud enviada es `#content` (bytes Lua),
-incluido UTF-8. El retorno nativo por sí solo nunca sustituye la relectura exacta.
+Límites: 1.000 dispositivos incluyendo retirados, páginas de 20/máximo 100,
+256 eventos administrativos, 128 intervenciones nuevas y hasta 128 heredadas,
+32 piezas y 8 MiB por snapshot. Los jugadores autorizados tienen 30 consultas y
+5 mutaciones por ventana de 10 segundos; la consola no tiene límite temporal.
+Inspecciones y diagnósticos usan el cupo de mutaciones porque pueden guardar.
+El último evento administrativo se reserva para retirar. Un historial de servicio
+lleno impide nuevas intervenciones sin truncarlo; permite evaluar desgaste y retirar.
 
-Los errores de IO producen registros `[OS SECURITY] [ERROR]`; un fallo de escritura
-o verificación devuelve error y bloquea consultas y mutaciones para evitar exponer
-un estado ambiguo. `osstatus` sigue funcionando. Un fallo de serialización anterior
-a la escritura conserva disponible el estado confirmado.
+Ante corrupción: detener, conservar ambos archivos, revisar el error y restaurar
+un conjunto verificado manteniendo el historial y la secuencia máxima de IDs. No
+borrar archivos ni restaurar contadores obsoletos para desbloquear. Eliminar ambos
+snapshots o restaurar datos antiguos puede perder registros y reutilizar IDs.
 
-Los errores contienen una etiqueta `[storage:<etapa>]`: `validation`,
-`serialization`, `corruption`, `permission`, `write`, `read` o `integrity`.
-Con `Debug = true`, las trazas muestran antes/después de escribir: revisión,
-slot, bytes previos/esperados/leídos y tipo/valor seguro del retorno nativo.
-No registran snapshots, propietarios ni textos de excepciones. `permission`
-requiere errno 13 o una excepción explícita de acceso denegado. Si la native
-solo devuelve fallo sin errno, se registra como `write`; no se deduce si fue
-ACL, sandbox, espacio o apertura del archivo.
-
-En Windows, que el recurso esté enlazado mediante Junction no demuestra una
-denegación de escritura. Durante la investigación los dos snapshots existentes
-contenían revisiones consecutivas válidas, aunque el código había rechazado el
-retorno. No se cambia el Junction, las ACL ni las reglas del sandbox. Si persiste
-un fallo real, revisar la etapa y el retorno registrados, sin borrar los datos.
-
-Ante corrupción o bloqueo:
-
-1. Detener el recurso y conservar copias de **ambos** archivos para diagnóstico.
-2. Revisar consola, permisos, espacio y contenido de los archivos.
-3. Restaurar un conjunto verificado con intervención del administrador, conservando
-   historial y la secuencia máxima de IDs utilizados.
-4. Reiniciar, consultar `osstatus`, `osdev list` y los IDs conocidos.
-
-No borrar archivos para desbloquear ni restaurar un contador obsoleto sin revisar
-los IDs ya usados. La eliminación de ambos archivos o una restauración antigua
-pueden perder datos y reutilizar IDs; no hay recuperación que adivine datos perdidos.
-
-Riesgos del adaptador: no ofrece aquí una transacción con `fsync` ni garantiza
-protección ante cualquier fallo físico. Un guardado que devuelve error podría haber
-escrito datos completos: al reiniciar puede recuperarse una operación que antes
-no se confirmó. Consultar el registro antes de reintentar creaciones tras un fallo.
-Debe existir un único escritor; no editar los archivos con el recurso iniciado.
-Se copia y serializa el conjunto completo por mutación: este adaptador se dirige
-a esta fase acotada y no a alta frecuencia o gran volumen.
-
-Las rutas de montaje y APIs utilizadas corresponden al
-[sandbox documentado de Cfx.re](https://docs.fivem.net/docs/developers/sandbox/).
+Riesgos: el adaptador serializa el conjunto completo y no ofrece transacciones
+`fsync` frente a cualquier fallo físico. Una operación que devolvió error podría
+aparecer tras reiniciar si la escritura se completó: consultar antes de reintentar.
+Los archivos deben tener un solo escritor. Las capacidades son intencionadamente
+acotadas; un límite de tamaño alcanzado rechazará cambios sin confirmarlos.
+Los datos v2 no son legibles por el código 0.2: respaldar antes de probar y no
+revertir código sobre snapshots convertidos sin planificar recuperación.
 
 ## Pruebas automatizadas
 
-Node.js 22 o posterior y npm son necesarios **solo en desarrollo**. Instalar la
-herramienta y su caché dentro del repositorio:
+Node.js 22+ y npm se utilizan solo en desarrollo. Wasmoon ejecuta Lua 5.4 en
+WebAssembly, con fixtures en memoria y caché dentro del repositorio:
 
 ```powershell
 npm.cmd ci --cache .tools/npm-cache --ignore-scripts --no-audit --no-fund
 npm.cmd test
-```
-
-Wasmoon ejecuta Lua 5.4 compilado a WebAssembly. El ejecutor monta el código en
-memoria, valida sintaxis con `loadfile` y ejecuta lógica, persistencia y conexión
-simulada de las APIs FiveM. No escribe fixtures reales ni inicia FXServer.
-
-Por defecto usa un puente `JSON.stringify`/`JSON.parse`. También puede leerse
-la biblioteca **heredada dkjson** del archivo `json.lua` de una instalación
-local, sin modificarla. Ese archivo no es el JSON nativo RapidJSON del runtime:
-
-```powershell
 node tests/run.cjs --codec 'E:\Fivem-DEV\server\citizen\scripting\lua\json.lua'
 ```
 
-Esa ruta opcional se ajusta en otros equipos; no se distribuye una copia de la
-biblioteca. La suite cubre creación, tipos, IDs persistentes, estados, serialización,
-recarga, corrupción, metadatos, ACE, límites, fallos de IO, cambios externos y retirada.
-Incluye un doble del contrato RapidJSON que reproduce sus metatablas de
-decodificación, también cuando se pasan `nil`, y la regresión de creación del
-snapshot. La corrección normaliza solo los marcadores propios del códec,
-incluidos contenedores vacíos, sin relajar los contratos del dominio.
-Las pruebas con dobles no ejecutan el módulo C++ ni equivalen a probar FXServer.
-Las regresiones de escritura cubren el retorno entero `1`, los fallos `0`/`nil`,
-longitud UTF-8, lectura posterior, integridad y diagnóstico sin datos sensibles.
-El intento de ejecutar un FXServer aislado con un recurso de prueba mediante
-Junction no llegó a ejecutar Lua porque faltaba una licencia en ese entorno.
-No se reutilizaron credenciales ni se modificó el perfil local de txAdmin.
+El segundo modo lee dkjson heredado, sin modificarlo; ese archivo no es el módulo
+RapidJSON nativo de FXServer. La suite incluye dobles de sus metatablas y de los
+retornos de archivos, además de regresiones de precisión, desgaste, reinicio,
+reparación, sustitución, historial, migración, permisos y fallos de persistencia.
+Ninguna de estas pruebas equivale a ejecutar el servidor o el cliente FiveM.
 
-## Validación manual pendiente en FiveM
+## Comprobación pendiente en FiveM
 
-Según la confirmación del proyecto, la fase 0.1.0 ya funciona en FiveM. La fase
-0.2.0 requiere todavía pruebas en FXServer y en el cliente real.
+Esta fase no se ha ejecutado en FiveM. No se modifican el perfil txAdmin ni sus
+credenciales, configuración o recursos externos. Para probar, usar una instalación
+local de prueba con respaldo y un único recurso que escriba en estos datos.
 
-Colocar una copia en `resources` del perfil local de txAdmin con el directorio
-`data` incluido. Al actualizar no sobrescribir los datos de una instalación previa.
-Este trabajo no instala nada fuera del repositorio ni cambia el servidor.
-
-En la consola del servidor o la consola en vivo de txAdmin:
+Con un ID nuevo realmente devuelto por `create`:
 
 ```text
 refresh
 ensure os_security
 osstatus
 osdev create cctv_camera
-osdev list
-osdev info osd_0000000001
-osdev state osd_0000000001 installing
-osdev state osd_0000000001 installed
-osdev state osd_0000000001 active
+osmaint list <id>
+osdev state <id> installing
+osdev state <id> installed
+osdev state <id> active
+osmaint simulate <id> 24
+osmaint inspect <id>
+osdev state <id> maintenance
+osmaint repair <id> power
+osmaint replace <id> power
+osmaint history <id> 0 20
 restart os_security
-osdev info osd_0000000001
-osdev create bodycam
-osdev remove osd_0000000001
-osdev state osd_0000000001 active
+osmaint list <id>
 ```
 
-Si ya existen datos, usar los IDs realmente devueltos. Comprobar que el primer
-dispositivo sigue `active` tras reiniciar, que el segundo tiene otro ID, que
-`remove` conserva el registro `retired` y que la última transición se rechaza.
-Si el recurso estaba bloqueado por el retorno entero de `SaveResourceFile`,
-reiniciarlo y consultar primero `osdev list`: la operación que mostró error
-puede estar ya en disco. No repetir creaciones sin comprobarlo.
-Comprobar también:
-
-- `/oshello` y `/osstatus` con `chat` iniciado.
-- `/osdev list` denegado sin el ACE, incluso para un grupo administrativo que no
-  tenga concedido `ossecurity.admin`; con ACE, respuestas solo al solicitante.
-- Tipo inexistente, salto `registered -> active` y páginas fuera de límites rechazados.
-- `Debug = true` añade el nombre del recurso al inicio; restaurar después `false`.
-- `stop os_security` y `ensure os_security` registran el ciclo de vida y recargan IDs.
-
-Las comprobaciones de corrupción y errores de disco reales deben realizarse solo
-sobre una copia de prueba con respaldo. La suite ya inyecta esos errores en memoria.
-No se afirma haber superado estas pruebas reales de la fase 0.2.0 en FiveM.
+Con valores predeterminados, una simulación de 24 horas puede dejar la salud por
+encima del techo 90 de reparación: en ese caso reparar debe rechazarse, sin reducir
+salud. Para probar recuperación, usar un modelo de vida nominal menor configurado
+en una copia de prueba. Comprobar también migración de un registro v1 respaldado,
+denegación sin ACE, respuestas privadas, retirada terminal, conservación de IDs,
+`/oshello`, `/osstatus` y registros de inicio/detención. Los fallos de disco y
+corrupción reales deben probarse solo en una copia con respaldo; ya se inyectan
+en las pruebas automatizadas.

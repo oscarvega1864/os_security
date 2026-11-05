@@ -1,7 +1,7 @@
 local util = OSSecurity.Util
 local catalog = OSSecurity.DeviceCatalog
 local states = OSSecurity.DeviceStates
-local validation = { SchemaVersion = 1, MaxSequence = 9999999999 }
+local validation = { SchemaVersion = 1, DeviceSchemaVersion = 2, MaxSequence = 9999999999 }
 OSSecurity.DeviceValidation = validation
 
 local inputFields = {
@@ -134,7 +134,7 @@ end
 
 function validation.device(value, limits)
     if not util.object(value, deviceFields) or not validation.id(value.id)
-        or value.schemaVersion ~= validation.SchemaVersion or not states.exists(value.state)
+        or (value.schemaVersion ~= 1 and value.schemaVersion ~= validation.DeviceSchemaVersion) or not states.exists(value.state)
         or not util.integer(value.createdAt, 0, 253402300799)
         or not util.integer(value.updatedAt, value.createdAt, 253402300799) then
         return nil, 'Contrato de dispositivo invalido.'
@@ -146,8 +146,13 @@ function validation.device(value, limits)
     if quality ~= nil and (not util.finite(quality) or quality < 0 or quality > 100) then
         return nil, 'Calidad de instalacion invalida.'
     end
-    if not condition(value.condition) then return nil, 'Contrato de salud de componentes invalido.' end
-    if not maintenance(value.maintenance, value, limits) then return nil, 'Contrato de mantenimiento invalido.' end
+    if value.schemaVersion == 1 then
+        if not condition(value.condition) then return nil, 'Contrato de salud de componentes invalido.' end
+        if not maintenance(value.maintenance, value, limits) then return nil, 'Contrato de mantenimiento invalido.' end
+    else
+        local valid, reason = OSSecurity.ComponentValidation.device(value, limits, condition, maintenance)
+        if not valid then return nil, reason end
+    end
     if not util.array(value.history, limits.MaxHistory) or #value.history < 1 then
         return nil, 'Historial invalido o fuera del limite.'
     end
@@ -164,7 +169,9 @@ function validation.device(value, limits)
         end
         previous, timestamp = event.to, event.at
     end
-    if previous ~= value.state or timestamp ~= value.updatedAt then return nil, 'Historial inconsistente.' end
+    if previous ~= value.state or (value.schemaVersion == 1 and timestamp ~= value.updatedAt) then
+        return nil, 'Historial inconsistente.'
+    end
     return true
 end
 
@@ -183,6 +190,7 @@ function validation.snapshot(snapshot, limits)
         local ok, err = validation.device(device, limits)
         if not ok then return nil, id .. ': ' .. err end
         events = events + #device.history
+        if device.schemaVersion == 2 then events = events + device.maintenance.sequence end
         largest = math.max(largest, tonumber(id:sub(5)))
     end
     if snapshot.nextId <= largest or snapshot.revision ~= events then
@@ -191,9 +199,10 @@ function validation.snapshot(snapshot, limits)
     return true
 end
 
--- Cada revision representa exactamente una creacion o transicion, nunca una
--- sustitucion libre del objeto. Se usa tambien al recuperar los dos snapshots.
-function validation.successor(older, newer)
+-- Cada revision es una creacion, transicion o servicio reproducible, nunca una
+-- sustitucion libre de objetos. La misma comprobacion se aplica al recuperar.
+function validation.successor(older, newer, limits)
+    limits = limits or OSSecurity.ServerConfig
     if newer.revision ~= older.revision + 1 then return nil, 'Salto de revision.' end
     local changes, created = 0, false
     for id, previous in pairs(older.devices) do
@@ -201,13 +210,17 @@ function validation.successor(older, newer)
         if not current then return nil, 'Eliminacion permanente no permitida.' end
         if not util.equal(previous, current) then
             changes = changes + 1
-            if #current.history ~= #previous.history + 1 then return nil, 'Historial sustituido.' end
-            for index, event in ipairs(previous.history) do
-                if not util.equal(event, current.history[index]) then return nil, 'Historial anterior modificado.' end
+            local expected
+            if #current.history == #previous.history + 1 and current.schemaVersion == previous.schemaVersion then
+                expected = OSSecurity.ComponentLifecycle.onStateChange(previous, current.updatedAt)
+                expected.history[#expected.history + 1] = { from = previous.state, to = current.state, at = current.updatedAt }
+                expected.state, expected.updatedAt = current.state, current.updatedAt
+            elseif current.schemaVersion == 2 then
+                local reason
+                expected, reason = OSSecurity.ComponentLifecycle.apply(previous, current.maintenance.lastOperation, limits)
+                if not expected then return nil, 'Servicio no reproducible: ' .. tostring(reason) end
             end
-            local immutable = util.copy(current)
-            immutable.state, immutable.updatedAt, immutable.history = previous.state, previous.updatedAt, previous.history
-            if not util.equal(previous, immutable) then return nil, 'Campos inmutables modificados.' end
+            if not expected or not util.equal(expected, current) then return nil, 'Cambio no reproducible o historial alterado.' end
         end
     end
     for id, current in pairs(newer.devices) do
@@ -215,6 +228,18 @@ function validation.successor(older, newer)
             changes, created = changes + 1, true
             if id ~= ('osd_%010d'):format(older.nextId) or current.state ~= 'registered' or #current.history ~= 1 then
                 return nil, 'Creacion o secuencia de ID invalida.'
+            end
+            if current.schemaVersion == 2 then
+                if current.maintenance.sequence ~= 0 or not util.equal(current.maintenance.legacy, { components = {}, events = {} }) then
+                    return nil, 'Creacion con historial de servicio previo.'
+                end
+                for _, component in pairs(current.condition.components) do
+                    if component.health ~= 100 or component.generation ~= 1 or component.installedAt ~= current.createdAt
+                        or component.lastMaintenanceAt ~= nil or component.wear.lastEvaluatedAt ~= current.createdAt
+                        or component.wear.operatingHours ~= 0 or component.wear.discardedHours ~= 0 or #component.history ~= 0 then
+                        return nil, 'Componente nuevo con datos de uso previos.'
+                    end
+                end
             end
         end
     end
