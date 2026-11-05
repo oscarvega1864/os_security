@@ -2,6 +2,31 @@
 
 ## 0.2.0 — Device Core
 
+### Corrección de compatibilidad JSON de FXServer
+
+- Causa: `store.save()` comprobaba el JSON generado con `codec.decode()` y
+  `DeviceValidation.snapshot()`. El runtime usa RapidJSON; pasar `nil` como
+  `objectmeta`/`arraymeta` conserva las metatablas JSON predeterminadas. Por eso
+  `Util.object()` rechazaba el snapshot legítimo y devolvía
+  `Serializacion invalida: Formato o version de almacenamiento incompatible.`
+  Las pruebas anteriores usaban dkjson heredado, donde esos `nil` sí eliminan
+  las metatablas, y no reproducían el comportamiento del runtime.
+- Solución: proporcionar metatablas marcadoras explícitas y retirar solo esas
+  marcas del resultado decodificado, recursivamente, antes de validar. Los
+  marcadores `null` y las metatablas desconocidas conservan su rechazo. No se
+  relajan validadores ni se cambian esquema, IDs o snapshots alternos.
+- Las tablas vacías pueden codificarse como `[]` con la configuración de FiveM.
+  Se mantiene la aceptación de contenedores vacíos según su contrato, tanto
+  `{}` como `[]`, sin alterar las opciones globales del JSON ni reescribir datos.
+- Regresión: el doble del contrato RapidJSON reproduce el error antes del
+  arreglo. Después pasan 37 pruebas con el puente JSON y con dkjson heredado,
+  incluyendo creación, recarga, tablas vacías, `null`, corrupción y fallos de IO.
+  No se ejecutó el módulo nativo C++ ni un FXServer real durante esta corrección.
+- Referencias: [decodificador Cfx RapidJSON](https://github.com/citizenfx/lua-rapidjson/blob/60f4dd4e3f04c64e04d74b69c1ff41397fc01e53/src/lua_rapidjson.cpp)
+  y [opciones del runtime FiveM](https://github.com/citizenfx/fivem/blob/master/data/shared/citizen/scripting/lua/scheduler.lua).
+
+### Implementación inicial
+
 - Registro exclusivamente en servidor con IDs persistentes y consultas paginadas.
 - Catálogo central de siete tipos y validación extensible de metadatos.
 - Máquina de estados con historial, retirada irreversible y límites explícitos.

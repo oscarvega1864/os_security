@@ -524,5 +524,10 @@ test('FiveM wiring: startup, commands, restart persistence and safe file errors'
     assert(ok, err)
 end)
 
+-- Compartir el mismo banco de pruebas con las regresiones del adaptador JSON.
+StorageTest = { test = test, fixture = fixture, create = create, equal = equal }
+dofile(root .. 'tests/storage_json_spec.lua')
+StorageTest = nil
+
 print(('Tests: %d | Passed: %d | Failed: %d'):format(total, total - failures, failures))
 __failures = failures

@@ -28,7 +28,7 @@ frameworks, oxmysql ni librerías externas.
 | `server/security/permissions.lua` | Autorización ACE y límites de solicitudes. |
 | `server/commands/devices.lua` | Subcomandos `osdev` y respuestas al solicitante. |
 | `data/.gitkeep` | Conserva vacío el directorio de almacenamiento en Git. |
-| `tests/core_spec.lua`, `tests/run.cjs` | Pruebas Lua 5.4 y APIs FiveM simuladas. |
+| `tests/core_spec.lua`, `tests/storage_json_spec.lua`, `tests/run.cjs` | Pruebas Lua 5.4, regresiones JSON y APIs FiveM simuladas. |
 | `package.json`, `package-lock.json` | Wasmoon, dependencia solo de desarrollo para pruebas. |
 | `.npmrc` | Mantiene la cache de npm dentro del repositorio. |
 | `AGENTS.md`, `.gitignore`, `CHANGELOG.md` | Reglas, exclusiones e historial de versiones. |
@@ -203,7 +203,8 @@ memoria, valida sintaxis con `loadfile` y ejecuta lógica, persistencia y conexi
 simulada de las APIs FiveM. No escribe fixtures reales ni inicia FXServer.
 
 Por defecto usa un puente `JSON.stringify`/`JSON.parse`. También puede leerse
-la biblioteca JSON de un FXServer local sin modificarla:
+la biblioteca **heredada dkjson** del archivo `json.lua` de una instalación
+local, sin modificarla. Ese archivo no es el JSON nativo RapidJSON del runtime:
 
 ```powershell
 node tests/run.cjs --codec 'E:\Fivem-DEV\server\citizen\scripting\lua\json.lua'
@@ -212,7 +213,11 @@ node tests/run.cjs --codec 'E:\Fivem-DEV\server\citizen\scripting\lua\json.lua'
 Esa ruta opcional se ajusta en otros equipos; no se distribuye una copia de la
 biblioteca. La suite cubre creación, tipos, IDs persistentes, estados, serialización,
 recarga, corrupción, metadatos, ACE, límites, fallos de IO, cambios externos y retirada.
-Las pruebas con dobles de FiveM no equivalen a ejecutar un servidor real.
+Incluye un doble del contrato RapidJSON que reproduce sus metatablas de
+decodificación, también cuando se pasan `nil`, y la regresión de creación del
+snapshot. La corrección normaliza solo los marcadores propios del códec,
+incluidos contenedores vacíos, sin relajar los contratos del dominio.
+Las pruebas con dobles no ejecutan el módulo C++ ni equivalen a probar FXServer.
 
 ## Validación manual pendiente en FiveM
 
