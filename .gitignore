@@ -1,0 +1,16 @@
+# Archivos locales de editores y Windows.
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+Thumbs.db
+Desktop.ini
+
+# Registros, temporales y credenciales locales.
+*.log
+*.tmp
+*.bak
+.env
+.env.*
+!.env.example
