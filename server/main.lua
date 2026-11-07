@@ -3,10 +3,13 @@ local constants = OSSecurity.Constants
 local resourceName = GetCurrentResourceName()
 local serverConfig = OSSecurity.ServerConfig
 
-local function isAceAllowed(player, permission)
-    local result = IsPlayerAceAllowed(player, permission)
-    return result == true or result == 1
-end
+local isAceAllowed = OSSecurity.AdminAccess.new({
+    ace = IsPlayerAceAllowed, state = GetResourceState,
+    permission = serverConfig.AdminAce, resource = serverConfig.AdminAuthorizationResource,
+    delegate = function(resource, player, permission)
+        return exports[resource]:HasOscarPermission(player, permission)
+    end
+})
 
 local function storageLog(message)
     print(('%s [ERROR] %s'):format(constants.LOG_PREFIX, message))

@@ -60,6 +60,11 @@ consulta, servicio técnico o supervisión, siempre intersectadas con el perfil.
 `ossecurity.admin` por sí solo no abre Operations: también hacen falta su ítem y
 el ACE específico de Operations. La consola puede ejecutar `osg6` sin tablet.
 
+La autorización administrativa puede proceder además de una delegación OSCAR
+explícita y vigente a través del adaptador opcional de `os_devtools`. Solo resuelve
+`ossecurity.admin`: Operations mantiene su ítem y ACE propios; no se asignan roles
+G6 automáticamente. Se revalida al consultar y revocar el proveedor deniega esa vía.
+
 Reparar y sustituir siguen exigiendo estado administrativo `maintenance`. El
 supervisor puede iniciarlo; un administrador usa el comando existente
 `osdev state <id> active` para volver al servicio cuando corresponda. Los límites

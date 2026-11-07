@@ -1,6 +1,7 @@
 -- Solo servidor. Los limites incluyen los dispositivos retirados.
 OSSecurity.ServerConfig = {
     AdminAce = 'ossecurity.admin',
+    AdminAuthorizationResource = 'os_devtools', -- Opcional; false mantiene solo ACE.
     StorageBase = 'data/devices',
     MaxDevices = 1000,
     DefaultPageSize = 20,

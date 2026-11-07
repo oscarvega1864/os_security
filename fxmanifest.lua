@@ -41,6 +41,7 @@ server_scripts {
     'server/storage/resource_files.lua',
     'server/storage/json.lua',
     'server/security/permissions.lua',
+    'server/security/admin_access.lua',
     'server/devices/registry.lua',
     'server/commands/devices.lua',
     'server/commands/maintenance.lua',

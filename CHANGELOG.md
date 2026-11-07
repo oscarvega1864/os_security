@@ -2,6 +2,11 @@
 
 ## 0.4.1 — Gruppe Sechs, doble tablet e instalación CCTV
 
+- Adaptador administrativo OSCAR opcional, tras verificar el contrato existente:
+  consulta `os_devtools:HasOscarPermission` solo para `ossecurity.admin` y conserva
+  ACE directo. No añade dependencia ni modifica roles G6, ítems, alcance por
+  dispositivo o datos. Cinco regresiones de revocación, proveedor ausente, errores
+  y separación de permisos; 101 pruebas Lua pasan con ambos códecs de desarrollo.
 - Marca centralizada Gruppe Sechs: nombres, identificación visual de empleados y
   dispositivos, temas, textos y denominaciones. El recurso sigue siendo
   `os_security`; se conservan IDs, tablas, snapshots y contratos anteriores.

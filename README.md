@@ -13,6 +13,13 @@ No se implementan minijuegos. Las piezas siguen siendo referencias lógicas.
 
 Consultar [arquitectura, permisos y prueba completa de las tablets y colocación](docs/g6-tablets.md).
 
+La administración admite además el export opcional `HasOscarPermission` de
+`os_devtools`, exclusivamente para `ossecurity.admin`. Debe existir una delegación
+explícita y vigente verificada por ese servicio. Los ACE siguen funcionando por sí
+solos; desactivar con `AdminAuthorizationResource = false`. Este adaptador no
+concede tablets, empleos, roles G6 ni acceso de cliente a dispositivos. Los errores,
+parada o revocación del proveedor deniegan la delegación en la siguiente consulta.
+
 ## Arquitectura
 
 | Archivo o directorio | Responsabilidad |
@@ -298,7 +305,7 @@ El segundo modo lee dkjson heredado, sin modificarlo; ese archivo no es el módu
 RapidJSON nativo de FXServer. La suite incluye dobles de sus metatablas y de los
 retornos de archivos, además de regresiones de precisión, desgaste, reinicio,
 reparación, sustitución, historial, migración, permisos y fallos de persistencia.
-Las suites Lua pasan 96/96 con cada códec de desarrollo. La prueba de interfaz
+Las suites Lua pasan 101/101 con cada códec de desarrollo. La prueba de interfaz
 pasa 6/6 en Chromium local y deja capturas en `.tools/g6-browser/`. Requiere
 Chrome/Edge o `G6_BROWSER_PATH`; utiliza respuestas de servidor simuladas. No se
 añaden dependencias de navegador al recurso. Los scripts JavaScript se comprueban

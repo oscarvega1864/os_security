@@ -546,6 +546,7 @@ dofile(root .. 'tests/storage_write_spec.lua')
 dofile(root .. 'tests/maintenance_spec.lua')
 dofile(root .. 'tests/gameplay_spec.lua')
 dofile(root .. 'tests/client_spec.lua')
+dofile(root .. 'tests/admin_access_spec.lua')
 StorageTest = nil
 
 print(('Tests: %d | Passed: %d | Failed: %d'):format(total, total - failures, failures))
