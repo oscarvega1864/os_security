@@ -10,6 +10,8 @@
 - Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
   (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
   petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
+- `/g6anchor`: alta de montajes apuntando a la pared en el juego, revalidada en el servidor (ACE,
+  distancia real, datos y bucket); `osg6 anchor` comparte la misma lógica.
 - Vínculo de dispositivos con propiedades y negocios de os_devtools (`osg6 site`): el titular del
   personaje activo los consulta en la tablet Client; titularidad revalidada en cada petición.
 - La tablet Operations muestra el perfil (Técnico, Supervisor, Administrador) con su color, sus

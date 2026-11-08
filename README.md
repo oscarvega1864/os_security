@@ -64,6 +64,19 @@ Con objetos por personaje, el empleo debe ser del mismo personaje que tiene la t
 El empleo nunca concede `admin` ni la tablet Client. Los ACE tienen prioridad, y si el
 proveedor falla o no está iniciado no se concede nada por empleo.
 
+## Registrar montajes apuntando
+
+En el juego, con `ossecurity.admin`, apunta a la pared (menos de 8 m) y escribe:
+
+```text
+/g6anchor <id> <idCliente> [idInstalador] [radio]
+```
+
+El instalador por defecto eres tú y el radio 0,75 m. El cliente solo envía el punto y la
+normal de la superficie; el servidor exige el ACE, valida los datos y que el punto esté a
+menos de `AnchorAimDistance` (10 m) de tu posición real, y usa tu bucket. Responde con una
+notificación. `osg6 anchor` con coordenadas sigue disponible en la consola.
+
 ## Propiedades y negocios
 
 Un dispositivo se puede vincular a una propiedad o negocio de os_devtools. El titular, con

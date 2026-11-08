@@ -15,6 +15,25 @@ function OSSecurity.GameplayCommands.register(options)
         end
         return actor
     end
+    -- Alta de montaje comun a la consola (coordenadas escritas) y a /g6anchor (punto apuntado en el juego).
+    local function createAnchor(id, ownerSource, installerSource, position, normal, radius, bucket)
+        local owner = options.identity.resolve(tonumber(ownerSource))
+        local installer = options.identity.resolve(tonumber(installerSource))
+        if not owner or not installer or not OSSecurity.InventoryState.vector(position, 1000000)
+            or not OSSecurity.InventoryState.vector(normal, 1000) or not OSSecurity.Util.finite(radius) then
+            return nil, 'Identidades o coordenadas de montaje invalidas.'
+        end
+        local length = math.sqrt(normal.x^2 + normal.y^2 + normal.z^2)
+        if length < 0.001 then return nil, 'La normal no puede ser cero.' end
+        position, normal = { x = position.x, y = position.y, z = position.z }, { x = normal.x, y = normal.y, z = normal.z }
+        for _, axis in ipairs({ 'x', 'y', 'z' }) do
+            normal[axis] = OSSecurity.ComponentWear.number(normal[axis] / length)
+            position[axis] = OSSecurity.ComponentWear.number(position[axis])
+        end
+        if bucket == nil then local _, installerBucket = options.world(tonumber(installerSource)); bucket = installerBucket end
+        return options.inventory.apply({ kind = 'anchor', anchor = { id = id, owner = owner, installer = installer,
+            position = position, normal = normal, radius = OSSecurity.ComponentWear.number(radius), bucket = bucket } })
+    end
     options.register('osg6', function(source, args)
         if not options.permissions.isAdmin(source) then options.reply(source, 'Se requiere ossecurity.admin.'); return end
         local action, result, err = args[1]
@@ -83,24 +102,11 @@ function OSSecurity.GameplayCommands.register(options)
                 return
             end
         elseif action == 'anchor' and (#args == 10 or #args == 11) then
-            local owner = options.identity.resolve(tonumber(args[3]))
-            local installer = options.identity.resolve(tonumber(args[4]))
             local position = { x = tonumber(args[5]), y = tonumber(args[6]), z = tonumber(args[7]) }
             local normal = { x = tonumber(args[8]), y = tonumber(args[9]), z = tonumber(args[10]) }
             local radius = args[11] and tonumber(args[11]) or 0.75
-            if not owner or not installer or not OSSecurity.InventoryState.vector(position, 1000000)
-                or not OSSecurity.InventoryState.vector(normal, 1000) or (args[11] and not tonumber(args[11])) then
-                options.reply(source, 'Identidades o coordenadas de montaje invalidas.'); return
-            end
-            local length = math.sqrt(normal.x^2 + normal.y^2 + normal.z^2)
-            if length < 0.001 then options.reply(source, 'La normal no puede ser cero.'); return end
-            for _, axis in ipairs({ 'x', 'y', 'z' }) do
-                normal[axis] = OSSecurity.ComponentWear.number(normal[axis] / length)
-                position[axis] = OSSecurity.ComponentWear.number(position[axis])
-            end
-            local _, bucket = options.world(tonumber(args[4]))
-            result, err = options.inventory.apply({ kind = 'anchor', anchor = { id = args[2], owner = owner, installer = installer,
-                position = position, normal = normal, radius = OSSecurity.ComponentWear.number(radius), bucket = bucket } })
+            if args[11] and not tonumber(args[11]) then options.reply(source, 'Identidades o coordenadas de montaje invalidas.'); return end
+            result, err = createAnchor(args[2], args[3], args[4], position, normal, radius)
         elseif action == 'installations' and #args == 1 then
             local snapshot, reason = options.inventory.snapshot()
             if not snapshot then options.reply(source, reason); return end
@@ -118,4 +124,26 @@ function OSSecurity.GameplayCommands.register(options)
         else options.reply(source, usage); return end
         options.reply(source, result and 'Operacion Gruppe Sechs persistida.' or (err or 'Operacion rechazada.'))
     end, false)
+
+    -- /g6anchor: el administrador apunta a la pared; el cliente solo propone punto y normal.
+    -- El servidor exige ossecurity.admin, valida los datos y que el punto este cerca de su posicion real.
+    local function aimed(source, payload)
+        if not OSSecurity.Util.integer(source, 1, 2147483647) or not options.permissions.isAdmin(source) then return nil, 'Se requiere ossecurity.admin.' end
+        if not OSSecurity.Util.object(payload, { id = true, client = true, installer = true, radius = true, position = true, normal = true })
+            or type(payload.id) ~= 'string' or not OSSecurity.Util.integer(payload.client, 1, 2147483647)
+            or (payload.installer ~= nil and not OSSecurity.Util.integer(payload.installer, 1, 2147483647))
+            or (payload.radius ~= nil and not OSSecurity.Util.finite(payload.radius))
+            or not OSSecurity.InventoryState.vector(payload.position, 1000000) or not OSSecurity.InventoryState.vector(payload.normal, 1000) then
+            return nil, 'Uso: /g6anchor <id> <idCliente> [idInstalador] [radio], apuntando a la pared.'
+        end
+        local here, bucket = options.world(source)
+        if not here then return nil, 'Posicion del administrador no disponible.' end
+        local dx, dy, dz = payload.position.x - here.x, payload.position.y - here.y, payload.position.z - here.z
+        if math.sqrt(dx * dx + dy * dy + dz * dz) > OSSecurity.GameplayConfig.AnchorAimDistance then return nil, 'El punto apuntado esta demasiado lejos.' end
+        local result, err = createAnchor(payload.id, payload.client, payload.installer or source, payload.position, payload.normal, payload.radius or 0.75, bucket)
+        if not result then return nil, err end
+        local anchor = result.anchors[payload.id]
+        return ('Montaje %s registrado en %.2f %.2f %.2f (bucket %d).'):format(payload.id, anchor.position.x, anchor.position.y, anchor.position.z, anchor.bucket)
+    end
+    return { aimed = aimed }
 end

@@ -76,7 +76,11 @@ function OSSecurity.Gameplay.new(options)
     end
     function gameplay.drop(source) controller.drop(source) end
     function gameplay.clear() ready = false; controller.clear() end
-    OSSecurity.GameplayCommands.register({ sites = options.sites, register = options.register, reply = options.reply, permissions = options.permissions,
+    local commands = OSSecurity.GameplayCommands.register({ sites = options.sites, register = options.register, reply = options.reply, permissions = options.permissions,
         identity = identity, inventory = inventory, holdings = holdings, registry = options.registry, world = options.world, ready = gameplay.status })
+    function gameplay.anchorAt(source, payload)
+        if not gameplay.status() then return nil, 'Flujo Gruppe Sechs no disponible; revisar servidor.' end
+        return commands.aimed(source, payload)
+    end
     return gameplay
 end

@@ -246,6 +246,24 @@ test('Owners of a linked property or business see its devices on the Client tabl
     restarted = fixture(c.core.files); assert(restarted.loaded, restarted.loadError)
 end)
 
+test('Aimed anchors require admin, a nearby point and valid data, then persist with the admin bucket', function()
+    local c = fixture(); c.players[4].point = { x = 100, y = 0, z = 1 }; c.players[4].bucket = 3
+    local function aim(source, payload) return c.game.anchorAt(source, payload) end
+    local base = { id = 'mount_aim', client = 2, position = { x = 102, y = 0, z = 2 }, normal = { x = 0, y = -2, z = 0 } }
+    assert(not aim(1, base)) -- sin ossecurity.admin
+    local far = util.copy(base); far.position = { x = 200, y = 0, z = 2 }; assert(not aim(4, far))
+    local bad = util.copy(base); bad.extra = true; assert(not aim(4, bad))
+    local zero = util.copy(base); zero.normal = { x = 0, y = 0, z = 0 }; assert(not aim(4, zero))
+    local nobody = util.copy(base); nobody.client = 99; assert(not aim(4, nobody))
+    local message = assert(aim(4, base)); assert(message:find('mount_aim', 1, true))
+    local anchor = c.game.inventory.snapshot().anchors.mount_aim
+    assert(anchor.owner == c.players[2].principal and anchor.installer == c.players[4].principal and anchor.bucket == 3)
+    assert(anchor.normal.y == -1 and anchor.radius == 0.75)
+    local other = util.copy(base); other.id = 'mount_aim2'; other.installer = 1; other.radius = 1.5
+    assert(aim(4, other)); anchor = c.game.inventory.snapshot().anchors.mount_aim2
+    assert(anchor.installer == c.players[1].principal and anchor.radius == 1.5)
+end)
+
 test('Inventory state rejects malformed site links', function()
     local limits = config
     for _, site in ipairs({ { kind = 'house', id = 1 }, { kind = 'property', id = 0 }, { kind = 'property', id = 1.5 }, { kind = 'property', id = 1, owner = 'x' } }) do
@@ -500,7 +518,10 @@ test('Native server wiring keeps replies private, normalizes ACE and creates uni
     local function stub(name, callback) replaced[name] = { _G[name] }; _G[name] = callback end
     local handlers, commands, files, replies, hashes = {}, {}, {}, {}, 0
     local ok, err = pcall(function()
-        stub('RegisterNetEvent', function(name, callback) assert(name == 'os_security:g6:request'); handlers.request = callback end)
+        stub('RegisterNetEvent', function(name, callback)
+            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim')
+            if name == 'os_security:g6:request' then handlers.request = callback else handlers.anchorAim = callback end
+        end)
         stub('RegisterCommand', function(name, callback) commands[name] = callback end)
         stub('AddEventHandler', function(name, callback) handlers[name] = callback end)
         stub('GetCurrentResourceName', function() return 'os_security' end)

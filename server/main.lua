@@ -168,7 +168,21 @@ RegisterNetEvent('os_security:g6:request', function(request)
     TriggerClientEvent('os_security:g6:response', player, requestId, response)
 end)
 
+-- /g6anchor: punto y normal apuntados por un administrador; el servidor revalida todo.
+local lastAnchorAim = {}
+RegisterNetEvent('os_security:g6:anchorAim', function(payload)
+    local player = source
+    if not OSSecurity.Util.integer(player, 1, 2147483647) then return end
+    local now = GetGameTimer()
+    if lastAnchorAim[player] and now - lastAnchorAim[player] < 1000 then return end
+    lastAnchorAim[player] = now
+    local ok, message, err = pcall(gameplay.anchorAt, player, payload)
+    if not ok then message, err = nil, OSSecurity.Brand.Text.failed end
+    TriggerClientEvent('os_security:g6:anchorResult', player, message ~= nil, message or err)
+end)
+
 AddEventHandler('playerDropped', function()
+    lastAnchorAim[tonumber(source)] = nil
     permissions.forget(tonumber(source))
     gameplay.drop(tonumber(source))
 end)
