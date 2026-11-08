@@ -77,6 +77,21 @@ normal de la superficie; el servidor exige el ACE, valida los datos y que el pun
 menos de `AnchorAimDistance` (10 m) de tu posición real, y usa tu bucket. Responde con una
 notificación. `osg6 anchor` con coordenadas sigue disponible en la consola.
 
+## Colocar la cámara
+
+Al usar el kit CCTV, la cámara aparece en el montaje libre más cercano y no sigue la mira:
+
+| Tecla | Acción |
+| --- | --- |
+| Flechas | Mover sobre la pared (X horizontal, Y vertical), dentro del radio del montaje |
+| Mayús + flechas, o rueda | Girar (izquierda/derecha) e inclinar (arriba/abajo, máx. 45°) |
+| Ctrl (mantener) | Ajuste fino |
+| Tab | Siguiente montaje cercano |
+| E o Intro | Colocar |
+| Retroceso o Esc | Cancelar |
+
+El servidor revalida montaje, radio, plano, giro, distancia y objetos al confirmar.
+
 ## Propiedades y negocios
 
 Un dispositivo se puede vincular a una propiedad o negocio de os_devtools. El titular, con

@@ -117,6 +117,21 @@ test('Player messages use os_notify with their kind when started and fall back t
     assert(ok, err)
 end)
 
+test('Placement editor keeps the camera on the mount plane, inside its radius, facing out of the wall', function()
+    local P = OSSecurity.ClientPlacement
+    local mount = { id = 'm', position = { x = 10, y = 5, z = 2 }, normal = { x = 0, y = -1, z = 0 }, radius = 0.75 }
+    local frame = P.frame(mount)
+    assert(math.abs(frame.up.z - 1) < 1e-9 and math.abs(frame.right.z) < 1e-9) -- pared vertical: Y es la altura
+    local offset = { x = 0.3, y = 0.2 }; local p = P.compose(mount, offset)
+    assert(math.abs(p.y - 5) < 1e-9 and math.abs(p.z - 2.2) < 1e-9 and math.abs(p.x - 10.3) < 1e-9) -- quien mira hacia +y tiene la derecha en +x
+    offset = { x = 5, y = 0 }; p = P.compose(mount, offset) -- fuera del radio: se limita
+    assert(math.abs(offset.x - 0.75 * 0.95) < 1e-9 and math.abs(p.y - 5) < 1e-9)
+    -- Mirando fuera de la pared: vector frontal (-sin h, cos h) igual a la normal
+    local h = math.rad(P.heading(mount)); assert(math.abs(-math.sin(h) - 0) < 1e-9 and math.abs(math.cos(h) + 1) < 1e-9)
+    local floor = { id = 'f', position = { x = 0, y = 0, z = 0 }, normal = { x = 0, y = 0, z = 1 }, radius = 1 }
+    p = P.compose(floor, { x = 0.5, y = 0 }); assert(math.abs(p.z) < 1e-9 and P.heading(floor) == 0.0)
+end)
+
 local function natives(run)
     local originals, queue, objects, calls = {}, {}, {}, { deleted = 0, made = 0, anim = 0 }
     local function stub(name, value) originals[name] = { rawget(_G, name) }; _G[name] = value end
@@ -178,7 +193,8 @@ test('Cancelling the preview deletes its temporary prop and calls back once', fu
     natives(function(queue, objects, calls)
         local placement = OSSecurity.ClientPlacement.new()
         local callbacks = 0
-        placement.begin({ model = 'prop_cctv_cam_01a', seconds = 90, mounts = {}, maxDistance = 4 }, function(result)
+        placement.begin({ model = 'prop_cctv_cam_01a', seconds = 90, maxDistance = 4,
+            mounts = { { id = 'm', position = { x = 1, y = 0, z = 1 }, normal = { x = -1, y = 0, z = 0 }, radius = 0.75 } } }, function(result)
             assert(result == nil); callbacks = callbacks + 1
         end)
         queue[1]()
