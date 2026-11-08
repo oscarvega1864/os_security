@@ -138,6 +138,7 @@ test('On-duty gruppe6 employment grants technician/supervisor operations profile
     assert(not denied(5, 'operations').ok) -- fuera de servicio
     c.jobs[5].duty = true
     local session = open(c, 5, 'operations'); assert(session.profile == OSSecurity.Brand.Profiles.technician)
+    assert(session.role == 'technician' and table.concat(session.abilities, ',') == 'view,inspect,repair,replace,provision,install')
     assert(call(c, 5, session, 'inventory', {}).ok)
     assert(not denied(5, 'client').ok) -- el empleo no concede la tablet Client
     c.core.time = c.core.time + 10
@@ -146,6 +147,7 @@ test('On-duty gruppe6 employment grants technician/supervisor operations profile
     c.core.time = c.core.time + 10
     c.jobs[5] = { job = 'gruppe6', rank = 'supervisor', duty = true }
     session = open(c, 5, 'operations'); assert(session.profile == OSSecurity.Brand.Profiles.supervisor)
+    assert(session.role == 'supervisor' and table.concat(session.abilities, ',') == 'view,inspect,beginMaintenance' and not session.canInstall)
     c.core.time = c.core.time + 10
     for _, job in ipairs({ { job = 'gruppe6', rank = 'vigilante', duty = true }, { job = 'gruppe6', rank = 'admin', duty = true },
         { job = 'police', rank = 'tecnico', duty = true }, 'gruppe6', false }) do

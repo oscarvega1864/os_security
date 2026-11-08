@@ -31,6 +31,9 @@ OSSecurity.Brand = {
         pending = 'Pendiente de implementacion', failed = 'No se pudo completar la solicitud.',
         placementHelp = 'Apunte al montaje autorizado. Rueda: orientar. E: confirmar. Retroceso: cancelar.',
         hello = 'Gruppe Sechs: servicio de seguridad disponible.',
+        profileAbilities = 'Funciones de su perfil',
+        abilities = { view = 'Consultar', inspect = 'Inspeccionar', repair = 'Reparar', replace = 'Sustituir piezas',
+            provision = 'Equipar registros', beginMaintenance = 'Abrir mantenimiento', install = 'Instalar CCTV' },
         serviceNames = { cctv = 'Registro CCTV', maintenance = 'Servicio tecnico', installation = 'Instalaciones', inventory = 'Inventario tecnico' }
     },
     Modules = {
@@ -47,7 +50,7 @@ OSSecurity.Brand = {
         },
         operations = {
             { id = 'overview', name = 'Dispositivos asignados', implemented = true },
-            { id = 'installations', name = 'Instalaciones', implemented = true },
+            { id = 'installations', name = 'Instalaciones', implemented = true, requires = 'install' },
             { id = 'maintenance', name = 'Mantenimiento', implemented = true },
             { id = 'inventory', name = 'Inventario tecnico', implemented = true },
             { id = 'cctv', name = 'Registro CCTV', implemented = true },

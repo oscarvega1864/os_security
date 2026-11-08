@@ -51,6 +51,13 @@
     node.append(el('p', state.session.kind === 'inventory' ? text('inventoryHero') : text('inspectionNote')));
     if (count != null) { const metric = el('div', count, 'metric'); metric.append(el('small', text('assigned'))); node.append(metric); }
     content.append(node);
+    const abilities = Array.isArray(state.session.abilities) ? state.session.abilities : [];
+    if (state.session.kind === 'operations' && abilities.length) {
+      const strip = el('div', null, 'abilities'); strip.append(el('span', `${state.session.profile} · ${text('profileAbilities')}`, 'overline'));
+      const list = el('div', null, 'ability-list');
+      for (const ability of abilities) list.append(el('span', state.session.brand.Text?.abilities?.[ability] || ability, 'ability'));
+      strip.append(list); content.append(strip);
+    }
   }
   async function showDevice(id) {
     const device = await request('device', { deviceId: id }); if (!device) return;
@@ -129,12 +136,16 @@
     byId('monogram').textContent = brand.Monogram; byId('brand').textContent = brand.Name;
     byId('edition').textContent = brand.Tablets[session.kind]?.name || text('inventory');
     byId('overline').textContent = brand.Tablets[session.kind]?.name || brand.Name;
-    byId('profile').textContent = session.employeeId ? `${session.profile} · ${session.employeeId}` : session.profile;
+    const profile = byId('profile'); profile.replaceChildren(el('strong', session.profile, 'role-name'));
+    if (session.employeeId) profile.append(el('span', ` · ${session.employeeId}`));
+    profile.className = `profile role-${/^[a-z]+$/.test(session.role || '') ? session.role : 'none'}`;
     for (const id of ['refresh', 'close', 'previous', 'next']) byId(id).textContent = text(id);
     byId('session-label').textContent = text('session'); byId('footer-label').textContent = brand.Name;
     byId('expiry').textContent = date(session.expires);
     const navigation = byId('navigation'); navigation.replaceChildren();
-    const modules = session.kind === 'inventory' ? [{ id: 'inventory', name: text('inventory'), implemented: true }] : brand.Modules[session.kind];
+    const abilities = new Set(Array.isArray(session.abilities) ? session.abilities : []);
+    const modules = session.kind === 'inventory' ? [{ id: 'inventory', name: text('inventory'), implemented: true }]
+      : (brand.Modules[session.kind] || []).filter(module => !module.requires || abilities.has(module.requires));
     for (const module of modules) {
       const nav = button(module.name, () => { state.module = module.id; state.offset = 0; state.selected = null; for (const child of navigation.children) child.classList.remove('selected'); nav.classList.add('selected'); refresh(); }, !module.implemented);
       if (module.id === state.module) nav.classList.add('selected');

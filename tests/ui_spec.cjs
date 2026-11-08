@@ -61,8 +61,11 @@ async function main() {
         }
         return new Response(JSON.stringify(result),{status:200,headers:{'Content-Type':'application/json'}});
       };
-      window.__open = kind => { window.__mode=kind; window.__device.actions=kind==='operations'?{inspect:true,repair:true,replace:true}:{};
-        window.postMessage({type:'open',session:{kind,profile:kind==='operations'?'Tecnico':'Cliente',employeeId:kind==='operations'?'G6-E-TEST':null,canInstall:kind==='operations',expires:Math.floor(Date.now()/1000)+90,brand:window.__brand}},'*'); };
+      window.__open = (kind, role) => { window.__mode=kind; window.__device.actions=kind==='operations'?{inspect:true,repair:true,replace:true}:{};
+        const supervisor=role==='supervisor';
+        window.postMessage({type:'open',session:{kind,role:kind==='operations'?(role||'technician'):'client',profile:kind==='operations'?(supervisor?'Supervisor':'Tecnico'):'Cliente',
+          abilities:kind==='operations'?(supervisor?['view','inspect','beginMaintenance']:['view','inspect','repair','replace','provision','install']):[],
+          employeeId:kind==='operations'?'G6-E-TEST':null,canInstall:kind==='operations'&&!supervisor,expires:Math.floor(Date.now()/1000)+90,brand:window.__brand}},'*'); };
     ` });
     await send('Page.navigate', { url: pathToFileURL(path.join(root, 'web/index.html')).href });
     await until(`document.getElementById('app')?.hidden===true && typeof window.__open==='function'`);
@@ -88,6 +91,12 @@ async function main() {
     assert(await evaluate(`Array.from(document.querySelectorAll('#content button')).some(b=>b.textContent===window.__brand.Text.repair && !b.disabled)`));
     assert(await evaluate(`document.getElementById('content').textContent.includes(window.__brand.Text.noSignal)`));
     console.log('PASS Operations theme, professional controls and explicit unavailable signal');
+    assert(await evaluate(`Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent==='Instalaciones') && document.querySelector('.profile.role-technician')`));
+    await evaluate(`window.__open('operations','supervisor')`);
+    await until(`document.querySelector('.profile.role-supervisor') && document.querySelectorAll('.ability').length===3`);
+    assert(await evaluate(`!Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent==='Instalaciones') && document.querySelector('.abilities').textContent.includes('Abrir mantenimiento')`));
+    fs.writeFileSync(path.join(output, 'supervisor.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    console.log('PASS profile badge, profile functions and modules limited by the session profile');
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
     await until(`document.getElementById('app').hidden && window.__calls.some(x=>x.endpoint==='close')`);
     console.log('PASS Escape closes the browser view and invokes the native close callback');

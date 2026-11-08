@@ -45,10 +45,19 @@ function OSSecurity.TabletService.new(options)
         table.sort(items, function(a, b) return a.id < b.id end)
         return { items = items }
     end
+    local ABILITY_ORDER = { 'view', 'inspect', 'repair', 'replace', 'provision', 'beginMaintenance', 'install' }
+    function service.abilities(actor)
+        local profile = actor.kind == 'operations' and OSSecurity.GameplayConfig.Profiles[actor.role] or nil
+        local list = {}
+        for _, ability in ipairs(ABILITY_ORDER) do if profile and profile[ability] then list[#list + 1] = ability end end
+        return list
+    end
     function service.session(session)
         return { token = session.token, sequence = session.sequence, expires = session.expires,
             kind = session.actor.kind, profile = OSSecurity.Brand.Profiles[session.actor.role],
             canInstall = session.actor.kind == 'operations' and OSSecurity.GameplayConfig.Profiles[session.actor.role].install == true,
+            -- Solo presentacion: el servidor sigue comprobando cada accion contra el perfil y el dispositivo.
+            role = session.actor.role, abilities = service.abilities(session.actor),
             employeeId = session.actor.kind == 'operations' and options.employeeId(session.actor.principal) or nil,
             brand = util.copy(OSSecurity.Brand), capabilities = util.copy(OSSecurity.IntegrationContracts.cctv) }
     end
