@@ -41,6 +41,14 @@ set ossecurity_items os_inventory        # antes de ensure os_security
 - `osg6 give` e `osg6 inventory` usan el proveedor. `osg6 migrate <jugador>` pasa los objetos locales de la cuenta al personaje activo; la clave de operación incluye el total migrado por objeto, así que repetirlo tras una interrupción no duplica.
 - No reutilizar identificadores de instalación borrando los datos de OS Security: los recibos del proveedor quedarían asociados a IDs antiguos.
 
+## Mensajes al jugador
+
+Los avisos de la tablet y de la instalación (errores, "cargando", CCTV registrado o colocación cancelada)
+usan `os_notify` si está iniciado, con su tipo (error, aviso, éxito o información); si no, el chat
+estándar, como antes. No es una dependencia: OS Security sigue siendo portable. Las respuestas de los
+comandos administrativos (`osdev`, `osmaint`, `osg6`, `osstatus`) y `/oshello` siguen en el chat porque
+incluyen listados.
+
 ## Arquitectura
 
 | Archivo o directorio | Responsabilidad |

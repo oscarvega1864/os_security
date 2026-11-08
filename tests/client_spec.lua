@@ -95,6 +95,28 @@ test('Using the CCTV kit from an external inventory opens a hidden session, then
     assert(denied.notifications[#denied.notifications] == 'Faltan herramientas de instalacion.')
 end)
 
+test('Player messages use os_notify with their kind when started and fall back to the standard chat', function()
+    dofile('/repo/client/notify.lua')
+    local saved = { GetResourceState = rawget(_G, 'GetResourceState'), exports = rawget(_G, 'exports'), TriggerEvent = rawget(_G, 'TriggerEvent') }
+    local state, toasts, chats = 'started', {}, {}
+    local ok, err = pcall(function()
+        GetResourceState = function(name) assert(name == 'os_notify'); return state end
+        exports = { os_notify = { Notify = function(_, message, kind) toasts[#toasts + 1] = { message, kind } end } }
+        TriggerEvent = function(name, payload) assert(name == 'chat:addMessage'); chats[#chats + 1] = payload.args end
+        assert(OSSecurity.Notify('CCTV registrado: osd_0000000001', 'success') == 'os_notify')
+        assert(toasts[1][1] == 'CCTV registrado: osd_0000000001' and toasts[1][2] == 'success')
+        OSSecurity.Notify('Sin tipo valido', 'html'); assert(toasts[2][2] == 'info')
+        state = 'stopped'
+        assert(OSSecurity.Notify('Faltan materiales.', 'error') == 'chat')
+        assert(chats[1][1] == OSSecurity.Brand.Name and chats[1][2] == 'Faltan materiales.')
+        state = 'started'; exports.os_notify.Notify = function() error('export no disponible') end
+        assert(OSSecurity.Notify('Error del proveedor', 'error') == 'chat' and #chats == 2)
+        assert(OSSecurity.Notify(nil, 'error') == 'chat' and chats[3][2] == OSSecurity.Brand.Text.failed)
+    end)
+    for name, value in pairs(saved) do _G[name] = value end
+    assert(ok, err)
+end)
+
 local function natives(run)
     local originals, queue, objects, calls = {}, {}, {}, { deleted = 0, made = 0, anim = 0 }
     local function stub(name, value) originals[name] = { rawget(_G, name) }; _G[name] = value end

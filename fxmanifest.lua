@@ -18,6 +18,7 @@ client_scripts {
     'client/view.lua',
     'client/placement.lua',
     'client/props.lua',
+    'client/notify.lua',
     'client/boot.lua'
 }
 

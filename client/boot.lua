@@ -6,7 +6,7 @@ local controller = OSSecurity.ClientTablet.new({
     send = function(packet) TriggerServerEvent('os_security:g6:request', packet) end,
     timeout = function(callback) SetTimeout(8000, callback) end,
     expiry = function(expires) SendNUIMessage({ type = 'expiry', expires = expires }) end,
-    notify = function(message) TriggerEvent('chat:addMessage', { args = { OSSecurity.Brand.Name, message or OSSecurity.Brand.Text.failed } }) end
+    notify = function(message, kind) OSSecurity.Notify(message or OSSecurity.Brand.Text.failed, kind) end
 })
 
 RegisterNetEvent('os_security:g6:response', function(id, response)
