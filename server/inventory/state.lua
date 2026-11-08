@@ -37,6 +37,13 @@ function state.holder(value)
     return util.text(value, 64) and value:match('^[%w_:%-]+$') ~= nil
 end
 
+-- Vinculo de un dispositivo con una propiedad o negocio del proveedor de activos (os_devtools).
+state.SiteKinds = { property = true, business = true }
+function state.site(value)
+    return util.object(value, { kind = true, id = true }) and state.SiteKinds[value.kind] == true
+        and util.integer(value.id, 1, 2147483646)
+end
+
 local function placement(value)
     return util.object(value, { id = true, anchorId = true, owner = true, installer = true, position = true,
         rotation = true, bucket = true, model = true, status = true, createdAt = true, updatedAt = true, deviceId = true, reason = true,
@@ -71,7 +78,7 @@ end
 
 local function operation(op, limits)
     if not util.object(op, { kind = true, at = true, principal = true, item = true, amount = true,
-        deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true })
+        deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true, site = true })
         or not util.integer(op.at, 0, 253402300799) then return false end
     local fields = { kind = true, at = true }
     if op.kind == 'grant' or op.kind == 'migrate' then
@@ -82,6 +89,10 @@ local function operation(op, limits)
         fields.principal, fields.deviceId, fields.role = true, true, true
         if not identity.valid(op.principal) or not OSSecurity.DeviceValidation.id(op.deviceId)
             or type(op.role) ~= 'string' or not ({ client = true, technician = true, supervisor = true, none = true })[op.role] then return false end
+    elseif op.kind == 'site' then
+        -- Sin 'site' se retira el vinculo.
+        fields.deviceId, fields.site = true, true
+        if not OSSecurity.DeviceValidation.id(op.deviceId) or (op.site ~= nil and not state.site(op.site)) then return false end
     elseif op.kind == 'anchor' then
         fields.anchor = true
         if not state.anchor(op.anchor) then return false end
@@ -112,10 +123,11 @@ end
 
 function state.snapshot(snapshot, limits)
     if not util.object(snapshot, { schemaVersion = true, revision = true, nextInstallation = true,
-        accounts = true, anchors = true, installations = true, lastOperation = true })
+        accounts = true, anchors = true, installations = true, lastOperation = true, sites = true })
         or snapshot.schemaVersion ~= 1 or not util.integer(snapshot.revision, 0, 9007199254740000)
         or not util.integer(snapshot.nextInstallation, 1, limits.MaxInstallations + 1)
         or not util.object(snapshot.accounts) or not util.object(snapshot.anchors) or not util.object(snapshot.installations)
+        or (snapshot.sites ~= nil and not util.object(snapshot.sites))
         or (snapshot.revision == 0 and snapshot.lastOperation ~= nil)
         or (snapshot.revision > 0 and not operation(snapshot.lastOperation, limits)) then return nil, 'Formato de inventario incompatible.' end
     local count, deviceIds = 0, {}
@@ -170,6 +182,13 @@ function state.snapshot(snapshot, limits)
         count = count + 1
         if count > limits.MaxAnchors or not state.anchor(anchor) or id ~= anchor.id then return nil, 'Montaje autorizado invalido.' end
     end
+    count = 0
+    for deviceId, site in pairs(snapshot.sites or {}) do
+        count = count + 1
+        if count > limits.MaxInstallations or not OSSecurity.DeviceValidation.id(deviceId) or not state.site(site) then
+            return nil, 'Vinculo de propiedad o negocio invalido.'
+        end
+    end
     if snapshot.revision == 0 and (next(snapshot.accounts) or next(snapshot.anchors) or next(snapshot.installations)) then
         return nil, 'Inventario inicial no vacio.'
     end
@@ -200,6 +219,10 @@ function state.apply(snapshot, op, limits)
         target.migrated[op.item] = (target.migrated[op.item] or 0) + op.amount
     elseif op.kind == 'access' then
         account(op.principal).grants[op.deviceId] = op.role ~= 'none' and op.role or nil
+    elseif op.kind == 'site' then
+        nextState.sites = nextState.sites or {}
+        nextState.sites[op.deviceId] = op.site and util.copy(op.site) or nil
+        if next(nextState.sites) == nil then nextState.sites = nil end
     elseif op.kind == 'anchor' then
         for _, installation in pairs(snapshot.installations) do
             if installation.anchorId == op.anchor.id and installation.status == 'pending' then return nil, 'Montaje con operacion pendiente.' end

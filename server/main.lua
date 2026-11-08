@@ -111,6 +111,20 @@ local employment = OSSecurity.Employment.new({
     end or nil
 })
 
+-- Propiedades y negocios: el titular del personaje activo ve en la tablet Client los dispositivos vinculados.
+--   set ossecurity_sites_resource none   lo desactiva.
+local sitesResource = GetConvar('ossecurity_sites_resource', identityResource)
+local sites = sitesResource ~= 'none' and OSSecurity.Sites.new({
+    asset = function(category, id)
+        if GetResourceState(sitesResource) ~= 'started' then return nil end
+        return exports[sitesResource]:GetAsset(category, id)
+    end,
+    active = function(source)
+        if GetResourceState(identityResource) ~= 'started' then return nil end
+        return exports[identityResource]:GetActiveCharacter(source)
+    end
+}) or nil
+
 -- El salt nativo se obtiene una sola vez: bcrypt no debe bloquear cada apertura.
 -- El nonce siempre se valida junto al source, secuencia, identidad, item y ACE.
 local sessionSalt
@@ -134,6 +148,7 @@ local gameplay = OSSecurity.Gameplay.new({
     log = storageLog,
     items = externalItems,
     employment = employment,
+    sites = sites,
     audit = function(action, source, deviceId)
         local safeId = OSSecurity.DeviceValidation.id(deviceId) and deviceId or '-'
         print(('%s [G6 AUDIT] action=%s source=%d device=%s'):format(constants.LOG_PREFIX, action, source, safeId))

@@ -14,19 +14,19 @@ function OSSecurity.TabletAuthorization.new(options)
             if not resolved then return nil, holderError end
             holder = resolved
         end
-        if kind == 'inventory' then return { principal = principal, holder = holder, role = 'inventory', kind = kind } end
+        if kind == 'inventory' then return { principal = principal, holder = holder, role = 'inventory', kind = kind, source = source } end
         local tablet = OSSecurity.Brand.Tablets[kind]
         if not tablet or not options.holdings.has({ principal = principal, holder = holder }, tablet.item, 1) then return nil, 'No posee la tablet correspondiente.' end
         local jobRole = kind == 'operations' and options.employment and options.employment(source, holder) or nil
         if not options.ace(source, config.Ace[kind]) and not jobRole then return nil, 'Tablet no autorizada para este perfil.' end
-        if kind == 'client' then return { principal = principal, holder = holder, role = 'client', kind = kind } end
+        if kind == 'client' then return { principal = principal, holder = holder, role = 'client', kind = kind, source = source } end
         local role
         if options.ace(source, config.Ace.admin) then role = 'admin'
         elseif options.ace(source, config.Ace.supervisor) then role = 'supervisor'
         elseif options.ace(source, config.Ace.technician) then role = 'technician'
         else role = jobRole end
         if not role then return nil, 'No tiene un perfil profesional verificable.' end
-        return { principal = principal, holder = holder, role = role, kind = kind }
+        return { principal = principal, holder = holder, role = role, kind = kind, source = source }
     end
 
     function auth.access(actor, device, action)
@@ -37,7 +37,12 @@ function OSSecurity.TabletAuthorization.new(options)
         if not account then return false end
         local grant = account.grants[device.id]
         if device.owner == actor.principal then return true end
-        if action == 'view' then return grant ~= nil end
+        if action == 'view' then
+            if grant ~= nil then return true end
+            -- Titular de la propiedad o negocio vinculado, con su personaje activo: solo consulta, en la tablet Client.
+            local site = actor.kind == 'client' and options.sites and options.inventory.site(device.id)
+            return site and options.sites.owns(actor.source, site) == true or false
+        end
         return (grant == 'technician' and ({ inspect = true, repair = true, replace = true, provision = true })[action] == true)
             or (grant == 'supervisor' and ({ inspect = true, beginMaintenance = true })[action] == true)
     end

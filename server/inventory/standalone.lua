@@ -20,6 +20,11 @@ function OSSecurity.StandaloneInventory.new(options)
         if not OSSecurity.Identity.valid(principal) then return nil, 'Identidad invalida.' end
         return OSSecurity.Util.copy(data.accounts[principal] or { items = {}, grants = {} })
     end
+    function inventory.site(deviceId)
+        if not inventory.status() or not data.sites then return nil end
+        local site = data.sites[deviceId]
+        return site and { kind = site.kind, id = site.id } or nil
+    end
     function inventory.has(principal, item, amount)
         local account = inventory.get(principal)
         return account ~= nil and account.items[item] ~= nil and account.items[item].count >= (amount or 1)

@@ -5,7 +5,7 @@ local bootNumber = 0
 local function fixture(files, external)
     bootNumber = bootNumber + 1
     local core = coreFixture(files)
-    local c = { core = core, players = {}, aces = {}, jobs = {}, commands = {}, audit = {}, replies = {}, invWrites = 0, timers = {} }
+    local c = { core = core, players = {}, aces = {}, jobs = {}, assets = { properties = {}, businesses = {} }, active = {}, commands = {}, audit = {}, replies = {}, invWrites = 0, timers = {} }
     local prefix = 'boot-' .. bootNumber
     for id = 1, 5 do
         c.players[id] = { principal = 'license:' .. string.rep(string.char(96 + id), 40), alive = true, connected = true,
@@ -51,7 +51,11 @@ local function fixture(files, external)
         employment = OSSecurity.Employment.new({ settings = config.Employment, read = function(source)
             if c.jobsFail then error('proveedor caido') end
             return c.jobs[source]
-        end })
+        end }),
+        sites = OSSecurity.Sites.new({
+            asset = function(category, id) if c.sitesFail then error('caido') end; return c.assets[category][id] end,
+            active = function(source) return c.active[source] end
+        })
     })
     c.loaded, c.loadError = c.game.load()
     return c
@@ -206,6 +210,50 @@ test('Client tablets receive only owned/granted devices, never global records or
     grantAccess(c, 2, hidden.id, 'client')
     assert(call(c, 2, session, 'devices', { offset = 0 }).data.total == 2)
     grantAccess(c, 2, hidden.id, 'none'); assert(not call(c, 2, session, 'device', { deviceId = hidden.id }).ok)
+end)
+
+test('Owners of a linked property or business see its devices on the Client tablet, read-only and only with that character', function()
+    local c = fixture(); grant(c, 2, 'g6_client_tablet'); grant(c, 1, 'g6_operations_tablet')
+    local camera = create(c.core, 'cctv_camera', { owner = c.players[5].principal })
+    local shop = create(c.core, 'cctv_camera', { owner = c.players[5].principal })
+    c.assets.properties[200] = { id = 200, price = 50000, owner = 'oscar_vega' }
+    c.assets.businesses[3] = { id = 3, name = 'Vanilla', owner = 'otro' }
+    c.active[2] = { alias = 'oscar_vega', characterId = 'oschar_0000000001' }
+    c.commands.osg6(0, { 'site', camera.id, 'propiedad', '200' })
+    c.commands.osg6(0, { 'site', shop.id, 'negocio', '3' })
+    c.commands.osg6(0, { 'site', shop.id, 'negocio', '99' }) -- inexistente: no cambia el vinculo
+    assert(c.game.inventory.site(camera.id).id == 200 and c.game.inventory.site(shop.id).kind == 'business')
+    local session = open(c, 2, 'client')
+    local listed = call(c, 2, session, 'devices', { offset = 0 })
+    assert(listed.ok and listed.data.total == 1 and listed.data.items[1].id == camera.id and listed.data.items[1].site == 'Propiedad 200')
+    assert(not call(c, 2, session, 'maintain', { deviceId = camera.id, action = 'inspect' }).ok)
+    assert(not call(c, 2, session, 'device', { deviceId = shop.id }).ok)
+    c.assets.businesses[3].owner = 'oscar_vega'
+    assert(call(c, 2, session, 'device', { deviceId = shop.id }).data.site == 'Negocio 3 · Vanilla')
+    c.active[2] = { alias = 'segundo_test' } -- otro personaje del mismo jugador
+    assert(call(c, 2, session, 'devices', { offset = 0 }).data.total == 0)
+    c.active[2] = { alias = 'oscar_vega' }; c.sitesFail = true
+    assert(call(c, 2, session, 'devices', { offset = 0 }).data.total == 0)
+    c.sitesFail = false
+    -- El vinculo no da acceso a la tablet Operations
+    c.active[1] = { alias = 'oscar_vega' }; local tech = open(c, 1, 'operations')
+    assert(call(c, 1, tech, 'devices', {}).data.total == 0)
+    -- Retirar el vinculo, y persistencia tras reinicio
+    c.commands.osg6(0, { 'site', shop.id, 'none' }); assert(c.game.inventory.site(shop.id) == nil)
+    local restarted = fixture(c.core.files); assert(restarted.loaded, restarted.loadError)
+    assert(restarted.game.inventory.site(camera.id).id == 200 and restarted.game.inventory.site(shop.id) == nil)
+    c.commands.osg6(0, { 'site', camera.id, 'none' })
+    restarted = fixture(c.core.files); assert(restarted.loaded, restarted.loadError)
+end)
+
+test('Inventory state rejects malformed site links', function()
+    local limits = config
+    for _, site in ipairs({ { kind = 'house', id = 1 }, { kind = 'property', id = 0 }, { kind = 'property', id = 1.5 }, { kind = 'property', id = 1, owner = 'x' } }) do
+        assert(not OSSecurity.InventoryState.site(site))
+    end
+    local snapshot = OSSecurity.InventoryState.initial()
+    assert(not OSSecurity.InventoryState.apply(snapshot, { kind = 'site', at = 1, deviceId = 'bad', site = { kind = 'property', id = 1 } }, limits))
+    assert(OSSecurity.InventoryState.apply(snapshot, { kind = 'site', at = 1, deviceId = 'osd_0000000001', site = { kind = 'property', id = 1 } }, limits))
 end)
 
 test('Technician and supervisor permissions intersect their assigned device scope', function()

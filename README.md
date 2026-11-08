@@ -64,6 +64,23 @@ Con objetos por personaje, el empleo debe ser del mismo personaje que tiene la t
 El empleo nunca concede `admin` ni la tablet Client. Los ACE tienen prioridad, y si el
 proveedor falla o no está iniciado no se concede nada por empleo.
 
+## Propiedades y negocios
+
+Un dispositivo se puede vincular a una propiedad o negocio de os_devtools. El titular, con
+ese personaje activo, lo ve en su tablet Client (solo consulta) sin concesión manual:
+
+```text
+osg6 site <dispositivo> propiedad <id>
+osg6 site <dispositivo> negocio <id>
+osg6 site <dispositivo> none
+```
+
+El servidor comprueba que la propiedad o negocio existe. La titularidad se consulta en cada
+petición (`GetAsset` y `GetActiveCharacter`): si cambia el propietario o el personaje
+activo, deja de verse. La tarjeta muestra "Propiedad 200" o "Negocio 3 · Nombre". El vínculo
+no da acceso a Operations ni a mantenimiento. `set ossecurity_sites_resource none` lo
+desactiva. Sigue haciendo falta la tablet Client y el ACE `ossecurity.g6.client`.
+
 ## Mensajes al jugador
 
 Los avisos de la tablet y de la instalación (errores, "cargando", CCTV registrado o colocación cancelada)

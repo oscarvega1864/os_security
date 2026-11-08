@@ -19,6 +19,7 @@ function OSSecurity.TabletService.new(options)
         for _, action in ipairs({ 'inspect', 'repair', 'replace', 'provision', 'beginMaintenance' }) do
             actions[action] = options.auth.access(actor, device, action)
         end
+        local site = options.inventory.site(device.id)
         local snapshot = options.inventory.snapshot()
         local installation = device.metadata.installationId and snapshot and snapshot.installations[device.metadata.installationId]
         local history = options.registry.serviceHistory(0, device.id, 0, 100)
@@ -31,6 +32,7 @@ function OSSecurity.TabletService.new(options)
             model = device.model, state = device.state, schemaVersion = device.schemaVersion, updatedAt = device.updatedAt,
             health = diagnosis.health, components = components, lastIntervention = latest, actions = actions,
             physical = installation ~= nil and installation.status == 'committed' and installation.deviceId == device.id,
+            site = site and (options.sites and options.sites.label(site) or OSSecurity.Sites.Labels[site.kind] .. ' ' .. site.id) or nil,
             remoteVideo = false }
     end
     function service.inventory(actor)

@@ -64,6 +64,7 @@
     state.selected = id;
     const content = byId('content'); content.replaceChildren(button(text('back'), () => { state.selected = null; refresh(); }));
     content.append(el('h2', device.displayId, 'detail-title'), el('div', device.type, 'subtle'));
+    if (typeof device.site === 'string') content.append(el('div', device.site, 'site'));
     const meta = el('div', null, 'detail-meta');
     for (const [title, value] of [[text('state'), labelState(device.state)], [text('model'), device.model], [text('health'), health(device.health)], [text('history'), device.lastIntervention ? `${device.lastIntervention.kind} · ${date(device.lastIntervention.at)}` : text('noHistory')]]) {
       const item = el('div', title, 'subtle'); item.append(el('strong', value)); meta.append(item);
@@ -121,6 +122,7 @@
       const card = el('article', null, 'card'); const head = el('div', null, 'card-head');
       head.append(el('span', null, 'device-symbol'), el('span', labelState(device.state), 'badge'));
       card.append(head, el('h3', device.displayId), el('div', `${device.type} · ${device.model}`, 'subtle'), el('div', text(device.physical ? 'installed' : 'logical'), 'subtle'));
+      if (typeof device.site === 'string') card.append(el('div', device.site, 'site'));
       const bar = el('div', null, 'health-line'); const fill = el('span'); fill.style.width = `${Number.isFinite(device.health) ? Math.min(100, Math.max(0, device.health)) : 0}%`; bar.append(fill); card.append(bar);
       const footer = el('div', null, 'card-footer'); footer.append(el('span', `${text('health')} ${health(device.health)}`, 'subtle'), button(text('details'), () => showDevice(device.id))); card.append(footer); grid.append(card);
     }

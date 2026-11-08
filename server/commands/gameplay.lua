@@ -1,7 +1,7 @@
 OSSecurity.GameplayCommands = {}
 
 function OSSecurity.GameplayCommands.register(options)
-    local usage = 'osg6 give <jugador> <item> <cantidad> | inventory <jugador> | migrate <jugador> | access <jugador> <dispositivo> <client|technician|supervisor|none> | anchor <id> <cliente> <instalador> <x> <y> <z> <nx> <ny> <nz> [radio] | installations | diagnose'
+    local usage = 'osg6 give <jugador> <item> <cantidad> | inventory <jugador> | migrate <jugador> | access <jugador> <dispositivo> <client|technician|supervisor|none> | anchor <id> <cliente> <instalador> <x> <y> <z> <nx> <ny> <nz> [radio] | site <dispositivo> <propiedad|negocio> <id> | site <dispositivo> none | installations | diagnose'
     local holdings = options.holdings
     local function target(value)
         local player = tonumber(value)
@@ -66,6 +66,22 @@ function OSSecurity.GameplayCommands.register(options)
             if not principal then options.reply(source, identityError); return end
             if not options.registry.get(0, args[3]) then options.reply(source, 'Dispositivo no disponible.'); return end
             result, err = options.inventory.apply({ kind = 'access', principal = principal, deviceId = args[3], role = args[4] })
+        elseif action == 'site' and (#args == 3 or #args == 4) then
+            -- Vincula un dispositivo a una propiedad o negocio: su titular lo ve en la tablet Client.
+            if not options.registry.get(0, args[2]) then options.reply(source, 'Dispositivo no disponible.'); return end
+            local site
+            if #args == 4 then
+                local kind = ({ propiedad = 'property', property = 'property', negocio = 'business', business = 'business' })[args[3]]
+                site = { kind = kind, id = tonumber(args[4]) }
+                if not kind or not OSSecurity.InventoryState.site(site) then options.reply(source, 'Tipo o ID no validos.'); return end
+                if not options.sites or not options.sites.available() then options.reply(source, 'Proveedor de propiedades no disponible.'); return end
+                if not options.sites.get(site) then options.reply(source, ('%s inexistente.'):format(OSSecurity.Sites.Labels[kind] .. ' ' .. site.id)); return end
+            elseif args[3] ~= 'none' then options.reply(source, usage); return end
+            result, err = options.inventory.apply({ kind = 'site', deviceId = args[2], site = site })
+            if result then
+                options.reply(source, site and ('%s vinculado a %s.'):format(args[2], options.sites.label(site)) or (args[2] .. ' desvinculado.'))
+                return
+            end
         elseif action == 'anchor' and (#args == 10 or #args == 11) then
             local owner = options.identity.resolve(tonumber(args[3]))
             local installer = options.identity.resolve(tonumber(args[4]))

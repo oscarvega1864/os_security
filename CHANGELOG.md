@@ -10,6 +10,8 @@
 - Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
   (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
   petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
+- Vínculo de dispositivos con propiedades y negocios de os_devtools (`osg6 site`): el titular del
+  personaje activo los consulta en la tablet Client; titularidad revalidada en cada petición.
 - La tablet Operations muestra el perfil (Técnico, Supervisor, Administrador) con su color, sus
   funciones y oculta los módulos que el perfil no puede usar (Instalaciones sin `install`).
 - Avisos de tablet e instalación con tipo a través de `os_notify` (opcional) y vuelta al chat estándar.

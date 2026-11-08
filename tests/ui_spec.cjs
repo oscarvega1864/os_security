@@ -81,8 +81,9 @@ async function main() {
     await until(`document.getElementById('content').textContent.includes('<img src=x')`);
     assert(await evaluate(`document.querySelector('img')===null && window.__xss!==true`));
     console.log('PASS untrusted display strings render as text without HTML execution');
-    await evaluate(`window.__device.displayId='G6-D · osd_0000000001';window.__open('operations')`);
+    await evaluate(`window.__device.displayId='G6-D · osd_0000000001';window.__device.site='Propiedad 200';window.__open('operations')`);
     await until(`document.querySelector('.tablet.operations') && document.querySelectorAll('.card').length===1`);
+    assert(await evaluate(`document.querySelector('.card .site')?.textContent==='Propiedad 200'`));
     assert(await evaluate(`document.getElementById('profile').textContent.includes('G6-E-TEST') && document.getElementById('app').style.getPropertyValue('--background')==='#101a17'`));
     assert(await evaluate(`getComputedStyle(document.getElementById('heading')).color==='rgb(237, 243, 232)'`), 'Operations foreground must resolve inside its own theme');
     fs.writeFileSync(path.join(output, 'operations.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));

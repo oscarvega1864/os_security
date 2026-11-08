@@ -48,13 +48,14 @@ function OSSecurity.Gameplay.new(options)
     end
     function holdings.grant(holder, item, amount, operationId) return items.grant(holder, item, amount, operationId) end
     local auth = OSSecurity.TabletAuthorization.new({ identity = identity, inventory = inventory, holdings = holdings, ace = options.ace,
-        employment = options.employment })
+        employment = options.employment, sites = options.sites })
     local sessions = OSSecurity.TabletSessions.new({ auth = auth, alive = options.alive, now = options.now,
         token = function(source) tokenCounter = tokenCounter + 1; return options.token(source, tokenCounter) end })
     local placement = OSSecurity.InstallationService.new({ inventory = inventory, holdings = holdings, registry = options.registry,
         now = options.now, world = options.world, audit = options.audit, schedule = options.schedule,
         alive = options.alive, invalidate = sessions.close, log = options.log })
-    local service = OSSecurity.TabletService.new({ inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, employeeId = options.employeeId })
+    local service = OSSecurity.TabletService.new({ inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, employeeId = options.employeeId,
+        sites = options.sites })
     local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
         sessions = sessions, service = service, placement = placement, audit = options.audit })
     local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings }
@@ -75,7 +76,7 @@ function OSSecurity.Gameplay.new(options)
     end
     function gameplay.drop(source) controller.drop(source) end
     function gameplay.clear() ready = false; controller.clear() end
-    OSSecurity.GameplayCommands.register({ register = options.register, reply = options.reply, permissions = options.permissions,
+    OSSecurity.GameplayCommands.register({ sites = options.sites, register = options.register, reply = options.reply, permissions = options.permissions,
         identity = identity, inventory = inventory, holdings = holdings, registry = options.registry, world = options.world, ready = gameplay.status })
     return gameplay
 end
