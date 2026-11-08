@@ -76,6 +76,24 @@ function OSSecurity.ClientTablet.new(options)
             callback({ ok = response.ok, error = response.error, close = response.close }); opened(response)
         end)
     end
+    -- "Usar" desde un inventario externo: sesion de inventario sin mostrarla y despues 'use' del objeto,
+    -- con la misma autorizacion del servidor que el boton de la tablet. Un rechazo cierra esa sesion.
+    function controller.useItem(item)
+        if pending then options.notify(OSSecurity.Brand.Text.loading); return end
+        epoch = epoch + 1; hide(); controller.placing = false; options.cancelPlacement()
+        controller.request('open', { kind = 'inventory' }, function(response)
+            if not response.ok then options.notify(response.error); return end
+            local candidate = response.session
+            if type(candidate) ~= 'table' or type(candidate.token) ~= 'string' or type(candidate.sequence) ~= 'number' then
+                options.notify(OSSecurity.Brand.Text.failed); return
+            end
+            session = candidate
+            controller.request('use', { item = item }, function(result)
+                if not result.ok then controller.close(); options.notify(result.error); return end
+                opened(result)
+            end)
+        end)
+    end
     function controller.place(callback)
         controller.request('place_begin', {}, function(response)
             callback({ ok = response.ok, error = response.error, close = response.close })

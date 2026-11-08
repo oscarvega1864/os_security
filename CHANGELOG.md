@@ -6,6 +6,7 @@
   `os_inventory`; `standalone` sigue siendo el valor por defecto.
 - Instalación CCTV con reserva local con titular y cobro/devolución externos idempotentes; recuperación
   que liquida cobros sin perder ni duplicar objetos, y espera si el proveedor no está disponible.
+- "Usar" el kit CCTV desde el inventario inicia la colocación con la autorización completa.
 - "Usar" las tablets desde el inventario, cierre de sesiones al cambiar de personaje, `osg6 migrate`
   idempotente y `osg6 give/inventory` sobre el proveedor.
 

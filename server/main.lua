@@ -150,16 +150,18 @@ AddEventHandler('osdev:characterChanged', function(player)
     if externalItems and OSSecurity.Util.integer(player, 1, 2147483647) then gameplay.drop(player) end
 end)
 
--- "Usar" una tablet desde os_inventory: cierra su interfaz y pide al cliente abrir la tablet.
--- La apertura vuelve a pasar por la autorizacion completa del servidor (objeto, ACE y perfil).
+-- "Usar" desde os_inventory: cierra su interfaz y pide al cliente abrir la tablet o, para el kit CCTV,
+-- iniciar la colocacion. Ambas vuelven a pasar por la autorizacion completa del servidor
+-- (objeto, ACE, perfil, herramientas, materiales y montaje); nada se cobra hasta confirmar.
 local function registerUsableTablets()
     if not externalItems or GetResourceState(inventoryResource) ~= 'started' then return end
     for item, definition in pairs(OSSecurity.ItemCatalog) do
-        if definition.tablet then
+        if definition.tablet or definition.usable == 'placement' then
             local ok, registered = pcall(function()
                 return exports[inventoryResource]:RegisterUsableItem(item, function(player)
                     TriggerClientEvent('osinventory:forceClose', player)
-                    TriggerClientEvent('os_security:g6:openTablet', player, definition.tablet)
+                    if definition.tablet then TriggerClientEvent('os_security:g6:openTablet', player, definition.tablet)
+                    else TriggerClientEvent('os_security:g6:useItem', player, item) end
                 end)
             end)
             if not ok or not registered then storageLog(('No se pudo registrar el uso de %s en %s.'):format(item, inventoryResource)) end

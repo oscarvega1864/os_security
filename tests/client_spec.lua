@@ -74,6 +74,27 @@ test('Placement uses the same authorized controller and cancellation does not in
     assert(not c.client.placing and c.notifications[#c.notifications] == 'Colocacion cancelada.')
 end)
 
+test('Using the CCTV kit from an external inventory opens a hidden session, then starts placement only if authorized', function()
+    local c = fixture()
+    c.client.useItem('os_cctv_kit')
+    assert(c.packets[#c.packets].action == 'open' and c.packets[#c.packets].args.kind == 'inventory')
+    c.respond({ ok = true, session = { kind = 'inventory', token = 'server-inventory', sequence = 0, expires = 9999999999,
+        brand = OSSecurity.Brand, profile = 'inventory' } })
+    assert(#c.shown == 0 and c.packets[#c.packets].action == 'use' and c.packets[#c.packets].token == 'server-inventory')
+    assert(c.packets[#c.packets].args.item == 'os_cctv_kit')
+    c.respond({ ok = true, session = { kind = 'operations', token = 'server-operations', sequence = 0, expires = 9999999999,
+        brand = OSSecurity.Brand, profile = 'Tecnico' }, placement = { model = 'prop_cctv_cam_01a', mounts = {} } })
+    assert(c.client.placing and not c.client.visible and c.confirm and #c.shown == 0)
+
+    local denied = fixture()
+    denied.client.useItem('os_cctv_kit')
+    denied.respond({ ok = true, session = { kind = 'inventory', token = 'server-inventory', sequence = 0, expires = 9999999999,
+        brand = OSSecurity.Brand, profile = 'inventory' } })
+    denied.respond({ ok = false, error = 'Faltan herramientas de instalacion.', close = true })
+    assert(not denied.client.placing and not denied.client.visible and #denied.shown == 0)
+    assert(denied.notifications[#denied.notifications] == 'Faltan herramientas de instalacion.')
+end)
+
 local function natives(run)
     local originals, queue, objects, calls = {}, {}, {}, { deleted = 0, made = 0, anim = 0 }
     local function stub(name, value) originals[name] = { rawget(_G, name) }; _G[name] = value end

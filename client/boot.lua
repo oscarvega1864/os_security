@@ -20,6 +20,12 @@ RegisterNetEvent('os_security:g6:openTablet', function(kind)
     controller.open(kind)
 end)
 
+-- "Usar" el kit CCTV en el inventario externo: inicia la colocacion si el servidor la autoriza.
+RegisterNetEvent('os_security:g6:useItem', function(item)
+    if source ~= 65535 or item ~= 'os_cctv_kit' then return end
+    controller.useItem(item)
+end)
+
 RegisterCommand('g6inventory', function() controller.open('inventory') end, false)
 RegisterCommand('g6client', function() controller.open('client') end, false)
 RegisterCommand('g6operations', function() controller.open('operations') end, false)
