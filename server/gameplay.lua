@@ -47,7 +47,8 @@ function OSSecurity.Gameplay.new(options)
         return items.refund(installation.id, installation.holder, installation.materials)
     end
     function holdings.grant(holder, item, amount, operationId) return items.grant(holder, item, amount, operationId) end
-    local auth = OSSecurity.TabletAuthorization.new({ identity = identity, inventory = inventory, holdings = holdings, ace = options.ace })
+    local auth = OSSecurity.TabletAuthorization.new({ identity = identity, inventory = inventory, holdings = holdings, ace = options.ace,
+        employment = options.employment })
     local sessions = OSSecurity.TabletSessions.new({ auth = auth, alive = options.alive, now = options.now,
         token = function(source) tokenCounter = tokenCounter + 1; return options.token(source, tokenCounter) end })
     local placement = OSSecurity.InstallationService.new({ inventory = inventory, holdings = holdings, registry = options.registry,

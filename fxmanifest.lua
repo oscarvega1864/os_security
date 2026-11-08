@@ -43,6 +43,7 @@ server_scripts {
     'server/storage/json.lua',
     'server/security/permissions.lua',
     'server/security/admin_access.lua',
+    'server/security/employment.lua',
     'server/devices/registry.lua',
     'server/commands/devices.lua',
     'server/commands/maintenance.lua',

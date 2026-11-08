@@ -41,6 +41,29 @@ set ossecurity_items os_inventory        # antes de ensure os_security
 - `osg6 give` e `osg6 inventory` usan el proveedor. `osg6 migrate <jugador>` pasa los objetos locales de la cuenta al personaje activo; la clave de operación incluye el total migrado por objeto, así que repetirlo tras una interrupción no duplica.
 - No reutilizar identificadores de instalación borrando los datos de OS Security: los recibos del proveedor quedarían asociados a IDs antiguos.
 
+## Perfiles G6 por empleo
+
+Además de los ACE, la tablet Operations se puede autorizar por el empleo del personaje
+activo. Por defecto se lee de `ossecurity_identity_resource` (os_devtools) mediante
+`GetActiveEmployment`; `set ossecurity_employment_resource none` lo desactiva.
+
+| Empleo (`GameplayConfig.Employment`) | Perfil |
+| --- | --- |
+| `gruppe6` / `tecnico`, de servicio | Técnico |
+| `gruppe6` / `supervisor`, de servicio | Supervisor |
+| Cualquier otro, o fuera de servicio | Ninguno (solo ACE) |
+
+```text
+/setjob <idJugador|alias> gruppe6 tecnico
+/setduty <idJugador|alias> on
+```
+
+Sigue haciendo falta poseer `g6_operations_tablet`. El perfil se revalida en cada
+petición: salir de servicio o cambiar de empleo cierra la sesión en la siguiente acción.
+Con objetos por personaje, el empleo debe ser del mismo personaje que tiene la tablet.
+El empleo nunca concede `admin` ni la tablet Client. Los ACE tienen prioridad, y si el
+proveedor falla o no está iniciado no se concede nada por empleo.
+
 ## Mensajes al jugador
 
 Los avisos de la tablet y de la instalación (errores, "cargando", CCTV registrado o colocación cancelada)

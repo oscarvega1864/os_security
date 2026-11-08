@@ -99,6 +99,18 @@ elseif itemProvider ~= 'standalone' then
     storageLog(('ossecurity_items=%s no reconocido; se usa standalone.'):format(itemProvider))
 end
 
+-- Perfil G6 por empleo del personaje activo. Por defecto lo lee de ossecurity_identity_resource;
+--   set ossecurity_employment_resource none
+-- lo desactiva y deja solo los ACE.
+local employmentResource = GetConvar('ossecurity_employment_resource', identityResource)
+local employment = OSSecurity.Employment.new({
+    settings = OSSecurity.GameplayConfig.Employment,
+    read = employmentResource ~= 'none' and function(source)
+        if GetResourceState(employmentResource) ~= 'started' then return nil end
+        return exports[employmentResource]:GetActiveEmployment(source)
+    end or nil
+})
+
 -- El salt nativo se obtiene una sola vez: bcrypt no debe bloquear cada apertura.
 -- El nonce siempre se valida junto al source, secuencia, identidad, item y ACE.
 local sessionSalt
@@ -121,6 +133,7 @@ local gameplay = OSSecurity.Gameplay.new({
     employeeId = function(principal) return OSSecurity.Brand.EmployeePrefix .. '-' .. ('%08X'):format(GetHashKey(principal) & 0xffffffff) end,
     log = storageLog,
     items = externalItems,
+    employment = employment,
     audit = function(action, source, deviceId)
         local safeId = OSSecurity.DeviceValidation.id(deviceId) and deviceId or '-'
         print(('%s [G6 AUDIT] action=%s source=%d device=%s'):format(constants.LOG_PREFIX, action, source, safeId))

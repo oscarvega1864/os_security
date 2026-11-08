@@ -10,6 +10,12 @@ OSSecurity.GameplayConfig = {
         client = 'ossecurity.g6.client', operations = 'ossecurity.g6.operations',
         technician = 'ossecurity.g6.technician', supervisor = 'ossecurity.g6.supervisor', admin = 'ossecurity.admin'
     },
+    -- Perfil profesional por empleo del personaje activo (adaptador opcional), ademas de los ACE.
+    -- Solo de servicio. 'admin' y la tablet Client nunca se obtienen por empleo.
+    Employment = {
+        Job = 'gruppe6', RequireDuty = true,
+        Ranks = { tecnico = 'technician', supervisor = 'supervisor' }
+    },
     Profiles = {
         client = { view = true },
         technician = { view = true, inspect = true, repair = true, replace = true, provision = true, install = true },

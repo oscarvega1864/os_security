@@ -17,12 +17,14 @@ function OSSecurity.TabletAuthorization.new(options)
         if kind == 'inventory' then return { principal = principal, holder = holder, role = 'inventory', kind = kind } end
         local tablet = OSSecurity.Brand.Tablets[kind]
         if not tablet or not options.holdings.has({ principal = principal, holder = holder }, tablet.item, 1) then return nil, 'No posee la tablet correspondiente.' end
-        if not options.ace(source, config.Ace[kind]) then return nil, 'Tablet no autorizada para este perfil.' end
+        local jobRole = kind == 'operations' and options.employment and options.employment(source, holder) or nil
+        if not options.ace(source, config.Ace[kind]) and not jobRole then return nil, 'Tablet no autorizada para este perfil.' end
         if kind == 'client' then return { principal = principal, holder = holder, role = 'client', kind = kind } end
         local role
         if options.ace(source, config.Ace.admin) then role = 'admin'
         elseif options.ace(source, config.Ace.supervisor) then role = 'supervisor'
-        elseif options.ace(source, config.Ace.technician) then role = 'technician' end
+        elseif options.ace(source, config.Ace.technician) then role = 'technician'
+        else role = jobRole end
         if not role then return nil, 'No tiene un perfil profesional verificable.' end
         return { principal = principal, holder = holder, role = role, kind = kind }
     end

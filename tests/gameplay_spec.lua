@@ -5,7 +5,7 @@ local bootNumber = 0
 local function fixture(files, external)
     bootNumber = bootNumber + 1
     local core = coreFixture(files)
-    local c = { core = core, players = {}, aces = {}, commands = {}, audit = {}, replies = {}, invWrites = 0, timers = {} }
+    local c = { core = core, players = {}, aces = {}, jobs = {}, commands = {}, audit = {}, replies = {}, invWrites = 0, timers = {} }
     local prefix = 'boot-' .. bootNumber
     for id = 1, 5 do
         c.players[id] = { principal = 'license:' .. string.rep(string.char(96 + id), 40), alive = true, connected = true,
@@ -47,7 +47,11 @@ local function fixture(files, external)
         audit = function(action, source, device) c.audit[#c.audit + 1] = { action, source, device } end,
         log = function(message) c.replies[#c.replies + 1] = { 0, message } end,
         schedule = function(callback) c.timers[#c.timers + 1] = callback end,
-        items = external and external.items or nil
+        items = external and external.items or nil,
+        employment = OSSecurity.Employment.new({ settings = config.Employment, read = function(source)
+            if c.jobsFail then error('proveedor caido') end
+            return c.jobs[source]
+        end })
     })
     c.loaded, c.loadError = c.game.load()
     return c
@@ -121,6 +125,49 @@ test('Opening tablets requires the matching item, explicit ACE and verified prof
     c.aces[5][config.Ace.technician] = true; open(c, 5, 'operations')
     c.core.time = c.core.time + 10
     grant(c, 1, 'g6_client_tablet'); denied(1, 'client')
+end)
+
+test('On-duty gruppe6 employment grants technician/supervisor operations profiles, revoked live when off duty', function()
+    local c = fixture()
+    local function denied(source, kind)
+        nextRequest = nextRequest + 1
+        return c.game.handle(source, { id = nextRequest, action = 'open', args = { kind = kind } })
+    end
+    grant(c, 5, 'g6_operations_tablet'); grant(c, 5, 'g6_client_tablet')
+    c.jobs[5] = { job = 'gruppe6', rank = 'tecnico', duty = false }
+    assert(not denied(5, 'operations').ok) -- fuera de servicio
+    c.jobs[5].duty = true
+    local session = open(c, 5, 'operations'); assert(session.profile == OSSecurity.Brand.Profiles.technician)
+    assert(call(c, 5, session, 'inventory', {}).ok)
+    assert(not denied(5, 'client').ok) -- el empleo no concede la tablet Client
+    c.core.time = c.core.time + 10
+    session = open(c, 5, 'operations'); c.jobs[5].duty = false
+    local revoked = call(c, 5, session, 'inventory', {}); assert(not revoked.ok and revoked.close)
+    c.core.time = c.core.time + 10
+    c.jobs[5] = { job = 'gruppe6', rank = 'supervisor', duty = true }
+    session = open(c, 5, 'operations'); assert(session.profile == OSSecurity.Brand.Profiles.supervisor)
+    c.core.time = c.core.time + 10
+    for _, job in ipairs({ { job = 'gruppe6', rank = 'vigilante', duty = true }, { job = 'gruppe6', rank = 'admin', duty = true },
+        { job = 'police', rank = 'tecnico', duty = true }, 'gruppe6', false }) do
+        c.jobs[5] = job; assert(not denied(5, 'operations').ok)
+    end
+    c.jobs[5] = { job = 'gruppe6', rank = 'tecnico', duty = true }; c.jobsFail = true; assert(not denied(5, 'operations').ok)
+    -- Los ACE siguen teniendo prioridad y funcionan sin empleo
+    c.jobsFail = false; c.jobs[1] = nil; grant(c, 1, 'g6_operations_tablet'); open(c, 1, 'operations')
+end)
+
+test('Employment adapter requires the same character as the item holder and never maps admin', function()
+    local settings = { Job = 'gruppe6', RequireDuty = true, Ranks = { tecnico = 'technician', jefe = 'admin' } }
+    local current
+    local role = OSSecurity.Employment.new({ settings = settings, read = function() return current end })
+    current = { job = 'gruppe6', rank = 'tecnico', duty = true, characterId = 'oschar_0000000001' }
+    assert(role(1, 'oschar_0000000001') == 'technician' and role(1, nil) == 'technician')
+    assert(role(1, 'oschar_0000000002') == nil)
+    current = { job = 'gruppe6', rank = 'jefe', duty = true }; assert(role(1) == nil)
+    assert(OSSecurity.Employment.new({ settings = settings })(1) == nil)
+    local free = OSSecurity.Employment.new({ settings = { Job = 'gruppe6', RequireDuty = false, Ranks = settings.Ranks },
+        read = function() return { job = 'gruppe6', rank = 'tecnico', duty = false } end })
+    assert(free(1) == 'technician')
 end)
 
 test('Sessions bind source, sequence, expiry and live permissions; switching tablet invalidates the previous one', function()

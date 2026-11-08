@@ -7,6 +7,9 @@
 - Instalación CCTV con reserva local con titular y cobro/devolución externos idempotentes; recuperación
   que liquida cobros sin perder ni duplicar objetos, y espera si el proveedor no está disponible.
 - "Usar" el kit CCTV desde el inventario inicia la colocación con la autorización completa.
+- Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
+  (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
+  petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
 - Avisos de tablet e instalación con tipo a través de `os_notify` (opcional) y vuelta al chat estándar.
 - "Usar" las tablets desde el inventario, cierre de sesiones al cambiar de personaje, `osg6 migrate`
   idempotente y `osg6 give/inventory` sobre el proveedor.
