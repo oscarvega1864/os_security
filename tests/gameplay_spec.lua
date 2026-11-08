@@ -2,7 +2,7 @@ local test, coreFixture, create, equal = StorageTest.test, StorageTest.fixture, 
 local util, config, codec = OSSecurity.Util, OSSecurity.GameplayConfig, OSSecurity.JsonCodec
 local bootNumber = 0
 
-local function fixture(files)
+local function fixture(files, external)
     bootNumber = bootNumber + 1
     local core = coreFixture(files)
     local c = { core = core, players = {}, aces = {}, commands = {}, audit = {}, replies = {}, invWrites = 0, timers = {} }
@@ -46,7 +46,8 @@ local function fixture(files)
         reply = function(source, message) c.replies[#c.replies + 1] = { source, message } end,
         audit = function(action, source, device) c.audit[#c.audit + 1] = { action, source, device } end,
         log = function(message) c.replies[#c.replies + 1] = { 0, message } end,
-        schedule = function(callback) c.timers[#c.timers + 1] = callback end
+        schedule = function(callback) c.timers[#c.timers + 1] = callback end,
+        items = external and external.items or nil
     })
     c.loaded, c.loadError = c.game.load()
     return c
@@ -406,6 +407,7 @@ test('Native server wiring keeps replies private, normalizes ACE and creates uni
         stub('RegisterCommand', function(name, callback) commands[name] = callback end)
         stub('AddEventHandler', function(name, callback) handlers[name] = callback end)
         stub('GetCurrentResourceName', function() return 'os_security' end)
+        stub('GetConvar', function(_, default) return default end) -- sin convars: proveedor standalone
         stub('GetPlayerName', function(player) return player == 7 and 'Untrusted display name' or nil end)
         stub('GetPlayerIdentifierByType', function(player, kind) assert(player == 7 and kind == 'license'); return 'license:' .. string.rep('a', 40) end)
         stub('IsPlayerAceAllowed', function(player) return player == 7 and 1 or 0 end)
@@ -439,4 +441,141 @@ test('Native server wiring keeps replies private, normalizes ACE and creates uni
     print, io.open, source = originalPrint, originalOpen, originalSource
     for name, previous in pairs(replaced) do _G[name] = previous[1] end
     assert(ok, err)
+end)
+
+-- Proveedor externo simulado con las garantias de os_inventory: recibos por operationId (sin repetir
+-- el efecto) y fallos sin recibo; los titulares son personajes, no licencias.
+local function externalItems()
+    local e = { counts = {}, receipts = {}, up = true, holders = {}, addFails = false, calls = 0 }
+    for id = 1, 5 do e.holders[id] = ('oschar_%010d'):format(id) end
+    local function bag(holder) e.counts[holder] = e.counts[holder] or {}; return e.counts[holder] end
+    e.items = OSSecurity.ExternalItems.new({
+        available = function() return e.up end,
+        holder = function(source) return e.holders[source] end,
+        count = function(holder, item) return bag(holder)[item] or 0 end,
+        add = function(holder, item, amount, operationId)
+            e.calls = e.calls + 1
+            if operationId and e.receipts[operationId] then return true end
+            if e.addFails then return false, 'Inventario lleno.' end
+            bag(holder)[item] = (bag(holder)[item] or 0) + amount
+            if operationId then e.receipts[operationId] = true end
+            return true
+        end,
+        remove = function(holder, item, amount, operationId)
+            e.calls = e.calls + 1
+            if operationId and e.receipts[operationId] then return true end
+            if (bag(holder)[item] or 0) < amount then return false, 'Faltan materiales.' end
+            bag(holder)[item] = bag(holder)[item] - amount
+            if operationId then e.receipts[operationId] = true end
+            return true
+        end
+    })
+    function e.give(source, item, amount) bag(e.holders[source])[item] = (bag(e.holders[source])[item] or 0) + (amount or 1) end
+    function e.count(source, item) return bag(e.holders[source])[item] or 0 end
+    function e.kit(source)
+        e.give(source, 'g6_operations_tablet'); e.give(source, 'os_cctv_kit', 2); e.give(source, 'os_battery', 2)
+        e.give(source, 'os_drill'); e.give(source, 'os_screwdriver')
+    end
+    return e
+end
+
+test('External provider: tablets and listings come from the active character, never from the local ledger', function()
+    local e = externalItems(); local c = fixture(nil, e); assert(c.loaded, c.loadError)
+    grant(c, 2, 'g6_client_tablet') -- objeto local: no cuenta con proveedor externo
+    nextRequest = nextRequest + 1
+    assert(not c.game.handle(2, { id = nextRequest, action = 'open', args = { kind = 'client' } }).ok)
+    e.give(2, 'g6_client_tablet')
+    local session = open(c, 2, 'client')
+    local listed = call(c, 2, open(c, 2, 'inventory'), 'inventory')
+    assert(listed.ok and #listed.data.items == 1 and listed.data.items[1].id == 'g6_client_tablet' and listed.data.items[1].count == 1)
+    e.holders[2] = nil
+    nextRequest = nextRequest + 1
+    assert(not c.game.handle(2, { id = nextRequest, action = 'open', args = { kind = 'client' } }).ok)
+    assert(session.token)
+end)
+
+test('External provider: a CCTV installation charges materials once, keeps tools and records the holder', function()
+    local e = externalItems(); local c = fixture(nil, e); e.kit(1); anchor(c); local session = open(c, 1, 'operations')
+    assert(call(c, 1, session, 'place_begin').ok)
+    local result = call(c, 1, session, 'place_confirm', proposal())
+    assert(result.ok, result.error)
+    assert(e.count(1, 'os_cctv_kit') == 1 and e.count(1, 'os_battery') == 1 and e.count(1, 'os_drill') == 1 and e.count(1, 'os_screwdriver') == 1)
+    local installation = c.game.inventory.snapshot().installations.g6i_0000000001
+    assert(installation.status == 'committed' and installation.holder == 'oschar_0000000001')
+    assert(count(c, 1, 'os_cctv_kit') == 0 and c.core.registry.list(0).total == 1)
+    local restarted = fixture(c.core.files, e); assert(restarted.loaded, restarted.loadError)
+    assert(e.count(1, 'os_cctv_kit') == 1 and restarted.core.registry.list(0).total == 1)
+end)
+
+test('External provider: missing materials or a changed character never create a device nor charge anything', function()
+    local e = externalItems(); local c = fixture(nil, e); e.kit(1); anchor(c); local session = open(c, 1, 'operations')
+    assert(call(c, 1, session, 'place_begin').ok)
+    e.counts[e.holders[1]].os_battery = 0
+    assert(not call(c, 1, session, 'place_confirm', proposal()).ok)
+    assert(e.count(1, 'os_cctv_kit') == 2 and c.core.registry.list(0).total == 0)
+    e.give(1, 'os_battery', 2); session = open(c, 1, 'operations'); assert(call(c, 1, session, 'place_begin').ok)
+    e.holders[1] = 'oschar_0000000099'
+    local changed = call(c, 1, session, 'place_confirm', proposal())
+    assert(not changed.ok) -- la sesion se reautoriza en cada peticion: el cambio de personaje la invalida
+    assert(e.count(1, 'os_cctv_kit') == 0 and (e.counts.oschar_0000000001.os_cctv_kit == 2) and c.core.registry.list(0).total == 0)
+end)
+
+test('External provider: an orphan reservation is refunded exactly once on restart, and waits while the provider is down', function()
+    local e = externalItems(); local c = fixture(nil, e); e.kit(1); anchor(c); local session = open(c, 1, 'operations')
+    assert(call(c, 1, session, 'place_begin').ok)
+    c.core.writeFailure = true -- reserva y cobro hechos; el dispositivo nunca se escribe
+    assert(not call(c, 1, session, 'place_confirm', proposal()).ok)
+    assert(e.count(1, 'os_cctv_kit') == 1)
+    e.up = false
+    local waiting = fixture(c.core.files, e); assert(waiting.loaded, waiting.loadError)
+    assert(waiting.game.inventory.snapshot().installations.g6i_0000000001.status == 'pending' and e.count(1, 'os_cctv_kit') == 1)
+    e.up = true
+    local restarted = fixture(c.core.files, e); assert(restarted.loaded, restarted.loadError)
+    assert(restarted.game.inventory.snapshot().installations.g6i_0000000001.status == 'cancelled')
+    assert(e.count(1, 'os_cctv_kit') == 2 and e.count(1, 'os_battery') == 2)
+    assert(fixture(restarted.core.files, e).loaded and e.count(1, 'os_cctv_kit') == 2)
+end)
+
+test('External provider: a refund that cannot be confirmed keeps the reservation pending instead of losing items', function()
+    local e = externalItems(); local c = fixture(nil, e); e.kit(1); anchor(c); local session = open(c, 1, 'operations')
+    assert(call(c, 1, session, 'place_begin').ok)
+    c.core.writeFailure = true
+    assert(not call(c, 1, session, 'place_confirm', proposal()).ok)
+    e.addFails = true
+    local blocked = fixture(c.core.files, e)
+    assert(not blocked.loaded and blocked.game.inventory.snapshot().installations.g6i_0000000001.status == 'pending')
+    e.addFails = false
+    local restarted = fixture(c.core.files, e); assert(restarted.loaded, restarted.loadError)
+    assert(e.count(1, 'os_cctv_kit') == 2)
+end)
+
+test('osg6 migrate moves local items to the active character once, even if repeated after an interruption', function()
+    local e = externalItems(); local c = fixture(nil, e)
+    grant(c, 4, 'g6_client_tablet'); grant(c, 4, 'g6_operations_tablet')
+    c.failInventory = true
+    c.commands.osg6(0, { 'migrate', '4' })
+    assert(e.count(4, 'g6_client_tablet') == 1 and not c.game.inventory.status())
+    local restarted = fixture(c.core.files, e); assert(restarted.loaded, restarted.loadError)
+    restarted.commands.osg6(0, { 'migrate', '4' })
+    assert(e.count(4, 'g6_client_tablet') == 1 and e.count(4, 'g6_operations_tablet') == 1)
+    assert(count(restarted, 4, 'g6_client_tablet') == 0 and count(restarted, 4, 'g6_operations_tablet') == 0)
+    local account = restarted.game.inventory.get(restarted.players[4].principal)
+    assert(account.migrated.g6_client_tablet == 1 and account.migrated.g6_operations_tablet == 1)
+    restarted.commands.osg6(0, { 'migrate', '4' })
+    assert(restarted.replies[#restarted.replies][2]:find('No hay objetos locales', 1, true))
+    grant(restarted, 4, 'g6_client_tablet'); restarted.commands.osg6(0, { 'migrate', '4' })
+    assert(e.count(4, 'g6_client_tablet') == 2)
+    local standalone = fixture()
+    standalone.commands.osg6(0, { 'migrate', '4' })
+    assert(standalone.replies[#standalone.replies][2]:find('ossecurity_items', 1, true))
+end)
+
+test('osg6 give and inventory use the external provider when configured', function()
+    local e = externalItems(); local c = fixture(nil, e)
+    c.commands.osg6(0, { 'give', '3', 'os_cctv_kit', '2' })
+    assert(e.count(3, 'os_cctv_kit') == 2 and count(c, 3, 'os_cctv_kit') == 0)
+    c.commands.osg6(0, { 'inventory', '3' })
+    assert(c.replies[#c.replies][2] == 'os_cctv_kit=2')
+    c.commands.osg6(0, { 'give', '3', 'agua', '1' })
+    assert(e.count(3, 'agua') == 0)
 end)

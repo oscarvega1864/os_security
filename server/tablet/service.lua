@@ -34,12 +34,12 @@ function OSSecurity.TabletService.new(options)
             remoteVideo = false }
     end
     function service.inventory(actor)
-        local account, err = options.inventory.get(actor.principal)
-        if not account then return nil, err end
+        local counts, err = options.holdings.list(actor)
+        if not counts then return nil, err end
         local items = {}
-        for id, entry in pairs(account.items) do
+        for id, count in pairs(counts) do
             local definition = OSSecurity.ItemCatalog[id]
-            items[#items + 1] = { id = id, name = definition.name, category = definition.category, count = entry.count,
+            items[#items + 1] = { id = id, name = definition.name, category = definition.category, count = count,
                 usable = definition.tablet ~= nil or definition.usable == 'placement' }
         end
         table.sort(items, function(a, b) return a.id < b.id end)

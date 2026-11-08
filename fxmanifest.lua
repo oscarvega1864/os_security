@@ -49,6 +49,7 @@ server_scripts {
     'server/integrations/contracts.lua',
     'server/inventory/state.lua',
     'server/inventory/standalone.lua',
+    'server/inventory/external.lua',
     'server/tablet/authorization.lua',
     'server/tablet/sessions.lua',
     'server/installation/service.lua',

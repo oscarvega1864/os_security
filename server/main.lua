@@ -75,6 +75,30 @@ local function world(source)
     return { x = position.x, y = position.y, z = position.z }, GetPlayerRoutingBucket(source)
 end
 
+-- Proveedor de objetos. Por defecto 'standalone' (portable). Con
+--   set ossecurity_items os_inventory
+-- los objetos pertenecen al personaje activo de os_devtools y se guardan en os_inventory.
+local itemProvider = GetConvar('ossecurity_items', 'standalone')
+local inventoryResource = GetConvar('ossecurity_items_resource', 'os_inventory')
+local identityResource = GetConvar('ossecurity_identity_resource', 'os_devtools')
+local externalItems
+if itemProvider == 'os_inventory' then
+    externalItems = OSSecurity.ExternalItems.new({
+        available = function()
+            return GetResourceState(inventoryResource) == 'started' and GetResourceState(identityResource) == 'started'
+        end,
+        holder = function(source)
+            local dto = exports[identityResource]:GetActiveCharacter(source)
+            return type(dto) == 'table' and dto.characterId or nil
+        end,
+        count = function(holder, item) return exports[inventoryResource]:GetItemCount(holder, item) end,
+        add = function(holder, item, amount, operationId) return exports[inventoryResource]:AddItem(holder, item, amount, nil, operationId) end,
+        remove = function(holder, item, amount, operationId) return exports[inventoryResource]:RemoveItem(holder, item, amount, nil, operationId) end
+    })
+elseif itemProvider ~= 'standalone' then
+    storageLog(('ossecurity_items=%s no reconocido; se usa standalone.'):format(itemProvider))
+end
+
 -- El salt nativo se obtiene una sola vez: bcrypt no debe bloquear cada apertura.
 -- El nonce siempre se valida junto al source, secuencia, identidad, item y ACE.
 local sessionSalt
@@ -96,6 +120,7 @@ local gameplay = OSSecurity.Gameplay.new({
     end,
     employeeId = function(principal) return OSSecurity.Brand.EmployeePrefix .. '-' .. ('%08X'):format(GetHashKey(principal) & 0xffffffff) end,
     log = storageLog,
+    items = externalItems,
     audit = function(action, source, deviceId)
         local safeId = OSSecurity.DeviceValidation.id(deviceId) and deviceId or '-'
         print(('%s [G6 AUDIT] action=%s source=%d device=%s'):format(constants.LOG_PREFIX, action, source, safeId))
@@ -118,6 +143,31 @@ end)
 AddEventHandler('playerDropped', function()
     permissions.forget(tonumber(source))
     gameplay.drop(tonumber(source))
+end)
+
+-- Con proveedor externo, un cambio de personaje cierra las sesiones G6 abiertas con el anterior.
+AddEventHandler('osdev:characterChanged', function(player)
+    if externalItems and OSSecurity.Util.integer(player, 1, 2147483647) then gameplay.drop(player) end
+end)
+
+-- "Usar" una tablet desde os_inventory: cierra su interfaz y pide al cliente abrir la tablet.
+-- La apertura vuelve a pasar por la autorizacion completa del servidor (objeto, ACE y perfil).
+local function registerUsableTablets()
+    if not externalItems or GetResourceState(inventoryResource) ~= 'started' then return end
+    for item, definition in pairs(OSSecurity.ItemCatalog) do
+        if definition.tablet then
+            local ok, registered = pcall(function()
+                return exports[inventoryResource]:RegisterUsableItem(item, function(player)
+                    TriggerClientEvent('osinventory:forceClose', player)
+                    TriggerClientEvent('os_security:g6:openTablet', player, definition.tablet)
+                end)
+            end)
+            if not ok or not registered then storageLog(('No se pudo registrar el uso de %s en %s.'):format(item, inventoryResource)) end
+        end
+    end
+end
+AddEventHandler('onResourceStart', function(started)
+    if started == inventoryResource then registerUsableTablets() end
 end)
 
 RegisterCommand('osstatus', function(source)
@@ -154,6 +204,8 @@ AddEventHandler('onResourceStart', function(startedResource)
 
     local gameLoaded, gameError = gameplay.load()
     if not gameLoaded then storageLog('Flujo Gruppe Sechs bloqueado: ' .. tostring(gameError)) end
+    print(('%s Objetos: %s'):format(constants.LOG_PREFIX, externalItems and ('%s por personaje (%s)'):format(inventoryResource, identityResource) or 'registro local (standalone)'))
+    registerUsableTablets()
 
     if config.Debug then
         print(('%s [DEBUG] Nombre del recurso: %s'):format(constants.LOG_PREFIX, resourceName))

@@ -32,10 +32,16 @@ function state.installationId(id)
     return type(id) == 'string' and id:match('^g6i_%d%d%d%d%d%d%d%d%d%d$') ~= nil and tonumber(id:sub(5)) > 0
 end
 
+-- Titular externo de los materiales (personaje del proveedor de objetos). Sin titular: objetos locales.
+function state.holder(value)
+    return util.text(value, 64) and value:match('^[%w_:%-]+$') ~= nil
+end
+
 local function placement(value)
     return util.object(value, { id = true, anchorId = true, owner = true, installer = true, position = true,
         rotation = true, bucket = true, model = true, status = true, createdAt = true, updatedAt = true, deviceId = true, reason = true,
-        materials = true, tools = true })
+        materials = true, tools = true, holder = true })
+        and (value.holder == nil or state.holder(value.holder))
         and state.installationId(value.id) and label(value.anchorId) and identity.valid(value.owner) and identity.valid(value.installer)
         and state.vector(value.position, 1000000) and state.vector(value.rotation, 360)
         and math.abs(value.rotation.x) <= 45 and math.abs(value.rotation.y) <= 5
@@ -68,7 +74,7 @@ local function operation(op, limits)
         deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true })
         or not util.integer(op.at, 0, 253402300799) then return false end
     local fields = { kind = true, at = true }
-    if op.kind == 'grant' then
+    if op.kind == 'grant' or op.kind == 'migrate' then
         fields.principal, fields.item, fields.amount = true, true, true
         if not identity.valid(op.principal) or type(op.item) ~= 'string' or not OSSecurity.ItemCatalog[op.item]
             or not util.integer(op.amount, 1, limits.MaxItemQuantity) then return false end
@@ -97,7 +103,7 @@ end
 function state.held(snapshot, principal, item)
     local count = 0
     for _, installation in pairs(snapshot.installations) do
-        if installation.status == 'pending' and installation.installer == principal then
+        if installation.status == 'pending' and installation.installer == principal and installation.holder == nil then
             count = count + (installation.materials[item] or 0)
         end
     end
@@ -133,8 +139,12 @@ function state.snapshot(snapshot, limits)
     count = 0
     for principal, account in pairs(snapshot.accounts) do
         count = count + 1
-        if count > limits.MaxAccounts or not identity.valid(principal) or not util.object(account, { items = true, grants = true })
-            or not util.object(account.items) or not util.object(account.grants) then return nil, 'Cuenta de inventario invalida.' end
+        if count > limits.MaxAccounts or not identity.valid(principal) or not util.object(account, { items = true, grants = true, migrated = true })
+            or not util.object(account.items) or not util.object(account.grants)
+            or (account.migrated ~= nil and not util.object(account.migrated)) then return nil, 'Cuenta de inventario invalida.' end
+        for item, amount in pairs(account.migrated or {}) do
+            if not OSSecurity.ItemCatalog[item] or not util.integer(amount, 1, 2147483647) then return nil, 'Registro de migracion invalido.' end
+        end
         local total, grants = 0, 0
         for item, definition in pairs(OSSecurity.ItemCatalog) do
             local entry = account.items[item]
@@ -179,6 +189,15 @@ function state.apply(snapshot, op, limits)
         local target = account(op.principal)
         local entry = target.items[op.item] or { count = 0, metadata = {} }
         entry.count = entry.count + op.amount; target.items[op.item] = entry
+    elseif op.kind == 'migrate' then
+        -- Retira objetos locales ya entregados al proveedor externo; el total migrado hace idempotente la entrega.
+        local target = account(op.principal)
+        local entry = target.items[op.item]
+        if not entry or entry.count < op.amount then return nil, 'Cantidad local insuficiente para migrar.' end
+        entry.count = entry.count - op.amount
+        if entry.count == 0 then target.items[op.item] = nil end
+        target.migrated = target.migrated or {}
+        target.migrated[op.item] = (target.migrated[op.item] or 0) + op.amount
     elseif op.kind == 'access' then
         account(op.principal).grants[op.deviceId] = op.role ~= 'none' and op.role or nil
     elseif op.kind == 'anchor' then
@@ -198,14 +217,17 @@ function state.apply(snapshot, op, limits)
         end
         local target = account(proposed.installer)
         if not util.object(proposed.materials) or not util.array(proposed.tools, 8) then return nil, 'Contrato de materiales invalido.' end
-        for _, item in ipairs(proposed.tools) do
-            if not target.items[item] or target.items[item].count < 1 then return nil, 'Faltan herramientas.' end
-        end
-        for item, amount in pairs(proposed.materials) do
-            local entry = target.items[item]
-            if not entry or entry.count < amount then return nil, 'Faltan materiales.' end
-            entry.count = entry.count - amount
-            if entry.count == 0 then target.items[item] = nil end
+        -- Con titular externo, el proveedor cobra y devuelve los materiales; aqui solo se registra la reserva.
+        if proposed.holder == nil then
+            for _, item in ipairs(proposed.tools) do
+                if not target.items[item] or target.items[item].count < 1 then return nil, 'Faltan herramientas.' end
+            end
+            for item, amount in pairs(proposed.materials) do
+                local entry = target.items[item]
+                if not entry or entry.count < amount then return nil, 'Faltan materiales.' end
+                entry.count = entry.count - amount
+                if entry.count == 0 then target.items[item] = nil end
+            end
         end
         nextState.installations[proposed.id] = util.copy(proposed)
         nextState.nextInstallation = snapshot.nextInstallation + 1
@@ -218,10 +240,12 @@ function state.apply(snapshot, op, limits)
             account(installation.installer).grants[op.deviceId] = 'technician'
         else
             installation.status, installation.reason = 'cancelled', op.reason
-            local target = account(installation.installer)
-            for item, amount in pairs(installation.materials) do
-                local entry = target.items[item] or { count = 0, metadata = {} }
-                entry.count = entry.count + amount; target.items[item] = entry
+            if installation.holder == nil then
+                local target = account(installation.installer)
+                for item, amount in pairs(installation.materials) do
+                    local entry = target.items[item] or { count = 0, metadata = {} }
+                    entry.count = entry.count + amount; target.items[item] = entry
+                end
             end
         end
     end

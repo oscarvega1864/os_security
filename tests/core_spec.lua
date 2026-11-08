@@ -489,6 +489,7 @@ test('FiveM wiring: startup, commands, restart persistence and safe file errors'
         AddEventHandler = function(name, callback) handlers[name] = callback end
         GetCurrentResourceName = function() return 'os_security' end
         GetResourceState = function() return 'started' end
+        GetConvar = function(_, default) return default end -- sin convars: proveedor standalone
         IsPlayerAceAllowed = function(source, ace) return source == 7 and ace == 'ossecurity.admin' end
         TriggerClientEvent = function(_, source) assert(source > 0) end
         TriggerEvent = function(name, payload) assert(name == 'chat:addMessage' and payload.args[1] == OSSecurity.Brand.Name) end

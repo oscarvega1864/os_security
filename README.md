@@ -20,6 +20,26 @@ solos; desactivar con `AdminAuthorizationResource = false`. Este adaptador no
 concede tablets, empleos, roles G6 ni acceso de cliente a dispositivos. Los errores,
 parada o revocación del proveedor deniegan la delegación en la siguiente consulta.
 
+## Proveedor de objetos
+
+Por defecto (`standalone`) las tablets, kits, herramientas y materiales viven en el registro propio
+de OS Security, por cuenta (`license`). Es el modo portable y no requiere otros recursos.
+
+En el entorno OSCAR pueden vivir en `os_inventory`, por **personaje activo** de `os_devtools`:
+
+```cfg
+set ossecurity_items os_inventory        # antes de ensure os_security
+# Opcionales: set ossecurity_items_resource os_inventory / set ossecurity_identity_resource os_devtools
+```
+
+- Requiere que `os_inventory` autorice a `os_security` en su `ResourceAccess` y que `os_devtools` lo incluya en `IdentityReaders`.
+- Montajes, instalaciones y concesiones por dispositivo siguen en el registro local; solo cambian los objetos.
+- Abrir una tablet comprueba el objeto en el personaje activo. "Usar" la tablet en el inventario la abre (con la autorización completa del servidor). Un cambio de personaje cierra las sesiones G6.
+- Instalar una cámara registra la reserva con el personaje (`holder`) y después cobra kit y batería con identificadores de operación fijos (`g6i_…:take:<item>`). Si falla la creación, o al recuperar una reserva huérfana, se devuelven (`g6i_…:refund:<item>`) liquidando antes cada cobro: repetir nunca cobra ni devuelve dos veces. Las herramientas no se consumen.
+- Si el proveedor no está disponible al arrancar, las reservas externas pendientes se dejan pendientes (sin bloquear) y se resuelven en un arranque posterior. Una devolución no confirmada bloquea la recuperación en lugar de perder objetos.
+- `osg6 give` e `osg6 inventory` usan el proveedor. `osg6 migrate <jugador>` pasa los objetos locales de la cuenta al personaje activo; la clave de operación incluye el total migrado por objeto, así que repetirlo tras una interrupción no duplica.
+- No reutilizar identificadores de instalación borrando los datos de OS Security: los recibos del proveedor quedarían asociados a IDs antiguos.
+
 ## Arquitectura
 
 | Archivo o directorio | Responsabilidad |

@@ -14,6 +14,12 @@ RegisterNetEvent('os_security:g6:response', function(id, response)
     controller.response(id, response)
 end)
 
+-- Apertura pedida por el servidor al "Usar" la tablet en el inventario externo; la sesion se autoriza de nuevo.
+RegisterNetEvent('os_security:g6:openTablet', function(kind)
+    if source ~= 65535 or (kind ~= 'client' and kind ~= 'operations') then return end
+    controller.open(kind)
+end)
+
 RegisterCommand('g6inventory', function() controller.open('inventory') end, false)
 RegisterCommand('g6client', function() controller.open('client') end, false)
 RegisterCommand('g6operations', function() controller.open('operations') end, false)

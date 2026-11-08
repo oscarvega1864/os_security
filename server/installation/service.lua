@@ -12,6 +12,7 @@ end
 function OSSecurity.InstallationService.new(options)
     local config, contexts, watching = OSSecurity.GameplayConfig, {}, false
     local service = {}
+    local holdingsCheck
     local function world(source)
         local point, bucket = options.world(source)
         if not OSSecurity.InventoryState.vector(point, 1000000) or not util.integer(bucket, 0, 2147483647) then
@@ -49,6 +50,24 @@ function OSSecurity.InstallationService.new(options)
         end
         return result
     end
+    -- Herramientas (no se consumen) y materiales del actor, en el registro local o en el proveedor externo.
+    function holdingsCheck(actor)
+        if not options.holdings.has(actor, 'os_cctv_kit', 1) then return 'No posee un kit CCTV.' end
+        for _, item in ipairs(config.Tools) do
+            if not options.holdings.has(actor, item, 1) then return 'Faltan herramientas de instalacion.' end
+        end
+        for item, amount in pairs(config.Materials) do
+            if not options.holdings.has(actor, item, amount) then return 'Faltan materiales de instalacion.' end
+        end
+        return nil
+    end
+    -- Anula una reserva devolviendo antes los materiales externos; si la devolucion no se puede
+    -- confirmar, la reserva queda pendiente para reintentarse en la siguiente recuperacion.
+    local function cancel(installation, reason)
+        local refunded, refundError = options.holdings.refund(installation)
+        if not refunded then return nil, refundError end
+        return options.inventory.apply({ kind = 'cancel', installationId = installation.id, reason = reason })
+    end
     function service.find(installationId)
         local list, err = devices()
         if not list then return nil, err end
@@ -67,13 +86,8 @@ function OSSecurity.InstallationService.new(options)
         if not point then return nil, bucket end
         local snapshot, err = options.inventory.snapshot()
         if not snapshot then return nil, err end
-        if not options.inventory.has(session.actor.principal, 'os_cctv_kit', 1) then return nil, 'No posee un kit CCTV.' end
-        for _, item in ipairs(config.Tools) do
-            if not options.inventory.has(session.actor.principal, item, 1) then return nil, 'Faltan herramientas de instalacion.' end
-        end
-        for item, amount in pairs(config.Materials) do
-            if not options.inventory.has(session.actor.principal, item, amount) then return nil, 'Faltan materiales de instalacion.' end
-        end
+        local missing = holdingsCheck(session.actor)
+        if missing then return nil, missing end
         local mounts = {}
         for id, anchor in pairs(snapshot.anchors) do
             if anchor.installer == session.actor.principal and anchor.bucket == bucket and distance(point, anchor.position) <= config.PlacementDistance then
@@ -95,9 +109,7 @@ function OSSecurity.InstallationService.new(options)
             or not util.equal(device.position, installation.position) or not util.equal(device.rotation, installation.rotation) then
             return nil, 'El dispositivo no coincide con la reserva; requiere revision.'
         end
-        if device.state == 'retired' then
-            return options.inventory.apply({ kind = 'cancel', installationId = installation.id, reason = 'retired' })
-        end
+        if device.state == 'retired' then return cancel(installation, 'retired') end
         local nextState = { registered = 'installing', installing = 'installed', installed = 'active' }
         while nextState[device.state] do
             local updated, err = options.registry.setState(0, device.id, nextState[device.state])
@@ -131,22 +143,36 @@ function OSSecurity.InstallationService.new(options)
         local position = canonical({ x = proposal.position.x - planeDistance * anchor.normal.x + 0.02 * anchor.normal.x,
             y = proposal.position.y - planeDistance * anchor.normal.y + 0.02 * anchor.normal.y,
             z = proposal.position.z - planeDistance * anchor.normal.z + 0.02 * anchor.normal.z })
+        local holder
+        if options.holdings.external() then
+            -- El personaje debe seguir siendo el de la sesion: nunca cobrar a otro personaje de la cuenta.
+            holder = options.holdings.holder(source)
+            if not holder or holder ~= session.actor.holder then return nil, 'El personaje activo cambio; vuelve a abrir la tablet.' end
+            local missing = holdingsCheck(session.actor)
+            if missing then return nil, missing end
+        end
         local installation = {
             id = ('g6i_%010d'):format(snapshot.nextInstallation), anchorId = anchor.id, owner = anchor.owner,
             installer = session.actor.principal, position = position, rotation = canonical(proposal.rotation), bucket = bucket,
             model = config.CameraModel, status = 'pending', createdAt = options.now(), updatedAt = options.now(),
-            materials = util.copy(config.Materials), tools = util.copy(config.Tools)
+            materials = util.copy(config.Materials), tools = util.copy(config.Tools), holder = holder
         }
         local reserved, reserveError = options.inventory.apply({ kind = 'reserve', installation = installation })
         if not reserved then return nil, reserveError end
         installation = reserved.installations[installation.id]
+        -- Proveedor externo: la reserva ya esta registrada; ahora se cobran los materiales.
+        local taken, takeError = options.holdings.take(installation)
+        if not taken then
+            if not cancel(installation, 'creation_rejected') then return nil, 'Cobro fallido y devolucion pendiente; revisar servidor.' end
+            return nil, takeError or 'Faltan materiales de instalacion.'
+        end
         local device, createError = options.registry.create(0, { type = 'cctv_camera', model = installation.model,
             owner = installation.owner, position = position, rotation = installation.rotation, metadata = { installationId = installation.id } })
         if not device then
             if options.registry.status() then
                 local existing, lookupError = service.find(installation.id)
                 if not existing and not lookupError then
-                    local refunded = options.inventory.apply({ kind = 'cancel', installationId = installation.id, reason = 'creation_rejected' })
+                    local refunded = cancel(installation, 'creation_rejected')
                     if not refunded then return nil, 'Fallo de creacion y compensacion pendiente; revisar servidor.' end
                 end
             end
@@ -164,10 +190,15 @@ function OSSecurity.InstallationService.new(options)
             if installation.status == 'pending' then
                 local device, findError = service.find(installation.id)
                 if findError then return nil, findError end
-                local result, reason
-                if device then result, reason = finalize(installation, device)
-                else result, reason = options.inventory.apply({ kind = 'cancel', installationId = installation.id, reason = 'recovery_cancelled' }) end
-                if not result then return nil, reason end
+                if not device and installation.holder and not options.holdings.available() then
+                    -- Sin proveedor no se puede liquidar el cobro: se deja pendiente, sin bloquear el resto.
+                    if options.log then options.log(('Instalacion %s pendiente: proveedor de objetos no disponible.'):format(installation.id)) end
+                else
+                    local result, reason
+                    if device then result, reason = finalize(installation, device)
+                    else result, reason = cancel(installation, 'recovery_cancelled') end
+                    if not result then return nil, reason end
+                end
             end
         end
         return true

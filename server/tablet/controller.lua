@@ -35,7 +35,7 @@ function OSSecurity.TabletController.new(options)
         elseif request.action == 'use' and util.object(request.args, { item = true }) then
             local item = request.args.item
             local definition = type(item) == 'string' and OSSecurity.ItemCatalog[item]
-            if not definition or not options.inventory.has(actor.principal, item, 1) then return failure('No posee ese item.') end
+            if not definition or not options.holdings.has(actor, item, 1) then return failure('No posee ese item.') end
             if definition.tablet then
                 options.placement.cancel(source)
                 local opened, openError = options.sessions.open(source, definition.tablet)

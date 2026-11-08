@@ -7,17 +7,24 @@ function OSSecurity.TabletAuthorization.new(options)
         local principal, err = options.identity.resolve(source)
         if not principal then return nil, err end
         if not options.inventory.status() then return nil, 'Inventario no disponible.' end
-        if kind == 'inventory' then return { principal = principal, role = 'inventory', kind = kind } end
+        -- Con proveedor externo, los objetos pertenecen al personaje activo (holder) de esta sesion.
+        local holder
+        if options.holdings.external() then
+            local resolved, holderError = options.holdings.holder(source)
+            if not resolved then return nil, holderError end
+            holder = resolved
+        end
+        if kind == 'inventory' then return { principal = principal, holder = holder, role = 'inventory', kind = kind } end
         local tablet = OSSecurity.Brand.Tablets[kind]
-        if not tablet or not options.inventory.has(principal, tablet.item, 1) then return nil, 'No posee la tablet correspondiente.' end
+        if not tablet or not options.holdings.has({ principal = principal, holder = holder }, tablet.item, 1) then return nil, 'No posee la tablet correspondiente.' end
         if not options.ace(source, config.Ace[kind]) then return nil, 'Tablet no autorizada para este perfil.' end
-        if kind == 'client' then return { principal = principal, role = 'client', kind = kind } end
+        if kind == 'client' then return { principal = principal, holder = holder, role = 'client', kind = kind } end
         local role
         if options.ace(source, config.Ace.admin) then role = 'admin'
         elseif options.ace(source, config.Ace.supervisor) then role = 'supervisor'
         elseif options.ace(source, config.Ace.technician) then role = 'technician' end
         if not role then return nil, 'No tiene un perfil profesional verificable.' end
-        return { principal = principal, role = role, kind = kind }
+        return { principal = principal, holder = holder, role = role, kind = kind }
     end
 
     function auth.access(actor, device, action)

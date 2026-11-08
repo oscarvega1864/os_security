@@ -1,22 +1,65 @@
 OSSecurity.GameplayCommands = {}
 
 function OSSecurity.GameplayCommands.register(options)
-    local usage = 'osg6 give <jugador> <item> <cantidad> | inventory <jugador> | access <jugador> <dispositivo> <client|technician|supervisor|none> | anchor <id> <cliente> <instalador> <x> <y> <z> <nx> <ny> <nz> [radio] | installations | diagnose'
+    local usage = 'osg6 give <jugador> <item> <cantidad> | inventory <jugador> | migrate <jugador> | access <jugador> <dispositivo> <client|technician|supervisor|none> | anchor <id> <cliente> <instalador> <x> <y> <z> <nx> <ny> <nz> [radio] | installations | diagnose'
+    local holdings = options.holdings
+    local function target(value)
+        local player = tonumber(value)
+        local principal, identityError = options.identity.resolve(player)
+        if not principal then return nil, identityError end
+        local actor = { principal = principal }
+        if holdings.external() then
+            local holder, holderError = holdings.holder(player)
+            if not holder then return nil, holderError end
+            actor.holder = holder
+        end
+        return actor
+    end
     options.register('osg6', function(source, args)
         if not options.permissions.isAdmin(source) then options.reply(source, 'Se requiere ossecurity.admin.'); return end
         local action, result, err = args[1]
         if action == 'give' and #args == 4 then
-            local principal, identityError = options.identity.resolve(tonumber(args[2]))
-            if not principal then options.reply(source, identityError); return end
-            result, err = options.inventory.apply({ kind = 'grant', principal = principal, item = args[3], amount = tonumber(args[4]) })
+            local actor, actorError = target(args[2])
+            if not actor then options.reply(source, actorError); return end
+            local amount = tonumber(args[4])
+            if not OSSecurity.ItemCatalog[args[3]] or not OSSecurity.Util.integer(amount, 1, OSSecurity.GameplayConfig.MaxItemQuantity) then
+                options.reply(source, 'Objeto o cantidad no validos.'); return
+            end
+            if holdings.external() then result, err = holdings.grant(actor.holder, args[3], amount)
+            else result, err = options.inventory.apply({ kind = 'grant', principal = actor.principal, item = args[3], amount = amount }) end
         elseif action == 'inventory' and #args == 2 then
-            local principal, identityError = options.identity.resolve(tonumber(args[2]))
-            if not principal then options.reply(source, identityError); return end
-            local account, reason = options.inventory.get(principal)
-            if not account then options.reply(source, reason); return end
+            local actor, actorError = target(args[2])
+            if not actor then options.reply(source, actorError); return end
+            local counts, reason = holdings.list(actor)
+            if not counts then options.reply(source, reason); return end
             local items = {}
-            for item, entry in pairs(account.items) do items[#items + 1] = ('%s=%d'):format(item, entry.count) end
+            for item, amount in pairs(counts) do items[#items + 1] = ('%s=%d'):format(item, amount) end
             table.sort(items); options.reply(source, #items > 0 and table.concat(items, ' | ') or OSSecurity.Brand.Text.noInventory)
+            return
+        elseif action == 'migrate' and #args == 2 then
+            -- Pasa los objetos locales de la cuenta al personaje activo en el proveedor externo.
+            -- Clave de operacion = total migrado tras esta entrega: tras un corte se repite sin duplicar.
+            if not holdings.external() then options.reply(source, 'Migracion disponible solo con ossecurity_items=os_inventory.'); return end
+            local actor, actorError = target(args[2])
+            if not actor then options.reply(source, actorError); return end
+            local account, reason = options.inventory.get(actor.principal)
+            if not account then options.reply(source, reason); return end
+            local names = {}
+            for item in pairs(account.items) do names[#names + 1] = item end
+            table.sort(names)
+            if #names == 0 then options.reply(source, 'No hay objetos locales que migrar.'); return end
+            local moved = {}
+            for _, item in ipairs(names) do
+                local amount = account.items[item].count
+                local total = ((account.migrated or {})[item] or 0) + amount
+                local operationId = ('g6mig:%s:%s:%d'):format(actor.principal:sub(9, 24), item, total)
+                local granted, grantError = holdings.grant(actor.holder, item, amount, operationId)
+                if not granted then options.reply(source, ('Migracion detenida en %s: %s'):format(item, tostring(grantError))); return end
+                local saved, saveError = options.inventory.apply({ kind = 'migrate', principal = actor.principal, item = item, amount = amount })
+                if not saved then options.reply(source, ('Migracion detenida en %s: %s. Repetir el comando no duplica.'):format(item, tostring(saveError))); return end
+                moved[#moved + 1] = ('%s=%d'):format(item, amount)
+            end
+            options.reply(source, ('Migrado a %s: %s'):format(actor.holder, table.concat(moved, ' | ')))
             return
         elseif action == 'access' and #args == 4 then
             local principal, identityError = options.identity.resolve(tonumber(args[2]))
@@ -52,8 +95,9 @@ function OSSecurity.GameplayCommands.register(options)
             end
             options.reply(source, ('Instalaciones: %d'):format(#ids)); return
         elseif action == 'diagnose' and #args == 1 then
-            options.reply(source, ('Device Core=%s | Inventario=%s | Flujo G6=%s'):format(
-                tostring(options.registry.status()), tostring(options.inventory.status()), tostring(options.ready())))
+            options.reply(source, ('Device Core=%s | Inventario=%s | Objetos=%s | Flujo G6=%s'):format(
+                tostring(options.registry.status()), tostring(options.inventory.status()),
+                holdings.external() and ('externo:' .. tostring(holdings.available())) or 'local', tostring(options.ready())))
             return
         else options.reply(source, usage); return end
         options.reply(source, result and 'Operacion Gruppe Sechs persistida.' or (err or 'Operacion rechazada.'))

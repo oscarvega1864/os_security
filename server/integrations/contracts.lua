@@ -3,7 +3,7 @@ OSSecurity.IntegrationContracts = {
     version = 1,
     inventory = { methods = { 'load', 'get', 'has', 'grant', 'reserve', 'finish', 'cancel', 'status' },
         consistency = 'persistent_reservations_and_idempotent_compensation',
-        adapters = { standalone = 'implemented', esx = 'unavailable', qbcore = 'unavailable', qbox = 'unavailable', ox_inventory = 'unavailable' } },
+        adapters = { standalone = 'implemented', os_inventory = 'implemented', esx = 'unavailable', qbcore = 'unavailable', qbox = 'unavailable', ox_inventory = 'unavailable' } },
     properties = { status = 'unavailable', requires = { 'stableId', 'serverOwnership', 'accessScope' } },
     vehicles = { status = 'unavailable', requires = { 'stableId', 'serverOwnership', 'routingBucket' } },
     contracts = { status = 'unavailable', requires = { 'contractId', 'principal', 'scopes', 'validUntil' } },
