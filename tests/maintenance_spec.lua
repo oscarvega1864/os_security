@@ -213,6 +213,27 @@ test('Repair respects gain and ceiling, records results and never changes admini
     end)
 end)
 
+test('Forced faults only lower one piece, are recorded, persist and can then be repaired or replaced', function()
+    local c = fixture(); local d = active(c, create(c))
+    local before = d.condition.components.optics.health
+    d = service(c, d.id, 'fault', { slot = 'power', health = 20 })
+    assert(d.condition.components.power.health == 20 and d.condition.components.power.state == 'critical')
+    assert(d.condition.components.optics.health == before and d.state == 'active')
+    local event = d.maintenance.events[#d.maintenance.events]
+    assert(event.kind == 'fault' and event.changes.power.after.health == 20 and event.changes.optics == nil)
+    assert(not c.registry.service(0, d.id, 'fault', { slot = 'power', health = 50 })) -- nunca sube la salud
+    assert(not c.registry.service(0, d.id, 'fault', { slot = 'nope', health = 5 }))
+    assert(not c.registry.service(0, d.id, 'fault', { slot = 'power', health = -1 }))
+    assert(not c.registry.service(5, d.id, 'fault', { slot = 'power', health = 5 })) -- sin ossecurity.admin
+    d = service(c, d.id, 'fault', { slot = 'optics', health = 0 }); assert(d.condition.components.optics.state == 'failed')
+    local reloaded = fixture(c.files); assert(reloaded.loaded)
+    transition(c, d.id, 'maintenance'); c.time = c.time + 60
+    d = service(c, d.id, 'repair', { slot = 'power' }); close(d.condition.components.power.health, 45)
+    assert(not c.registry.service(0, d.id, 'repair', { slot = 'optics' })) -- failed: requiere sustitucion
+    d = service(c, d.id, 'replace', { slot = 'optics' }); assert(d.condition.components.optics.health == 100)
+    assert(fixture(c.files).loaded)
+end)
+
 test('Failures have deterministic causes and require explicit replacement by default', function()
     configured(function(config) config.Definitions.power_supply.models.power_standard.lifeHours = 1 end, function()
         local c = fixture(); local d = active(c, create(c))

@@ -10,6 +10,8 @@
 - Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
   (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
   petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
+- `osmaint fault <id> <slot> <salud>`: avería controlada de una pieza para pruebas y demostraciones;
+  solo baja la salud, se registra en el historial y se reproduce al validar el almacenamiento.
 - Profundidad de la cámara ajustable con Q/Z en el editor (−0,15 a +0,30 m respecto a la superficie),
   guardada tal cual por el servidor; `/g6anchor` fija la superficie y permite mover la zona con las
   flechas. Se descarta el asentado automático por dimensiones del modelo, que la hundía en la pared.

@@ -27,7 +27,7 @@ end
 function lifecycle.operation(device, kind, args, at)
     local config = OSSecurity.ComponentConfig
     local allowed = {
-        inspect = {}, provision = {}, simulate = { hours = true },
+        inspect = {}, provision = {}, simulate = { hours = true }, fault = { slot = true, health = true },
         repair = { slot = true }, replace = { slot = true, model = true }
     }
     if type(kind) ~= 'string' or not allowed[kind] or not util.object(args, allowed[kind]) then
@@ -47,6 +47,11 @@ function lifecycle.operation(device, kind, args, at)
             return nil, 'Horas fuera del limite de simulacion configurado.'
         end
         op.hours = wear.number(args.hours)
+    elseif kind == 'fault' then
+        -- Averia controlada para pruebas y demostraciones: solo baja la salud de una pieza, queda en el historial.
+        if not util.text(args.slot, 40) then return nil, 'Slot de componente invalido.' end
+        if not util.finite(args.health) or args.health < 0 or args.health > 100 then return nil, 'Salud fuera de 0-100.' end
+        op.slot, op.health = args.slot, wear.number(args.health)
     elseif kind == 'repair' or kind == 'replace' then
         if not util.text(args.slot, 40) then return nil, 'Slot de componente invalido.' end
         op.slot = args.slot
@@ -96,6 +101,11 @@ function lifecycle.apply(device, op, limits)
         operation = util.copy(op), changes = {} }
     if op.kind == 'simulate' then
         for _, component in pairs(components) do wear.hours(component, op.hours) end
+    elseif op.kind == 'fault' then
+        local component = components[op.slot]
+        if not component then return nil, 'Componente no encontrado.' end
+        if op.health >= component.health then return nil, 'La averia debe dejar la pieza con menos salud que la actual.' end
+        component.health, component.state = op.health, wear.state(op.health)
     elseif op.kind == 'repair' then
         local component = components[op.slot]
         if not component then return nil, 'Componente no encontrado.' end

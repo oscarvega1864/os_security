@@ -31,7 +31,7 @@ end
 
 function validation.operation(device, op)
     if not util.object(op, { kind = true, at = true, slot = true, hours = true,
-        kit = true, spec = true, gain = true, ceiling = true, allowFailed = true })
+        kit = true, spec = true, gain = true, ceiling = true, allowFailed = true, health = true })
         or not util.integer(op.at, device.createdAt, 253402300799) then return nil, 'Contrato de operacion invalido.' end
     local fields = { kind = true, at = true }
     if op.kind == 'provision' then
@@ -46,6 +46,9 @@ function validation.operation(device, op)
     elseif op.kind == 'simulate' then
         fields.hours = true
         if not number(op.hours, 0.000001, 72) then return nil, 'Simulacion fuera de limites.' end
+    elseif op.kind == 'fault' then
+        fields.slot, fields.health = true, true
+        if not slotId(op.slot) or not number(op.health, 0, 100) then return nil, 'Averia forzada invalida.' end
     elseif op.kind == 'repair' then
         fields.slot, fields.gain, fields.ceiling, fields.allowFailed = true, true, true, true
         if not slotId(op.slot) or not number(op.gain, 0.000001, 100)
@@ -88,7 +91,7 @@ function validation.device(device, limits, legacyCondition, legacyMaintenance)
         if not ok or maintenance.lastOperation.at > device.updatedAt then return nil, 'Ultima operacion de servicio invalida.' end
     end
     local sequence, timestamp = 0, device.createdAt
-    local eventKinds = { provision = true, simulate = true, repair = true, replace = true }
+    local eventKinds = { provision = true, simulate = true, fault = true, repair = true, replace = true }
     for _, event in ipairs(maintenance.events) do
         if not util.object(event, { kind = true, at = true, sequence = true, changes = true, operation = true })
             or type(event.kind) ~= 'string' or not eventKinds[event.kind]

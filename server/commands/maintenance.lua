@@ -2,7 +2,7 @@ OSSecurity.MaintenanceCommands = {}
 
 function OSSecurity.MaintenanceCommands.register(options)
     local registry = options.registry
-    local usage = 'Uso: osmaint list|inspect|diagnose|provision <id> | simulate <id> <horas> | repair <id> <slot> | replace <id> <slot> [modelo] | history <id> [offset] [limit]'
+    local usage = 'Uso: osmaint list|inspect|diagnose|provision <id> | simulate <id> <horas> | fault <id> <slot> <salud> | repair <id> <slot> | replace <id> <slot> [modelo] | history <id> [offset] [limit]'
     local function report(source, device)
         if device.schemaVersion ~= 2 then
             options.reply(source, 'Dispositivo v1: datos conservados. Equipar con osmaint provision <id>.')
@@ -37,6 +37,8 @@ function OSSecurity.MaintenanceCommands.register(options)
             result, err = registry.service(source, id, action == 'diagnose' and 'inspect' or action, {})
         elseif action == 'simulate' and #args == 3 then
             result, err = registry.service(source, id, 'simulate', { hours = tonumber(args[3]) })
+        elseif action == 'fault' and #args == 4 then
+            result, err = registry.service(source, id, 'fault', { slot = args[3], health = tonumber(args[4]) })
         elseif action == 'repair' and #args == 3 then
             result, err = registry.service(source, id, 'repair', { slot = args[3] })
         elseif action == 'replace' and (#args == 3 or #args == 4) then

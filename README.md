@@ -329,6 +329,7 @@ antepone `/` a los comandos; `/oshello` y `/osstatus` conservan su comportamient
 | `osmaint inspect <id>` | Evalúa intervalos pendientes y persiste si hay cambios. |
 | `osmaint diagnose <id>` | Inspección con estados y causas; mismo cálculo. |
 | `osmaint simulate <id> <horas>` | Horas adicionales controladas; exige `active`. |
+| `osmaint fault <id> <slot> <salud>` | Avería controlada: baja la salud de una pieza (nunca la sube) y queda en el historial. |
 | `osmaint repair <id> <slot>` | Recuperación limitada; exige `maintenance`. |
 | `osmaint replace <id> <slot> [modelo]` | Sustitución compatible; exige `maintenance`. |
 | `osmaint history <id> [offset] [limit]` | Intervenciones y resultados paginados. |
