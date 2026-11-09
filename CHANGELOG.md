@@ -10,6 +10,9 @@
 - Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
   (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
   petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
+- Minijuegos de instalación interactivos con ratón: taladrar cuatro anclajes (mantener sobre la marca,
+  temperatura de la broca y resbalones), atornillar girando el ratón en sentido horario (fuerza y roscas
+  pasadas) y enlazar los cables arrastrándolos hasta su borne. Prueba de navegador que los completa.
 - Minijuego de instalación con herramienta en la mano y animación por fase: taladro
   (`hei_prop_heist_drill`, `anim@heists@fleeca_bank@drilling`) con sonido mientras se mantiene pulsado,
   destornillador y cableado, más sonidos de acierto y error. Cada modelo, animación y banco de sonido se

@@ -105,15 +105,49 @@ async function main() {
     await evaluate(`window.__fail=true;document.getElementById('refresh').click()`);
     await until(`document.getElementById('app').hidden`);
     console.log('PASS failed NUI requests close safely');
-    await evaluate(`window.postMessage({type:'minigame',text:window.__brand.Text.minigame},'*')`);
-    await until(`!document.getElementById('minigame').hidden && document.querySelector('.mg-meter .mg-band')`);
-    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{code:'Space',key:' '}))`); await pause(700);
-    await evaluate(`window.dispatchEvent(new KeyboardEvent('keyup',{code:'Space',key:' '}))`);
-    assert(await evaluate(`parseFloat(document.querySelector('.mg-fill.heat').style.width)>0`), 'Holding space must heat the drill');
-    fs.writeFileSync(path.join(output, 'minigame.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    // Minijuego jugado con eventos reales de raton (CDP): taladrar, atornillar y enlazar cables.
+    const mouse = (type, x, y, buttons = 0) => send('Input.dispatchMouseEvent', { type, x, y, button: type === 'mouseMoved' && !buttons ? 'none' : 'left', buttons, clickCount: type === 'mouseMoved' ? 0 : 1 });
+    const centers = selector => evaluate(`Array.from(document.querySelectorAll(${JSON.stringify(selector)})).map(n => { const r = n.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, key: n.dataset.key || null }; })`);
+    const scale = async () => evaluate(`(() => { const b = document.querySelector('.mg-board'); return b.getBoundingClientRect().width / 400; })()`);
+    await evaluate(`window.__calls.length = 0; window.postMessage({type:'minigame',text:window.__brand.Text.minigame},'*')`);
+    await until(`!document.getElementById('minigame').hidden && document.querySelectorAll('.mg-hole').length === 4`);
+    fs.writeFileSync(path.join(output, 'minigame-drill.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    for (const hole of await centers('.mg-target')) {
+      await mouse('mouseMoved', hole.x, hole.y); await mouse('mousePressed', hole.x, hole.y, 1);
+      await pause(2700); await mouse('mouseReleased', hole.x, hole.y);
+      await pause(2000); // enfriar la broca
+    }
+    assert(await evaluate(`window.__calls.some(x => x.endpoint === 'minigameFx' && x.body.drilling === true)`), 'Drilling reports the drill sound state');
+    await until(`document.querySelectorAll('.mg-screw').length === 4`);
+    fs.writeFileSync(path.join(output, 'minigame-screw.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    const radius = 15 * await scale();
+    for (const screw of await centers('.mg-screw-head')) {
+      await mouse('mouseMoved', screw.x + radius, screw.y); await mouse('mousePressed', screw.x + radius, screw.y, 1);
+      for (let degrees = 15; degrees <= 1110; degrees += 15) {
+        const r = degrees * Math.PI / 180; await mouse('mouseMoved', screw.x + Math.cos(r) * radius, screw.y + Math.sin(r) * radius, 1); await pause(50);
+      }
+      await mouse('mouseReleased', screw.x + radius, screw.y); await pause(200);
+    }
+    await until(`document.querySelectorAll('.mg-plug').length === 4`);
+    const plugs = await centers('.mg-plug'), sockets = await centers('.mg-socket');
+    const wrong = sockets.find(socket => socket.key !== plugs[0].key);
+    await mouse('mouseMoved', plugs[0].x, plugs[0].y); await mouse('mousePressed', plugs[0].x, plugs[0].y, 1);
+    await mouse('mouseMoved', wrong.x, wrong.y, 1); await mouse('mouseReleased', wrong.x, wrong.y);
+    assert(await evaluate(`document.querySelectorAll('.mg-strike.on').length === 1 && !document.querySelector('.mg-cable')`), 'A wrong terminal counts a short and drops the cable');
+    for (const plug of plugs) {
+      const socket = sockets.find(item => item.key === plug.key);
+      await mouse('mouseMoved', plug.x, plug.y); await mouse('mousePressed', plug.x, plug.y, 1);
+      await mouse('mouseMoved', (plug.x + socket.x) / 2, plug.y, 1);
+      if (plug === plugs[3]) fs.writeFileSync(path.join(output, 'minigame-cables.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+      await mouse('mouseMoved', socket.x, socket.y, 1); await mouse('mouseReleased', socket.x, socket.y);
+    }
+    await until(`document.getElementById('minigame').hidden && window.__calls.some(x => x.endpoint === 'minigame' && x.body.ok === true)`);
+    console.log('PASS mouse minigame: drill four holes, screw four screws by turning, link the cables');
+    await evaluate(`window.__calls.length = 0; window.postMessage({type:'minigame',text:window.__brand.Text.minigame},'*')`);
+    await until(`!document.getElementById('minigame').hidden`);
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
     await until(`document.getElementById('minigame').hidden && window.__calls.some(x=>x.endpoint==='minigame' && x.body.ok===false && x.body.reason==='cancelled')`);
-    console.log('PASS installation minigame renders, reacts to the drill key and reports cancellation once');
+    console.log('PASS Escape cancels the minigame and reports it once');
     console.log(`UI screenshots: ${path.relative(root, output)}`);
   } finally { socket?.close(); child.kill(); }
 }

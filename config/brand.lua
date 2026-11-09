@@ -37,13 +37,14 @@ OSSecurity.Brand = {
         installFailed = 'Instalacion fallida: no se ha consumido material.',
         minigame = {
             title = 'Instalacion CCTV', cancel = 'Cancelar (Esc)',
-            drillTitle = 'Taladrar el soporte', drillHelp = 'Manten ESPACIO para taladrar. Manten la temperatura en la franja verde; si se pasa, la broca se quema.',
-            drillAction = 'Mantener para taladrar', heat = 'Temperatura de la broca', progress = 'Perforacion',
-            tooHot = 'Demasiado caliente: suelta', drilling = 'Perforando...',
-            screwTitle = 'Atornillar la camara', screwHelp = 'Pulsa ESPACIO cuando el cursor este en la zona verde. 3 tornillos; 3 fallos y se pasa la rosca.',
-            screwAction = 'Apretar tornillo', hit = 'Tornillo apretado', miss = 'Fallo',
-            cablesTitle = 'Conectar el cableado', cablesHelp = 'Selecciona un cable y despues el borne de su mismo color. 3 errores provocan un cortocircuito.',
-            colors = { 'Rojo', 'Azul', 'Amarillo', 'Verde' }, connected = 'Conectado', wrongWire = 'Borne incorrecto'
+            drillTitle = 'Taladrar los anclajes', drillHelp = 'Manten pulsado el raton sobre cada marca hasta perforarla. Suelta para enfriar la broca; no te salgas de la marca.',
+            heat = 'Temperatura de la broca', slips = 'Resbalones', slip = 'La broca ha resbalado', tooHot = 'Demasiado caliente: suelta para enfriar',
+            drilling = 'Perforando...', holeDone = 'Agujero hecho',
+            screwTitle = 'Atornillar el soporte', screwHelp = 'Pulsa sobre un tornillo y gira el raton a su alrededor en sentido horario. Sin prisas: con demasiada fuerza se pasa la rosca.',
+            torque = 'Fuerza', strips = 'Roscas pasadas', turnHint = 'Gira en sentido horario', tooStrong = 'Demasiada fuerza: mas despacio',
+            stripped = 'Rosca pasada: vuelve a empezar ese tornillo', hit = 'Tornillo apretado',
+            cablesTitle = 'Conectar el cableado', cablesHelp = 'Arrastra cada cable desde su conector hasta el borne de su mismo color.',
+            colors = { 'Rojo', 'Azul', 'Amarillo', 'Verde' }, shorts = 'Cortocircuitos', connected = 'Conectado', wrongWire = 'Borne incorrecto'
         },
         placementMount = 'Montaje',
         hello = 'Gruppe Sechs: servicio de seguridad disponible.',
