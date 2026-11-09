@@ -131,6 +131,10 @@ local sites = sitesResource ~= 'none' and OSSecurity.Sites.new({
         if GetResourceState(sitesResource) ~= 'started' then return nil end
         return exports[sitesResource]:GetAsset(category, id)
     end,
+    list = function(category)
+        if GetResourceState(sitesResource) ~= 'started' then return nil end
+        return exports[sitesResource]:ListAssets(category)
+    end,
     active = function(source)
         if GetResourceState(identityResource) ~= 'started' then return nil end
         return exports[identityResource]:GetActiveCharacter(source)
@@ -211,6 +215,7 @@ local gameplay = OSSecurity.Gameplay.new({
     employment = employment,
     alarmEffects = alarmEffects,
     sites = sites,
+    locksChanged = function(list) TriggerClientEvent('os_security:locks:doors', -1, list) end,
     audit = function(action, source, deviceId)
         local safeId = OSSecurity.DeviceValidation.id(deviceId) and deviceId or '-'
         print(('%s [G6 AUDIT] action=%s source=%d device=%s'):format(constants.LOG_PREFIX, action, source, safeId))
@@ -287,7 +292,62 @@ CreateThread(function()
     end
 end)
 
+-- Cerraduras de puertas: lista para los clientes, deteccion automatica, llave, cambio de bombin y apano manual.
+local lockRate = {}
+local function lockAllowed(player, limit)
+    local now = GetGameTimer()
+    local entry = lockRate[player]
+    if not entry or now - entry.start > 5000 then entry = { start = now, count = 0 }; lockRate[player] = entry end
+    entry.count = entry.count + 1
+    return entry.count <= (limit or 6) and gameplay.status()
+end
+local function lockCall(callback)
+    local ok, result, err = pcall(callback)
+    if not ok then storageLog('Fallo en las cerraduras; no se registra la excepcion.'); return nil, OSSecurity.Brand.Text.failed end
+    return result, err
+end
+RegisterNetEvent('os_security:locks:sync', function()
+    local player = source
+    if not lockAllowed(player) then return end
+    local doors, targets = lockCall(function() return gameplay.locks.list(), gameplay.locks.targets() end)
+    TriggerClientEvent('os_security:locks:doors', player, doors or {}, targets or {})
+end)
+RegisterNetEvent('os_security:locks:report', function(report)
+    local player = source
+    if not lockAllowed(player) then return end
+    lockCall(function() return gameplay.locks.report(player, report) end)
+end)
+RegisterNetEvent('os_security:locks:toggle', function(doorId)
+    local player = source
+    if not lockAllowed(player) then return end
+    local result, err = lockCall(function() return gameplay.locks.toggle(player, type(doorId) == 'string' and doorId or nil) end)
+    TriggerClientEvent('os_security:locks:result', player, result ~= nil, result and result.message or err, result and result.locked)
+end)
+RegisterNetEvent('os_security:locks:changeFinish', function(success)
+    local player = source
+    if not lockAllowed(player) then return end
+    local result, err = lockCall(function() return gameplay.locks.changeFinish(player, success == true) end)
+    TriggerClientEvent('os_security:locks:result', player, result ~= nil, result and result.message or err)
+end)
+RegisterNetEvent('os_security:locks:register', function(payload)
+    local player = source
+    if not lockAllowed(player, 2) then return end
+    local message, err
+    if type(payload) == 'table' and payload.remove == true then
+        message, err = lockCall(function() return gameplay.locks.unregister(player) end)
+    else
+        message, err = lockCall(function() return gameplay.locks.register(player, payload) end)
+    end
+    TriggerClientEvent('os_security:locks:result', player, message ~= nil, message or err)
+end)
+-- Nivel del bombin (1 serie, 2 seguridad, 3 alta seguridad) de una puerta, para robos o ganzuas.
+exports('GetDoorSecurity', function(doorId)
+    local ok, tier = pcall(gameplay.locks.security, doorId)
+    return ok and tier or nil
+end)
+
 AddEventHandler('playerDropped', function()
+    lockRate[tonumber(source)] = nil
     alarmRate[tonumber(source)] = nil
     gameplay.alarms.forget(tonumber(source))
     lastAnchorAim[tonumber(source)] = nil
@@ -306,11 +366,15 @@ end)
 local function registerUsableTablets()
     if not externalItems or GetResourceState(inventoryResource) ~= 'started' then return end
     for item, definition in pairs(OSSecurity.ItemCatalog) do
-        if definition.tablet or definition.usable == 'placement' or definition.usable == 'tag' then
+        if definition.tablet or definition.usable == 'placement' or definition.usable == 'tag' or definition.usable == 'cylinder' then
             local ok, registered = pcall(function()
                 return exports[inventoryResource]:RegisterUsableItem(item, function(player)
                     TriggerClientEvent('osinventory:forceClose', player)
                     if definition.tablet then TriggerClientEvent('os_security:g6:openTablet', player, definition.tablet)
+                    elseif definition.usable == 'cylinder' then
+                        local data, err = lockCall(function() return gameplay.locks.changeBegin(player, item) end)
+                        if data then TriggerClientEvent('os_security:locks:change', player, data)
+                        else TriggerClientEvent('os_security:locks:result', player, false, err) end
                     elseif definition.usable == 'tag' then
                         local result, err = gameplay.alarms.tagNearest(player)
                         TriggerClientEvent('os_security:alarm:result', player, result, err, nil)

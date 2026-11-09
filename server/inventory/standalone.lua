@@ -29,6 +29,10 @@ function OSSecurity.StandaloneInventory.new(options)
         if not inventory.status() or not data.alarms or not data.alarms[deviceId] then return nil end
         return OSSecurity.Util.copy(data.alarms[deviceId])
     end
+    function inventory.doors()
+        if not inventory.status() then return nil end
+        return OSSecurity.Util.copy(data.doors or {})
+    end
     function inventory.has(principal, item, amount)
         local account = inventory.get(principal)
         return account ~= nil and account.items[item] ~= nil and account.items[item].count >= (amount or 1)

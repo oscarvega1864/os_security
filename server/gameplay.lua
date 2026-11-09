@@ -116,7 +116,11 @@ function OSSecurity.Gameplay.new(options)
         sites = options.sites, alarms = alarms })
     local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
         sessions = sessions, service = service, placement = placement, audit = options.audit })
-    local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms }
+    local locks = OSSecurity.LockService.new({ inventory = inventory, world = options.world, now = options.now, sites = options.sites,
+        isAdmin = function(source) return options.permissions ~= nil and options.permissions.isAdmin(source) == true end,
+        employment = options.employment, holdings = holdings, log = options.log, changed = options.locksChanged,
+        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks }
     function gameplay.status() return ready and inventory.status() and options.registry.status() end
     function gameplay.load()
         ready = false
@@ -132,10 +136,11 @@ function OSSecurity.Gameplay.new(options)
         if not gameplay.status() then return { ok = false, error = 'Flujo Gruppe Sechs no disponible; revisar servidor.', close = true } end
         return controller.handle(source, request)
     end
-    function gameplay.drop(source) controller.drop(source) end
-    function gameplay.clear() ready = false; controller.clear(); alarms.clear() end
+    function gameplay.drop(source) controller.drop(source); locks.drop(source) end
+    function gameplay.clear() ready = false; controller.clear(); alarms.clear(); locks.clear() end
     local commands = OSSecurity.GameplayCommands.register({ sites = options.sites, register = options.register, reply = options.reply, permissions = options.permissions,
-        identity = identity, inventory = inventory, holdings = holdings, registry = options.registry, world = options.world, ready = gameplay.status })
+        identity = identity, inventory = inventory, holdings = holdings, registry = options.registry, world = options.world, ready = gameplay.status,
+        locks = locks })
     function gameplay.anchorAt(source, payload)
         if not gameplay.status() then return nil, 'Flujo Gruppe Sechs no disponible; revisar servidor.' end
         return commands.aimed(source, payload)

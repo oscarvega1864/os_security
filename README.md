@@ -1,4 +1,4 @@
-# Gruppe Sechs — OS Security 0.4.1
+# Gruppe Sechs — OS Security 0.5.0
 
 Recurso standalone para FiveM y GTA V Legacy. La experiencia comercial pertenece
 a Gruppe Sechs; el nombre técnico sigue siendo `os_security`. Incluye Device Core,
@@ -148,6 +148,37 @@ petición (`GetAsset` y `GetActiveCharacter`): si cambia el propietario o el per
 activo, deja de verse. La tarjeta muestra "Propiedad 200" o "Negocio 3 · Nombre". El vínculo
 no da acceso a Operations ni a mantenimiento. `set ossecurity_sites_resource none` lo
 desactiva. Sigue haciendo falta la tablet Client y el ACE `ossecurity.g6.client`.
+
+## Cerraduras de puertas (bombines)
+
+Las puertas de una propiedad o negocio son las que ya trae el mapa (GTA o MLO) junto a su punto de
+creación. No se registran a mano: cuando la propiedad tiene titular (`/setpropiedad`), el primer jugador
+que pasa a menos de 25 m detecta las puertas a 15 m del punto (las que conoce el sistema de puertas del
+juego o las que tienen forma de hoja de puerta) y el servidor las valida y guarda en el inventario G6.
+
+- Quedan con el **bombín de serie** (nivel 1). Las de propiedades, cerradas con llave; las de negocios,
+  abiertas.
+- **Llave:** E junto a la puerta. Solo el titular actual (personaje activo) o un administrador. Al
+  reasignar la propiedad la llave pasa al nuevo titular; sin titular las puertas quedan libres. Las hojas
+  de una puerta doble (a menos de 2,6 m) se abren y cierran juntas.
+- **Cambiar el bombín:** con la puerta abierta, "Usar" el kit junto a ella con destornillador. Lo puede
+  hacer el titular o un técnico G6 de servicio. El minijuego tiene cuatro pasos: quitar el tornillo de
+  fijación, sacar el bombín viejo con la leva alineada, meter el nuevo y apretar el tornillo. Se cobra el
+  kit al terminar (operación idempotente) y el bombín retirado vuelve al inventario; el de serie se
+  desecha. Requiere `ossecurity_items=os_inventory`.
+
+| Kit | Nivel |
+| --- | --- |
+| (de serie) | 1 · Bombín de serie |
+| `os_lock_kit` | 2 · Bombín de seguridad |
+| `os_lock_kit_high` | 3 · Bombín de alta seguridad |
+
+El nivel queda para robos y ganzúas futuros: `exports.os_security:GetDoorSecurity(puerta)`.
+
+Administración: `osg6 doors` lista las puertas y `osg6 door remove <puerta>` da de baja una detectada por
+error (queda libre y no se vuelve a detectar). `/g6puerta <propiedad|negocio> <id>` apuntando a una puerta
+la añade a mano si no se detecta sola (o la recupera), y `/g6puerta borrar` da de baja la más cercana.
+Las dos primeras también están en el panel F10. Necesita el export `ListAssets` de os_devtools.
 
 ## Panel de administración (os_admin)
 

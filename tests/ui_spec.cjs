@@ -168,6 +168,53 @@ async function main() {
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
     await until(`document.getElementById('minigame').hidden && window.__calls.some(x=>x.endpoint==='minigame' && x.body.ok===false && x.body.reason==='cancelled')`);
     console.log('PASS Escape cancels the minigame and reports it once');
+    // Cambio de bombin: quitar el tornillo, sacar el viejo con la leva alineada, meter el nuevo y apretar.
+    const cylinderScale = async () => evaluate(`(() => { const b = document.querySelector('#cylinder .mg-board'); return b.getBoundingClientRect().width / 400; })()`);
+    const turn = async (center, radius, from, degrees) => {
+      const step = degrees > 0 ? 10 : -10;
+      await mouse('mouseMoved', center.x + Math.cos(from) * radius, center.y + Math.sin(from) * radius);
+      await mouse('mousePressed', center.x + Math.cos(from) * radius, center.y + Math.sin(from) * radius, 1);
+      for (let d = step; Math.abs(d) <= Math.abs(degrees); d += step) {
+        const r = from + d * Math.PI / 180; await mouse('mouseMoved', center.x + Math.cos(r) * radius, center.y + Math.sin(r) * radius, 1); await pause(40);
+      }
+      const end = from + degrees * Math.PI / 180; await mouse('mouseReleased', center.x + Math.cos(end) * radius, center.y + Math.sin(end) * radius); await pause(150);
+    };
+    const camAngle = () => evaluate(`Number((document.querySelector('.cy-cam').getAttribute('transform') || 'rotate(0').match(/rotate\\(([-0-9.e]+)/)[1])`);
+    const align = async () => {
+      const key = (await centers('.cy-key'))[0]; const s = await cylinderScale();
+      const angle = await camAngle(); const delta = -(((angle % 360) + 540) % 360 - 180);
+      await turn(key, 22 * s, Math.PI / 2, delta);
+      assert(await evaluate(`document.querySelector('.cy-cam').classList.contains('aligned')`), 'The cam must end aligned');
+    };
+    const drag = async dx => {
+      const body = (await centers('.cy-body'))[0]; const s = await cylinderScale();
+      await mouse('mouseMoved', body.x, body.y); await mouse('mousePressed', body.x, body.y, 1);
+      for (let i = 1; i <= 10; i++) { await mouse('mouseMoved', body.x + dx * s * i / 10, body.y, 1); await pause(30); }
+      await mouse('mouseReleased', body.x + dx * s, body.y); await pause(500);
+    };
+    await evaluate(`window.__calls.length = 0; window.postMessage({type:'cylinder',text:window.__brand.Text.locks.minigame,data:{from:'Bombin de serie',to:'Bombin de seguridad',tier:2}},'*')`);
+    await until(`!document.getElementById('cylinder').hidden && document.querySelector('.cy-screw')`);
+    fs.writeFileSync(path.join(output, 'cylinder-unscrew.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await turn((await centers('.cy-screw .mg-screw-head'))[0], 15 * await cylinderScale(), 0, -760);
+    await until(`document.querySelector('.cy-body') && !document.querySelector('.cy-screw')`);
+    await drag(-60); // leva sin alinear: atasco
+    assert(await evaluate(`document.querySelectorAll('#cylinder .mg-strike.on').length === 1`), 'Moving a misaligned cylinder jams');
+    await align();
+    fs.writeFileSync(path.join(output, 'cylinder-out.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await drag(-160);
+    await until(`document.querySelector('.cy-cylinder.fresh')`);
+    await align(); await drag(170);
+    await until(`document.querySelector('.cy-screw')`);
+    fs.writeFileSync(path.join(output, 'cylinder-screw.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await turn((await centers('.cy-screw .mg-screw-head'))[0], 15 * await cylinderScale(), 0, 760);
+    await until(`document.getElementById('cylinder').hidden && window.__calls.some(x => x.endpoint === 'cylinder' && x.body.ok === true)`);
+    assert(await evaluate(`window.__calls.some(x => x.endpoint === 'cylinderFx' && x.body.phase === 'screw')`));
+    console.log('PASS cylinder change: unscrew, jam on a misaligned cam, swap the cylinder and tighten');
+    await evaluate(`window.__calls.length = 0; window.postMessage({type:'cylinder',text:window.__brand.Text.locks.minigame,data:{from:'a',to:'b',tier:3}},'*')`);
+    await until(`!document.getElementById('cylinder').hidden`);
+    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
+    await until(`document.getElementById('cylinder').hidden && window.__calls.some(x=>x.endpoint==='cylinder' && x.body.ok===false && x.body.reason==='cancelled')`);
+    console.log('PASS Escape cancels the cylinder change');
     // Teclado de alarma (pinpad) y bloque de alarma de la tablet.
     await evaluate(`window.__calls.length = 0; window.postMessage({ type: 'pinpad', data: { deviceId: 'osd_0000000009', label: 'Propiedad 200', mode: 'armed', hasPin: true, tags: true, locked: 0, entry: 22, triggered: false }, text: { pad: window.__brand.Text.alarm.pad, pinFormat: 'formato' } }, '*')`);
     await until(`!document.getElementById('pinpad').hidden && document.querySelector('.pp-status').textContent.includes('22')`);

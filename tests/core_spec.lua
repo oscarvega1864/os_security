@@ -93,7 +93,7 @@ test('Manifest paths, loading order, version and Lua 5.4 syntax', function()
     equal(declarations, { fx_version = 'cerulean', game = 'gta5' })
     for _, file in ipairs(__luaFiles) do assert(loadfile(root .. file)) end
     for _, file in ipairs(clientScripts) do assert(loadfile(root .. file)) end
-    assert(OSSecurity.Config.Version == '0.4.1')
+    assert(OSSecurity.Config.Version == '0.5.0')
     assert(nuiPage == 'web/index.html' and strictMode == 'true')
     for _, file in ipairs(nuiFiles) do local handle = assert(io.open(root .. file, 'rb')); handle:close() end
     assert(#scripts > 0 and scripts[#scripts] == 'server/main.lua')
@@ -484,10 +484,11 @@ test('FiveM wiring: startup, commands, restart persistence and safe file errors'
     local originalPrint, originalOpen = print, io.open
     local function boot(nativeReturn)
         handlers, commands = {}, {}
-        RegisterNetEvent = function(name) assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name:match('^os_security:alarm:'), 'Unexpected network event') end
+        RegisterNetEvent = function(name) assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name:match('^os_security:alarm:') or name:match('^os_security:locks:'), 'Unexpected network event') end
         RegisterCommand = function(name, callback) commands[name] = callback end
         AddEventHandler = function(name, callback) handlers[name] = callback end
         CreateThread = function() end -- bucles periodicos (alarmas) fuera de la prueba
+        exports = setmetatable({}, { __call = function(_, name, callback) assert(name == 'GetDoorSecurity' and type(callback) == 'function') end })
         GetCurrentResourceName = function() return 'os_security' end
         GetResourceState = function() return 'started' end
         GetConvar = function(_, default) return default end -- sin convars: proveedor standalone

@@ -66,6 +66,25 @@ function state.alarm(value)
     return true
 end
 
+-- Puerta con cerradura: puerta real del mapa (modelo y posicion) vinculada a una propiedad o negocio.
+-- tier: nivel del bombin (1 = de serie); cylinder: kit instalado (sin el, el de serie); changes: numero de
+-- cambios de bombin (identificador de operacion idempotente con el proveedor de objetos); ignored: dada
+-- de baja por un administrador (no se vuelve a detectar ni tiene cerradura).
+function state.doorId(id)
+    return type(id) == 'string' and id:match('^[pn]%d+_%d+$') ~= nil and #id <= 24
+end
+function state.door(value)
+    local limits = OSSecurity.GameplayConfig.Locks
+    if not util.object(value, { id = true, site = true, model = true, position = true, bucket = true, tier = true, cylinder = true,
+        locked = true, changes = true, updatedAt = true, ignored = true }) or not state.doorId(value.id) or not state.site(value.site)
+        or not util.integer(value.model, -2147483648, 4294967295) or not state.vector(value.position, 1000000)
+        or not util.integer(value.bucket, 0, 2147483647) or not util.integer(value.tier, 1, #limits.Tiers)
+        or type(value.locked) ~= 'boolean' or not util.integer(value.changes, 0, 2147483647)
+        or not util.integer(value.updatedAt, 0, 253402300799) or (value.ignored ~= nil and value.ignored ~= true) then return false end
+    if value.cylinder == nil then return value.tier == 1 end
+    return limits.Cylinders[value.cylinder] == value.tier
+end
+
 local function placement(value)
     return util.object(value, { id = true, anchorId = true, owner = true, installer = true, position = true,
         rotation = true, bucket = true, model = true, status = true, createdAt = true, updatedAt = true, deviceId = true, reason = true,
@@ -106,7 +125,8 @@ end
 
 local function operation(op, limits)
     if not util.object(op, { kind = true, at = true, principal = true, item = true, amount = true,
-        deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true, site = true, alarm = true })
+        deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true, site = true, alarm = true,
+        doorId = true, door = true })
         or not util.integer(op.at, 0, 253402300799) then return false end
     local fields = { kind = true, at = true }
     if op.kind == 'grant' or op.kind == 'migrate' then
@@ -124,6 +144,10 @@ local function operation(op, limits)
     elseif op.kind == 'alarm' then
         fields.deviceId, fields.alarm = true, true
         if not OSSecurity.DeviceValidation.id(op.deviceId) or not state.alarm(op.alarm) then return false end
+    elseif op.kind == 'door' then
+        -- Sin 'door' se da de baja la puerta.
+        fields.doorId, fields.door = true, true
+        if not state.doorId(op.doorId) or (op.door ~= nil and (not state.door(op.door) or op.door.id ~= op.doorId)) then return false end
     elseif op.kind == 'anchor' then
         fields.anchor = true
         if not state.anchor(op.anchor) then return false end
@@ -161,11 +185,12 @@ end
 
 function state.snapshot(snapshot, limits)
     if not util.object(snapshot, { schemaVersion = true, revision = true, nextInstallation = true,
-        accounts = true, anchors = true, installations = true, lastOperation = true, sites = true, alarms = true })
+        accounts = true, anchors = true, installations = true, lastOperation = true, sites = true, alarms = true, doors = true })
         or snapshot.schemaVersion ~= 1 or not util.integer(snapshot.revision, 0, 9007199254740000)
         or not util.integer(snapshot.nextInstallation, 1, limits.MaxInstallations + 1)
         or not util.object(snapshot.accounts) or not util.object(snapshot.anchors) or not util.object(snapshot.installations)
         or (snapshot.sites ~= nil and not util.object(snapshot.sites)) or (snapshot.alarms ~= nil and not util.object(snapshot.alarms))
+        or (snapshot.doors ~= nil and not util.object(snapshot.doors))
         or (snapshot.revision == 0 and snapshot.lastOperation ~= nil)
         or (snapshot.revision > 0 and not operation(snapshot.lastOperation, limits)) then return nil, 'Formato de inventario incompatible.' end
     local count, deviceIds = 0, {}
@@ -230,6 +255,11 @@ function state.snapshot(snapshot, limits)
     for deviceId, alarm in pairs(snapshot.alarms or {}) do
         if not OSSecurity.DeviceValidation.id(deviceId) or not state.alarm(alarm) then return nil, 'Alarma invalida.' end
     end
+    count = 0
+    for doorId, door in pairs(snapshot.doors or {}) do
+        count = count + 1
+        if count > OSSecurity.GameplayConfig.Locks.MaxDoors or not state.door(door) or door.id ~= doorId then return nil, 'Puerta con cerradura invalida.' end
+    end
     if snapshot.revision == 0 and (next(snapshot.accounts) or next(snapshot.anchors) or next(snapshot.installations)) then
         return nil, 'Inventario inicial no vacio.'
     end
@@ -263,6 +293,10 @@ function state.apply(snapshot, op, limits)
     elseif op.kind == 'alarm' then
         nextState.alarms = nextState.alarms or {}
         nextState.alarms[op.deviceId] = util.copy(op.alarm)
+    elseif op.kind == 'door' then
+        nextState.doors = nextState.doors or {}
+        nextState.doors[op.doorId] = op.door and util.copy(op.door) or nil
+        if next(nextState.doors) == nil then nextState.doors = nil end
     elseif op.kind == 'site' then
         nextState.sites = nextState.sites or {}
         nextState.sites[op.deviceId] = op.site and util.copy(op.site) or nil

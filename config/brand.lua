@@ -68,6 +68,20 @@ OSSecurity.Brand = {
                 arm = 'Total', partial = 'Parcial', disarm = 'Desarmar', tag = 'Acercar chapa', clear = 'Borrar', close = 'Salir (Esc)' },
             entryWarning = 'Alarma armada: introduce el codigo en %d s o saltara.'
         },
+        locks = {
+            lockHint = '~INPUT_CONTEXT~ cerrar con llave', unlockHint = '~INPUT_CONTEXT~ abrir con llave',
+            minigame = {
+                title = 'Cambio de bombin', cancel = 'Cancelar (Esc)',
+                unscrewTitle = 'Quitar el tornillo de fijacion', unscrewHelp = 'Pulsa sobre el tornillo del canto de la puerta y gira el raton en sentido ANTIHORARIO hasta sacarlo. Sin forzar.',
+                outTitle = 'Sacar el bombin viejo', outHelp = 'Gira la llave arrastrando a su alrededor hasta que la leva quede arriba (verde). Despues arrastra el bombin hacia fuera, a la izquierda.',
+                inTitle = 'Meter el bombin nuevo', inHelp = 'Alinea arriba la leva del bombin nuevo (verde) y empujalo hacia dentro de la cerradura.',
+                screwTitle = 'Apretar el tornillo de fijacion', screwHelp = 'Pulsa sobre el tornillo y gira en sentido horario hasta apretarlo. Con demasiada fuerza se pasa la rosca.',
+                torque = 'Fuerza', strips = 'Roscas pasadas', jams = 'Atascos', turnHint = 'Sigue girando',
+                jammed = 'La leva tropieza: alineala arriba antes de mover el bombin', aligned = 'Leva alineada: ya puedes moverlo',
+                tooStrong = 'Demasiada fuerza: mas despacio', stripped = 'Rosca pasada: vuelve a empezar', screwOut = 'Tornillo fuera',
+                cylinderOut = 'Bombin viejo fuera', cylinderIn = 'Bombin nuevo dentro', done = 'Bombin cambiado'
+            }
+        },
         hello = 'Gruppe Sechs: servicio de seguridad disponible.',
         profileAbilities = 'Funciones de su perfil',
         abilities = { view = 'Consultar', inspect = 'Inspeccionar', repair = 'Reparar', replace = 'Sustituir piezas',

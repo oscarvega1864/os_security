@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0 — Cerraduras de puertas
+
+- Puertas reales (GTA o MLO) de cada propiedad o negocio con titular, detectadas automáticamente por el
+  primer jugador cercano y validadas en el servidor (titular, distancia, radio, duplicados y límites).
+- Llave (E) para el titular actual o un administrador; puertas dobles a la vez; propiedades cerradas y
+  negocios abiertos por defecto; sin titular quedan libres. Estado aplicado con el sistema de puertas de GTA.
+- Bombines por niveles: de serie, `os_lock_kit` (seguridad) y `os_lock_kit_high` (alta seguridad), con
+  minijuego propio de cambio (tornillo de fijación, leva alineada, bombín nuevo) y devolución del retirado.
+- Export `GetDoorSecurity`, `osg6 doors`, `osg6 door remove`, `/g6puerta` y entradas en el panel F10.
+
 ## Sin publicar — Proveedor externo de objetos
 
 - `ossecurity_items=os_inventory`: tablets, kits, herramientas y materiales por personaje activo en

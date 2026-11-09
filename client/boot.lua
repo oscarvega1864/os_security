@@ -1,5 +1,8 @@
 local view, placement, props = OSSecurity.ClientView.new(), OSSecurity.ClientPlacement.new(), OSSecurity.ClientProps.new()
 local alarms = OSSecurity.ClientAlarms.new()
+local locks = OSSecurity.ClientLocks.new({ detectRadius = 15.0, scanRange = 25.0,
+    report = function(report) TriggerServerEvent('os_security:locks:report', report) end })
+local cylinderOpen = false
 local lastUiAlive = GetGameTimer()
 local minigameFx = OSSecurity.MinigameFx.new()
 local minigame = OSSecurity.ClientMinigame.new({
@@ -115,15 +118,88 @@ CreateThread(function()
         local sleep = 500
         if not alarms.open and not controller.visible and not controller.placing then
             local ped = PlayerPedId()
-            local keypad = not IsPedInAnyVehicle(ped, false) and alarms.nearest(GetEntityCoords(ped), 1.6)
+            local here = GetEntityCoords(ped)
+            local onFoot = not IsPedInAnyVehicle(ped, false) and not cylinderOpen
+            local keypad = onFoot and alarms.nearest(here, 1.6)
+            local door = onFoot and not keypad and locks.nearest(here, 1.8)
             if keypad then
                 sleep = 0
                 BeginTextCommandDisplayHelp('STRING'); AddTextComponentSubstringPlayerName(OSSecurity.Brand.Text.alarm.keypadHint); EndTextCommandDisplayHelp(0, false, false, -1)
                 if IsControlJustPressed(0, 38) then TriggerServerEvent('os_security:alarm:panel', keypad.id)
                 elseif IsControlJustPressed(0, 47) then TriggerServerEvent('os_security:alarm:tag', keypad.id) end -- G: acercar chapa
+            elseif door then
+                sleep = 0
+                local L = OSSecurity.Brand.Text.locks
+                BeginTextCommandDisplayHelp('STRING'); AddTextComponentSubstringPlayerName(door.locked and L.unlockHint or L.lockHint); EndTextCommandDisplayHelp(0, false, false, -1)
+                if IsControlJustPressed(0, 38) then
+                    -- Gesto de girar la llave; el servidor decide si se tiene la llave.
+                    RequestAnimDict('anim@heists@keycard@')
+                    local deadline = GetGameTimer() + 500
+                    while not HasAnimDictLoaded('anim@heists@keycard@') and GetGameTimer() < deadline do Wait(0) end
+                    if HasAnimDictLoaded('anim@heists@keycard@') then TaskPlayAnim(ped, 'anim@heists@keycard@', 'exit', 8.0, -8.0, 900, 48, 0, false, false, false) end
+                    TriggerServerEvent('os_security:locks:toggle', door.id)
+                    sleep = 600
+                end
             end
         end
         Wait(sleep)
     end
 end)
 AddEventHandler('onResourceStop', function(resource) if resource == GetCurrentResourceName() then alarms.clear() end end)
+
+-- Cerraduras: estado de las puertas, propiedades donde detectarlas, resultados y cambio de bombin.
+RegisterNetEvent('os_security:locks:doors', function(list, targets)
+    if source ~= 65535 then return end
+    locks.apply(list)
+    if targets then locks.setTargets(targets) end
+end)
+RegisterNetEvent('os_security:locks:result', function(ok, message)
+    if source ~= 65535 or type(message) ~= 'string' then return end
+    OSSecurity.Notify(message, ok and 'success' or 'error')
+end)
+CreateThread(function() -- los titulares cambian en os_devtools sin aviso: se resincroniza cada minuto
+    while not NetworkIsPlayerActive(PlayerId()) do Wait(1000) end
+    while true do TriggerServerEvent('os_security:locks:sync'); Wait(60000) end
+end)
+local function cylinderClose(success)
+    if not cylinderOpen then return end
+    cylinderOpen = false
+    SetNuiFocus(false, false); minigameFx.stop()
+    SendNUIMessage({ type = 'cylinderClose' })
+    TriggerServerEvent('os_security:locks:changeFinish', success == true)
+end
+RegisterNetEvent('os_security:locks:change', function(data)
+    if source ~= 65535 or type(data) ~= 'table' or cylinderOpen or minigame.active() or controller.visible then
+        if source == 65535 and not cylinderOpen then TriggerServerEvent('os_security:locks:changeFinish', false) end
+        return
+    end
+    cylinderOpen = true
+    minigameFx.phase('screw')
+    SetNuiFocus(true, true)
+    SendNUIMessage({ type = 'cylinder', data = { from = data.from, to = data.to, tier = data.tier }, text = OSSecurity.Brand.Text.locks.minigame })
+    SetTimeout(170000, function() if cylinderOpen then cylinderClose(false) end end)
+end)
+RegisterNUICallback('cylinder', function(body, callback)
+    callback({ ok = true })
+    cylinderClose(type(body) == 'table' and body.ok == true)
+end)
+RegisterNUICallback('cylinderFx', function(body, callback)
+    callback({ ok = true })
+    if not cylinderOpen or type(body) ~= 'table' then return end
+    if type(body.phase) == 'string' then minigameFx.phase(body.phase) end
+    if type(body.cue) == 'string' then minigameFx.cue(body.cue) end
+end)
+-- /g6puerta <propiedad|negocio> <id> | borrar: apano manual para una puerta que no se detecte sola.
+RegisterCommand('g6puerta', function(_, args)
+    if args[1] == 'borrar' then TriggerServerEvent('os_security:locks:register', { remove = true }); return end
+    local entity = locks.aimed(8.0)
+    if not entity then OSSecurity.Notify('Apunta a la puerta: /g6puerta <propiedad|negocio> <id> (o /g6puerta borrar junto a ella).', 'warning'); return end
+    local p = GetEntityCoords(entity)
+    TriggerServerEvent('os_security:locks:register', { kind = args[1], id = tonumber(args[2]), model = GetEntityModel(entity),
+        position = { x = p.x, y = p.y, z = p.z } })
+end, false)
+AddEventHandler('onResourceStop', function(resource)
+    if resource ~= GetCurrentResourceName() then return end
+    if cylinderOpen then cylinderOpen = false; SetNuiFocus(false, false); minigameFx.stop() end
+    locks.clear()
+end)

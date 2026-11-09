@@ -1,7 +1,7 @@
 OSSecurity.GameplayCommands = {}
 
 function OSSecurity.GameplayCommands.register(options)
-    local usage = 'osg6 give <jugador> <item> <cantidad> | inventory <jugador> | migrate <jugador> | access <jugador> <dispositivo> <client|technician|supervisor|none> | anchor <id> <cliente> <instalador> <x> <y> <z> <nx> <ny> <nz> [radio] | site <dispositivo> <propiedad|negocio> <id> | site <dispositivo> none | installations | diagnose'
+    local usage = 'osg6 give <jugador> <item> <cantidad> | inventory <jugador> | migrate <jugador> | access <jugador> <dispositivo> <client|technician|supervisor|none> | anchor <id> <cliente> <instalador> <x> <y> <z> <nx> <ny> <nz> [radio] | site <dispositivo> <propiedad|negocio> <id> | site <dispositivo> none | installations | doors | door remove <puerta> | diagnose'
     local holdings = options.holdings
     local function target(value)
         local player = tonumber(value)
@@ -116,6 +116,14 @@ function OSSecurity.GameplayCommands.register(options)
                 options.reply(source, ('%s | %s | %s'):format(id, installation.status, installation.deviceId or '-'))
             end
             options.reply(source, ('Instalaciones: %d'):format(#ids)); return
+        elseif action == 'doors' and #args == 1 then
+            local lines = options.locks.describe()
+            options.reply(source, ('Puertas con cerradura: %d'):format(#lines))
+            for _, line in ipairs(lines) do options.reply(source, line) end
+            return
+        elseif action == 'door' and args[2] == 'remove' and #args == 3 then
+            local message, reason = options.locks.unregister(source, args[3])
+            options.reply(source, message or reason); return
         elseif action == 'diagnose' and #args == 1 then
             options.reply(source, ('Device Core=%s | Inventario=%s | Objetos=%s | Flujo G6=%s'):format(
                 tostring(options.registry.status()), tostring(options.inventory.status()),

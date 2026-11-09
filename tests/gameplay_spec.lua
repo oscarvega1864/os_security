@@ -48,6 +48,7 @@ local function fixture(files, external)
         log = function(message) c.replies[#c.replies + 1] = { 0, message } end,
         schedule = function(callback) c.timers[#c.timers + 1] = callback end,
         items = external and external.items or nil,
+        locksChanged = function(list) c.doorBroadcasts = (c.doorBroadcasts or 0) + 1; c.lastDoors = list end,
         alarmEffects = {
             players = function()
                 local list = {}
@@ -67,6 +68,11 @@ local function fixture(files, external)
         end }),
         sites = OSSecurity.Sites.new({
             asset = function(category, id) if c.sitesFail then error('caido') end; return c.assets[category][id] end,
+            list = function(category)
+                local result = {}
+                for _, asset in pairs(c.assets[category]) do result[#result + 1] = asset end
+                return result
+            end,
             active = function(source) return c.active[source] end
         })
     })
@@ -755,13 +761,14 @@ test('Native server wiring keeps replies private, normalizes ACE and creates uni
     local handlers, commands, files, replies, hashes = {}, {}, {}, {}, 0
     local ok, err = pcall(function()
         stub('RegisterNetEvent', function(name, callback)
-            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name:match('^os_security:alarm:'))
+            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name:match('^os_security:alarm:') or name:match('^os_security:locks:'))
             if name == 'os_security:g6:request' then handlers.request = callback else handlers.anchorAim = callback end
         end)
         stub('RegisterCommand', function(name, callback) commands[name] = callback end)
         stub('CreateThread', function() end)
         stub('AddEventHandler', function(name, callback) handlers[name] = callback end)
         stub('GetCurrentResourceName', function() return 'os_security' end)
+        stub('exports', setmetatable({}, { __call = function() end }))
         stub('GetConvar', function(_, default) return default end) -- sin convars: proveedor standalone
         stub('GetPlayerName', function(player) return player == 7 and 'Untrusted display name' or nil end)
         stub('GetPlayerIdentifierByType', function(player, kind) assert(player == 7 and kind == 'license'); return 'license:' .. string.rep('a', 40) end)
@@ -933,4 +940,128 @@ test('osg6 give and inventory use the external provider when configured', functi
     assert(c.replies[#c.replies][2] == 'os_cctv_kit=2')
     c.commands.osg6(0, { 'give', '3', 'agua', '1' })
     assert(e.count(3, 'agua') == 0)
+end)
+
+
+-- Cerraduras de puertas ------------------------------------------------------------------------
+local function property(c, id, owner, point)
+    c.assets.properties[id] = { id = id, owner = owner, position = point or { x = 100, y = 100, z = 30 } }
+end
+local function doorReport(id, doors) return { kind = 'property', id = id, doors = doors } end
+local FRONT = { model = 520341586, x = 103, y = 100, z = 30 }
+local FRONT2 = { model = 520341586, x = 104.5, y = 100, z = 30 } -- otra hoja (puerta doble)
+local BACK = { model = -1234567, x = 100, y = 110, z = 30 }
+
+test('Doors of an owned property are detected from a nearby player, locked with the stock cylinder; unowned or far reports are ignored', function()
+    local c = fixture(); assert(c.loaded, c.loadError)
+    property(c, 7, nil)
+    c.players[2].point = { x = 101, y = 100, z = 30 }
+    assert(c.game.locks.report(2, doorReport(7, { FRONT })) == 0) -- sin titular no hay cerradura
+    property(c, 7, 'ana')
+    c.players[2].point = { x = 300, y = 100, z = 30 }
+    assert(c.game.locks.report(2, doorReport(7, { FRONT })) == 0) -- quien informa esta lejos
+    c.players[2].point = { x = 101, y = 100, z = 30 }
+    local far = { model = 5, x = 150, y = 100, z = 30 }
+    assert(c.game.locks.report(2, doorReport(7, { FRONT, BACK, far, { model = 'x', x = 1, y = 1, z = 1 } })) == 2)
+    local list = c.game.locks.list()
+    assert(#list == 2 and list[1].id == 'p7_1' and list[1].locked == true and list[1].tier == 1 and c.lastDoors and #c.lastDoors == 2)
+    assert(c.game.locks.report(2, doorReport(7, { FRONT2 })) == 0) -- enfriamiento por propiedad
+    c.core.time = c.core.time + 61
+    assert(c.game.locks.report(2, doorReport(7, { FRONT, FRONT2 })) == 1) -- el duplicado no se repite
+    local restarted = fixture(c.core.files); property(restarted, 7, 'ana')
+    assert(#restarted.game.locks.list() == 3 and restarted.game.locks.security('p7_1') == 1)
+    c.assets.properties[7].owner = nil
+    assert(#c.game.locks.list() == 0) -- sin titular las puertas quedan libres
+    c.assets.businesses[3] = { id = 3, owner = 'ana', position = { x = 500, y = 0, z = 10 } }
+    c.players[2].point = { x = 500, y = 1, z = 10 }
+    assert(c.game.locks.report(2, { kind = 'business', id = 3, doors = { { model = 1, x = 502, y = 0, z = 10 } } }) == 1)
+    assert(c.game.locks.list()[1].id == 'n3_1' and c.game.locks.list()[1].locked == false) -- los negocios quedan abiertos
+end)
+
+test('Only the current owner (or an admin) holds the key; double doors lock together and reassignment moves the key', function()
+    local c = fixture(); property(c, 7, 'ana')
+    c.active[2] = { alias = 'ana' }; c.active[5] = { alias = 'luis' }
+    c.players[2].point = { x = 102, y = 100, z = 30 }
+    assert(c.game.locks.report(2, doorReport(7, { FRONT, FRONT2, BACK })) == 3)
+    c.players[5].point = { x = 102.5, y = 100, z = 30 }
+    local _, denied = c.game.locks.toggle(5); assert(denied == 'No tienes la llave de esta puerta.')
+    c.players[2].point = { x = 102.5, y = 100, z = 30 }
+    local opened = assert(c.game.locks.toggle(2)); assert(opened.locked == false)
+    local doors = c.game.inventory.doors()
+    assert(doors.p7_1.locked == false and doors.p7_2.locked == false and doors.p7_3.locked == true) -- ambas hojas, no la trasera
+    c.players[2].point = { x = 200, y = 100, z = 30 }
+    assert(not c.game.locks.toggle(2)) -- lejos
+    c.assets.properties[7].owner = 'luis'
+    c.players[2].point = { x = 102.5, y = 100, z = 30 }
+    assert(not c.game.locks.toggle(2) and assert(c.game.locks.toggle(5)).locked == true)
+    c.players[4].point = { x = 100, y = 110.5, z = 30 }
+    assert(assert(c.game.locks.toggle(4)).locked == false) -- administrador
+end)
+
+test('Changing the cylinder needs the open door, a screwdriver and the kit; charges once and returns the previous cylinder', function()
+    local e = externalItems(); local c = fixture(nil, e); property(c, 7, 'ana')
+    c.active[2] = { alias = 'ana' }
+    c.players[2].point = { x = 102, y = 100, z = 30 }
+    assert(c.game.locks.report(2, doorReport(7, { FRONT })) == 1)
+    local _, why = c.game.locks.changeBegin(2, 'os_lock_kit'); assert(why == 'Abre la puerta antes de cambiar el bombin.')
+    assert(c.game.locks.toggle(2))
+    _, why = c.game.locks.changeBegin(2, 'os_lock_kit'); assert(why == 'No tienes ese bombin.')
+    e.give(2, 'os_lock_kit'); e.give(2, 'os_lock_kit_high')
+    _, why = c.game.locks.changeBegin(2, 'os_lock_kit'); assert(why == 'Necesitas un destornillador.')
+    e.give(2, 'os_screwdriver')
+    assert(not c.game.locks.changeBegin(2, 'os_drill')) -- no es un bombin
+    assert(c.game.locks.changeBegin(2, 'os_lock_kit'))
+    assert(not c.game.locks.toggle(2)) -- no se puede cerrar durante el cambio
+    local _, cancelled = c.game.locks.changeFinish(2, false); assert(cancelled:find('no se ha gastado'))
+    assert(e.count(2, 'os_lock_kit') == 1 and c.game.locks.security('p7_1') == 1)
+    assert(c.game.locks.changeBegin(2, 'os_lock_kit'))
+    local done = assert(c.game.locks.changeFinish(2, true))
+    assert(done.tier == 2 and e.count(2, 'os_lock_kit') == 0 and c.game.locks.security('p7_1') == 2)
+    assert(not c.game.locks.changeFinish(2, true)) -- un solo uso
+    _, why = c.game.locks.changeBegin(2, 'os_lock_kit'); assert(why:find('ya tiene'))
+    assert(c.game.locks.changeBegin(2, 'os_lock_kit_high'))
+    assert(c.game.locks.changeFinish(2, true).tier == 3)
+    assert(e.count(2, 'os_lock_kit_high') == 0 and e.count(2, 'os_lock_kit') == 1 and e.count(2, 'os_screwdriver') == 1) -- vuelve el anterior
+    local door = c.game.inventory.doors().p7_1
+    assert(door.cylinder == 'os_lock_kit_high' and door.changes == 2)
+end)
+
+test('A stranger cannot change a cylinder but an on-duty G6 technician can; moving away voids the change', function()
+    local e = externalItems(); local c = fixture(nil, e); property(c, 7, 'ana')
+    c.active[2] = { alias = 'ana' }
+    c.players[2].point = { x = 102, y = 100, z = 30 }
+    assert(c.game.locks.report(2, doorReport(7, { FRONT })) == 1); assert(c.game.locks.toggle(2))
+    e.give(5, 'os_lock_kit'); e.give(5, 'os_screwdriver')
+    c.players[5].point = { x = 102.5, y = 100, z = 30 }
+    local _, why = c.game.locks.changeBegin(5, 'os_lock_kit'); assert(why:find('titular o un tecnico'))
+    c.jobs[5] = { job = 'gruppe6', rank = 'tecnico', duty = true, characterId = e.holders[5] }
+    assert(c.game.locks.changeBegin(5, 'os_lock_kit'))
+    c.players[5].point = { x = 120, y = 100, z = 30 }
+    assert(not c.game.locks.changeFinish(5, true) and e.count(5, 'os_lock_kit') == 1 and c.game.locks.security('p7_1') == 1)
+end)
+
+test('An admin can drop a wrongly detected door: it stays free and is never re-detected until /g6puerta restores it', function()
+    local c = fixture(); property(c, 7, 'ana')
+    c.players[4].point = { x = 102, y = 100, z = 30 }
+    assert(c.game.locks.report(4, doorReport(7, { FRONT })) == 1)
+    assert(not c.game.locks.unregister(2, 'p7_1'))
+    assert(c.game.locks.unregister(4, 'p7_1'))
+    assert(#c.game.locks.list() == 0 and c.game.inventory.doors().p7_1.ignored == true)
+    c.core.time = c.core.time + 61
+    assert(c.game.locks.report(4, doorReport(7, { FRONT })) == 0)
+    local message = assert(c.game.locks.register(4, { kind = 'propiedad', id = 7, model = FRONT.model, position = { x = 103, y = 100, z = 30 } }))
+    assert(message:find('p7_1') and #c.game.locks.list() == 1)
+    assert(not c.game.locks.register(2, { kind = 'propiedad', id = 7, model = 1, position = { x = 101, y = 101, z = 30 } }))
+    local _, missing = c.game.locks.register(4, { kind = 'propiedad', id = 99, model = 1, position = { x = 101, y = 101, z = 30 } })
+    assert(missing:find('inexistente'))
+end)
+
+test('Inventory state rejects malformed doors', function()
+    local base = { id = 'p7_1', site = { kind = 'property', id = 7 }, model = 1, position = { x = 1, y = 2, z = 3 }, bucket = 0,
+        tier = 1, locked = true, changes = 0, updatedAt = 1 }
+    assert(OSSecurity.InventoryState.door(base))
+    local function bad(field, value) local d = util.copy(base); d[field] = value; return not OSSecurity.InventoryState.door(d) end
+    assert(bad('id', 'x_1') and bad('tier', 2) and bad('cylinder', 'os_drill') and bad('locked', 'yes') and bad('ignored', false) and bad('extra', 1))
+    local upgraded = util.copy(base); upgraded.cylinder, upgraded.tier = 'os_lock_kit_high', 3
+    assert(OSSecurity.InventoryState.door(upgraded))
 end)

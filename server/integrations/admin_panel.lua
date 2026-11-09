@@ -97,6 +97,12 @@ function OSSecurity.AdminPanel.build(run)
                   return run(source, 'osg6', { 'site', values.dispositivo, values.tipo, tostring(values.id) })
               end },
             { id = 'instalaciones', label = 'Instalaciones registradas', ace = ace, handler = cmd('osg6', function() return { 'installations' } end) },
+            { id = 'puertas', label = 'Puertas con cerradura', ace = ace, description = 'Puertas detectadas en propiedades y negocios, bombin y estado.',
+              handler = cmd('osg6', function() return { 'doors' } end) },
+            { id = 'borrarpuerta', label = 'Dar de baja una puerta', ace = ace, confirm = true,
+              fields = { { id = 'puerta', label = 'Puerta (p12_1...)', type = 'text', max = 24 } },
+              description = 'Para puertas detectadas por error: queda libre y no se vuelve a detectar (/g6puerta la recupera).',
+              handler = cmd('osg6', function(v) return { 'door', 'remove', v.puerta } end) },
             { id = 'diagnostico', label = 'Estado del sistema G6', ace = ace, handler = cmd('osg6', function() return { 'diagnose' } end) }
         }
     }

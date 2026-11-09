@@ -39,3 +39,4 @@ button.danger{border-color:#c0604a;color:#c0604a}button.danger:hover:not(:disabl
 .mg-socket.linked.red{stroke:#d65a4a}.mg-socket.linked.black{stroke:#8a8a8a}.mg-socket.linked.white{stroke:#e6e6e0}.mg-socket.linked.green{stroke:#64b06b}.mg-socket.linked.yellow{stroke:#e0c049}
 .mg-wire-code{fill:#a9c66f;font:600 9px Inter,Arial,sans-serif;pointer-events:none}
 .mg-socket:not(.linked){stroke:#5d6b62}
+.cy-channel{fill:#050807;stroke:#4a5751;stroke-width:1.5}.cy-body{fill:#8d9893;stroke:#cfd8d2;stroke-width:1.5}.cy-cylinder.fresh .cy-body{fill:#c9a24a;stroke:#f0d58a}.cy-key{fill:#5f6a65;stroke:#cfd8d2;stroke-width:2;cursor:grab}.cy-blade{fill:#cfd8d2}.cy-cam{stroke:#d65a4a;stroke-width:6;stroke-linecap:round}.cy-cam.aligned{stroke:#64b06b}.cy-hub{fill:#2a312d;stroke:#cfd8d2;stroke-width:1.5}.cy-cylinder{cursor:grab}

@@ -26,6 +26,20 @@ OSSecurity.GameplayConfig = {
         PinMin = 4, PinMax = 6, MaxPinAttempts = 3, LockoutSeconds = 60, MaxTags = 10, MaxEvents = 20,
         NotifyRadius = 150.0 -- la sirena la genera la NUI de cada cliente; se oye hasta 150 m
     },
+    -- Cerraduras de puertas: las puertas reales (mapa o MLO) de cada propiedad o negocio con titular se
+    -- detectan solas y quedan con el bombin de serie (las de propiedades, cerradas). El titular abre y cierra con su llave (E) y puede
+    -- cambiar el bombin por uno mas seguro con el kit; el nivel queda para robos y ganzuas futuros.
+    Locks = {
+        InteractDistance = 2.0, ChangeSeconds = 180, MaxDoors = 256, MaxDoorsPerSite = 8, DuplicateDistance = 0.5,
+        -- Deteccion automatica: puertas del mapa a DetectRadius del punto de la propiedad, informadas por
+        -- un jugador a menos de ReportRange. Las hojas a PairDistance se abren juntas (puertas dobles).
+        DetectRadius = 15.0, ReportRange = 60.0, ScanCooldown = 60, PairDistance = 2.6,
+        LockedByDefault = { property = true, business = false },
+        Tools = { 'os_screwdriver' },
+        Tiers = { 'Bombin de serie', 'Bombin de seguridad', 'Bombin de alta seguridad' },
+        -- Kit -> nivel. El bombin retirado vuelve al inventario (el de serie se desecha).
+        Cylinders = { os_lock_kit = 2, os_lock_kit_high = 3 }
+    },
     Ace = {
         client = 'ossecurity.g6.client', operations = 'ossecurity.g6.operations',
         technician = 'ossecurity.g6.technician', supervisor = 'ossecurity.g6.supervisor', admin = 'ossecurity.admin'
