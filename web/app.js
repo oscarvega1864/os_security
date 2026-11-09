@@ -128,7 +128,9 @@
     hero(content, null, text('inventoryHero'));
     if (state.module === 'installations' && state.session.canInstall) {
       content.append(button(text('installationAction'), () => request('use', { item: 'os_cctv_kit' }), !data.items.some(item => item.id === 'os_cctv_kit' && item.count > 0)));
-      content.append(button(text('alarmInstallAction'), () => request('use', { item: 'os_alarm_kit' }), !data.items.some(item => item.id === 'os_alarm_kit' && item.count > 0)));
+      for (const [kit, label] of [['os_alarm_kit', 'alarmInstallAction'], ['os_alarm_kit_panel', 'alarmPanelInstallAction']]) {
+        content.append(button(text(label), () => request('use', { item: kit }), !data.items.some(item => item.id === kit && item.count > 0)));
+      }
       content.append(el('p', text('placementHelp'), 'subtle'));
     }
     const grid = el('div', null, 'grid');

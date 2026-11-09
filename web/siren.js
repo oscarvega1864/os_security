@@ -3,6 +3,8 @@
   // Sirena de alarma generada con Web Audio (sin archivos de sonido externos): ulular clasico
   // (barrido de frecuencia) con volumen segun la distancia que calcula el cliente del juego.
   // Tambien los pitidos del retardo de entrada y del teclado.
+  // Volumen maximo (pegado al teclado). Antes 0.35: demasiado fuerte.
+  const MAX_SIREN = 0.12, MAX_BEEP = 0.08;
   let context = null, siren = null;
   function audio() {
     if (!context) { const Ctor = window.AudioContext || window.webkitAudioContext; if (!Ctor) return null; context = new Ctor(); }
@@ -21,7 +23,7 @@
       tone.start(); wobble.start();
       siren = { gain, tone, wobble };
     }
-    siren.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, volume)) * 0.35, ctx.currentTime, 0.15);
+    siren.gain.gain.setTargetAtTime(Math.max(0, Math.min(1, volume)) * MAX_SIREN, ctx.currentTime, 0.4);
   }
   function stop() {
     if (!siren || !context) return;
@@ -29,7 +31,7 @@
     current.gain.gain.setTargetAtTime(0, context.currentTime, 0.1);
     setTimeout(() => { try { current.tone.stop(); current.wobble.stop(); } catch { /* ya detenido */ } }, 400);
   }
-  function beep(frequency = 1800, duration = 0.12, volume = 0.18) {
+  function beep(frequency = 1800, duration = 0.12, volume = MAX_BEEP) {
     const ctx = audio(); if (!ctx) return;
     const gain = ctx.createGain(); gain.gain.value = volume; gain.connect(ctx.destination);
     const tone = ctx.createOscillator(); tone.type = 'square'; tone.frequency.value = frequency; tone.connect(gain);

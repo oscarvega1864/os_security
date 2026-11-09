@@ -15,7 +15,7 @@ OSSecurity.ClientPlacement.Depth = { min = -0.15, max = 0.3 } -- igual que MinDe
 OSSecurity.ClientPlacement.TiltLimit = 90.0 -- igual que el servidor
 -- Modelos planos que van pegados a la pared (teclados, paneles): su cara ancha se orienta hacia fuera
 -- y su parte trasera queda a ras de la superficie. R les da la vuelta (cara delantera o trasera).
-OSSecurity.ClientPlacement.FlatModels = { prop_ld_keypad_01 = true }
+OSSecurity.ClientPlacement.FlatModels = { prop_ld_keypad_01 = true, hei_prop_hei_securitypanel = true }
 
 -- A partir de las dimensiones del modelo: giro extra para que el eje mas fino mire hacia fuera y
 -- profundidad que deja la trasera a ras para cada sentido (1: eje positivo hacia fuera, -1: negativo).

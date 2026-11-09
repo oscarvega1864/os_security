@@ -473,20 +473,22 @@ test('Supervisors cannot uninstall; the device owner can from the Client tablet'
     assert(call(c, 2, owner, 'remove_confirm', { deviceId = id }).ok and count(c, 2, 'os_cctv_kit') == 1)
 end)
 
-test('The alarm kit installs a physical alarm panel linked to its installation and consumes its own materials', function()
-    local c = fixture(); grant(c, 1, 'g6_operations_tablet'); grant(c, 1, 'os_alarm_kit'); grant(c, 1, 'os_battery')
+for kitItem, model in pairs({ os_alarm_kit = 'prop_ld_keypad_01', os_alarm_kit_panel = 'hei_prop_hei_securitypanel' }) do
+test('The alarm kit ' .. kitItem .. ' installs a physical alarm panel (' .. model .. ') and consumes its own materials', function()
+    local c = fixture(); grant(c, 1, 'g6_operations_tablet'); grant(c, 1, kitItem); grant(c, 1, 'os_battery')
     grant(c, 1, 'os_drill'); grant(c, 1, 'os_screwdriver'); anchor(c)
     local session = open(c, 1, 'operations')
     nextRequest = nextRequest + 1
-    local used = c.game.handle(1, { id = nextRequest, action = 'use', token = session.token, sequence = session.sequence + 1, args = { item = 'os_alarm_kit' } })
-    assert(used.ok and used.placement and used.placement.model == 'prop_ld_keypad_01', used.error)
+    local used = c.game.handle(1, { id = nextRequest, action = 'use', token = session.token, sequence = session.sequence + 1, args = { item = kitItem } })
+    assert(used.ok and used.placement and used.placement.model == model, used.error)
     local operations = used.session; operations.sequence = 0
     local response = call(c, 1, operations, 'place_confirm', proposal())
     assert(response.ok, response.error)
     local device = c.core.registry.get(0, response.data.id)
-    assert(device.type == 'alarm_panel' and device.model == 'prop_ld_keypad_01' and device.metadata.installationId == response.data.installationId)
-    assert(count(c, 1, 'os_alarm_kit') == 0 and count(c, 1, 'os_battery') == 0 and count(c, 1, 'os_drill') == 1)
+    assert(device.type == 'alarm_panel' and device.model == model and device.metadata.installationId == response.data.installationId)
+    assert(count(c, 1, kitItem) == 0 and count(c, 1, 'os_battery') == 0 and count(c, 1, 'os_drill') == 1)
 end)
+end
 
 test('Square mount zones accept corners and inverted ceiling orientation, and reject points outside the square', function()
     local c = fixture(); kit(c); anchor(c)

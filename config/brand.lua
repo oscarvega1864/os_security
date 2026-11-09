@@ -51,7 +51,7 @@ OSSecurity.Brand = {
             unscrewed = 'Tornillo fuera'
         },
         placementMount = 'Montaje',
-        alarmInstallAction = 'Preparar instalacion de alarma',
+        alarmInstallAction = 'Instalar alarma (teclado)', alarmPanelInstallAction = 'Instalar alarma (panel lector)',
         remove = 'Desmontar', removed = 'Dispositivo %s desmontado: el kit vuelve a tu inventario.', removeCancelled = 'Desmontaje cancelado.',
         removeHelp = 'Debes estar junto al dispositivo con taladro y destornillador.',
         alarm = {

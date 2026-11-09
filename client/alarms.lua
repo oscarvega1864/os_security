@@ -7,7 +7,8 @@ function OSSecurity.ClientAlarms.new()
     local sirens, alertBlips = {}, {} -- sirens: deviceId -> posicion del teclado
     local volume = 0
     local function beep(frequency, duration) SendNUIMessage({ type = 'beep', frequency = frequency, duration = duration }) end
-    -- Volumen de la sirena segun la sirena activa mas cercana (inaudible a 150 m).
+    -- Volumen de la sirena segun la sirena activa mas cercana: cae rapido al alejarse (curva cuadratica)
+    -- y es inaudible a 150 m. Pegado al teclado suena al maximo; a 30 m, ~64 %; a 75 m, 25 %.
     CreateThread(function()
         while true do
             Wait(250)
@@ -16,7 +17,8 @@ function OSSecurity.ClientAlarms.new()
                 local here = GetEntityCoords(PlayerPedId())
                 for _, position in pairs(sirens) do
                     local d = #(here - vector3(position.x, position.y, position.z))
-                    loudest = math.max(loudest, 1.0 - math.min(1.0, d / 150.0))
+                    local closeness = 1.0 - math.min(1.0, d / 150.0)
+                    loudest = math.max(loudest, closeness * closeness)
                 end
             end
             if math.abs(loudest - volume) > 0.02 or (loudest == 0 and volume ~= 0) then
