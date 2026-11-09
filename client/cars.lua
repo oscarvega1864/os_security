@@ -85,21 +85,31 @@ function OSSecurity.ClientCars.new(options)
         SetVehicleEngineOn(vehicle, on, false, true)
     end
     CreateThread(function()
-        local last = 0
+        local last, driven, keepUntil = 0, 0, 0
         while true do
             local ped = PlayerPedId()
             local vehicle = GetVehiclePedIsTryingToEnter(ped)
             if vehicle == 0 then vehicle = GetVehiclePedIsIn(ped, false) end
             local keyed = vehicle ~= 0 and owned(vehicle)
             SetPedConfigFlag(ped, 429, keyed) -- no arrancar solo al subir
-            if keyed and GetPedInVehicleSeat(vehicle, -1) == ped and not started[vehicle] and GetIsVehicleEngineRunning(vehicle) then
-                SetVehicleEngineOn(vehicle, false, true, true)
+            local exiting = GetIsTaskActive(ped, 2) -- CTaskExitVehicle
+            if keyed and GetPedInVehicleSeat(vehicle, -1) == ped and not exiting then
+                if not started[vehicle] and GetIsVehicleEngineRunning(vehicle) then SetVehicleEngineOn(vehicle, false, true, true) end
+                if started[vehicle] then driven = vehicle; SetVehicleKeepEngineOnWhenAbandoned(vehicle, true) end
+            end
+            -- Al bajarse con el motor arrancado con la llave, GTA lo apaga: se mantiene en marcha hasta pulsar Y.
+            if driven ~= 0 and (exiting or GetVehiclePedIsIn(ped, false) ~= driven) then
+                if started[driven] and DoesEntityExist(driven) then
+                    if exiting then keepUntil = GetGameTimer() + 1500 end
+                    SetVehicleEngineOn(driven, true, true, true)
+                    if not exiting and GetGameTimer() > keepUntil then driven = 0 end
+                else driven = 0 end
             end
             if vehicle ~= last then
                 if last ~= 0 and not DoesEntityExist(last) then started[last] = nil end
                 last = vehicle
             end
-            Wait(keyed and 100 or 400)
+            Wait((keyed or driven ~= 0) and 100 or 400)
         end
     end)
     -- Intentar entrar en un vehiculo cerrado (o estar dentro de uno cerrado sin abrirlo) se informa al
