@@ -104,6 +104,24 @@ function OSSecurity.ClientTablet.new(options)
             end)
         end)
     end
+    -- Desmontar un dispositivo instalado: el servidor valida permiso, distancia y herramientas;
+    -- despues el minijuego inverso decide si se confirma o se cancela.
+    function controller.remove(deviceId, callback)
+        controller.request('remove_begin', { deviceId = deviceId }, function(response)
+            callback({ ok = response.ok, error = response.error, close = response.close })
+            if not response.ok or type(response.removal) ~= 'table' then return end
+            hide(); controller.placing = true
+            local function finish(ok)
+                controller.request(ok and 'remove_confirm' or 'remove_cancel', ok and { deviceId = deviceId } or {}, function(result)
+                    controller.placing = false
+                    if not ok then options.notify(OSSecurity.Brand.Text.removeCancelled, 'info'); return end
+                    options.notify(result.ok and OSSecurity.Brand.Text.removed:format(deviceId) or result.error, result.ok and 'success' or 'error')
+                    if result.ok then controller.stream() end
+                end)
+            end
+            if options.minigame then options.minigame(function(ok) finish(ok) end, 'remove') else finish(true) end
+        end)
+    end
     function controller.place(callback)
         controller.request('place_begin', {}, function(response)
             callback({ ok = response.ok, error = response.error, close = response.close })

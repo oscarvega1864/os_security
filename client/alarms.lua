@@ -43,8 +43,16 @@ function OSSecurity.ClientAlarms.new()
         return best
     end
     function alarms.show(data, err)
-        if not data then OSSecurity.Notify(err, 'error'); return end
+        if alarms.open and data and data.deviceId == alarms.open then SendNUIMessage({ type = 'pinpadUpdate', data = data }); return end
+        if not data then if not alarms.open then OSSecurity.Notify(err, 'error') end; return end
         alarms.open = data.deviceId
+        CreateThread(function() -- resincroniza estado y cuentas atras mientras el teclado este abierto
+            local deviceId = data.deviceId
+            while alarms.open == deviceId do
+                Wait(3000)
+                if alarms.open == deviceId then TriggerServerEvent('os_security:alarm:panel', deviceId) end
+            end
+        end)
         SetNuiFocus(true, true)
         SendNUIMessage({ type = 'pinpad', data = data, text = { pad = A.pad, pinFormat = OSSecurity.Brand.Text.alarm.pinFormat } })
     end

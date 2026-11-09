@@ -70,6 +70,7 @@ RegisterNUICallback('request', function(body, callback)
     if type(body) ~= 'table' or type(body.action) ~= 'string' or type(body.args) ~= 'table' then callback({ ok = false }); return end
     if body.action == 'use' then controller.use(body.args.item, callback)
     elseif body.action == 'place_begin' then controller.place(callback)
+    elseif body.action == 'remove' and type(body.args.deviceId) == 'string' then controller.remove(body.args.deviceId, callback)
     elseif ({ inventory = true, devices = true, device = true, maintain = true, alarm = true })[body.action] then controller.request(body.action, body.args, callback)
     else callback({ ok = false, error = OSSecurity.Brand.Text.unavailable }) end
 end)

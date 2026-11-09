@@ -51,9 +51,18 @@ function OSSecurity.Gameplay.new(options)
         employment = options.employment, sites = options.sites })
     local sessions = OSSecurity.TabletSessions.new({ auth = auth, alive = options.alive, now = options.now,
         token = function(source) tokenCounter = tokenCounter + 1; return options.token(source, tokenCounter) end })
+    local alarmsRef -- se asigna al crear el servicio de alarmas (mas abajo)
     local placement = OSSecurity.InstallationService.new({ inventory = inventory, holdings = holdings, registry = options.registry,
         now = options.now, world = options.world, audit = options.audit, schedule = options.schedule,
-        alive = options.alive, invalidate = sessions.close, log = options.log })
+        alive = options.alive, invalidate = sessions.close, log = options.log,
+        -- Desmontar: perfil con instalacion y acceso tecnico al dispositivo, o su propietario.
+        canRemove = function(actor, device)
+            if actor.kind == 'operations' then
+                return config.Profiles[actor.role] and config.Profiles[actor.role].install == true and auth.access(actor, device, 'repair') == true
+            end
+            return actor.kind == 'client' and device.owner == actor.principal
+        end,
+        removed = function(deviceId) if alarmsRef then alarmsRef.forgetDevice(deviceId) end end })
     local function actorOf(source)
         local principal = identity.resolve(source)
         if not principal then return nil end
@@ -101,6 +110,7 @@ function OSSecurity.Gameplay.new(options)
             end
         end
     })
+    alarmsRef = alarms
     local service = OSSecurity.TabletService.new({ inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, employeeId = options.employeeId,
         sites = options.sites, alarms = alarms })
     local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,

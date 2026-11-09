@@ -34,6 +34,9 @@ function OSSecurity.TabletService.new(options)
             physical = installation ~= nil and installation.status == 'committed' and installation.deviceId == device.id,
             site = site and (options.sites and options.sites.label(site) or OSSecurity.Sites.Labels[site.kind] .. ' ' .. site.id) or nil,
             alarm = device.type == 'alarm_panel' and options.alarms and options.alarms.summary(device) or nil,
+            removable = installation ~= nil and installation.status == 'committed' and installation.deviceId == device.id and device.state ~= 'retired'
+                and (actor.kind == 'operations' and OSSecurity.GameplayConfig.Profiles[actor.role] and OSSecurity.GameplayConfig.Profiles[actor.role].install == true
+                    and options.auth.access(actor, device, 'repair') == true or (actor.kind == 'client' and device.owner == actor.principal)),
             remoteVideo = false }
     end
     function service.inventory(actor)

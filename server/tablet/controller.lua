@@ -62,6 +62,13 @@ function OSSecurity.TabletController.new(options)
             if result then return { ok = true, placement = result } end
         elseif actor.kind == 'operations' and request.action == 'place_confirm' then
             result, reason = options.placement.confirm(source, session, request.args)
+        elseif actor.kind ~= 'inventory' and request.action == 'remove_begin' and util.object(request.args, { deviceId = true }) then
+            result, reason = options.placement.removeBegin(source, session, request.args.deviceId)
+            if result then return { ok = true, removal = result, expires = session.expires } end
+        elseif actor.kind ~= 'inventory' and request.action == 'remove_confirm' and util.object(request.args, { deviceId = true }) then
+            result, reason = options.placement.removeConfirm(source, session, request.args.deviceId)
+        elseif request.action == 'remove_cancel' and next(request.args) == nil then
+            options.placement.removeCancel(source); result = { cancelled = true }
         elseif request.action == 'place_cancel' and next(request.args) == nil then
             options.placement.cancel(source); result = { cancelled = true }
         else return failure('Accion no disponible para esta sesion.') end

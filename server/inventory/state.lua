@@ -78,6 +78,7 @@ local function placement(value)
         and util.integer(value.createdAt, 0, 253402300799) and util.integer(value.updatedAt, value.createdAt, 253402300799)
         and ((value.status == 'pending' and value.deviceId == nil and value.reason == nil)
             or (value.status == 'committed' and OSSecurity.DeviceValidation.id(value.deviceId) and value.reason == nil)
+            or (value.status == 'removed' and OSSecurity.DeviceValidation.id(value.deviceId) and value.reason == nil)
             or (value.status == 'cancelled' and value.deviceId == nil
                 and ({ creation_rejected = true, recovery_cancelled = true, retired = true })[value.reason] == true))
 end
@@ -133,6 +134,13 @@ local function operation(op, limits)
     elseif op.kind == 'finish' then
         fields.installationId, fields.deviceId = true, true
         if not state.installationId(op.installationId) or not OSSecurity.DeviceValidation.id(op.deviceId) then return false end
+    elseif op.kind == 'remove' then
+        -- Desmontaje: la instalacion queda 'removed' y libera el montaje. Con objetos locales, el kit
+        -- recuperado se abona a 'principal'; con proveedor externo lo entrega el proveedor.
+        fields.installationId, fields.principal, fields.item = true, true, true
+        if not state.installationId(op.installationId) or (op.principal ~= nil and not identity.valid(op.principal))
+            or (op.item ~= nil and (not OSSecurity.ItemCatalog[op.item] or OSSecurity.ItemCatalog[op.item].category ~= 'kit'))
+            or ((op.principal == nil) ~= (op.item == nil)) then return false end
     elseif op.kind == 'cancel' then
         fields.installationId, fields.reason = true, true
         if not state.installationId(op.installationId) or type(op.reason) ~= 'string'
@@ -272,7 +280,7 @@ function state.apply(snapshot, op, limits)
             return nil, 'Reserva de instalacion no autorizada.'
         end
         for _, existing in pairs(snapshot.installations) do
-            if existing.anchorId == proposed.anchorId and existing.status ~= 'cancelled' then return nil, 'Montaje ocupado o pendiente.' end
+            if existing.anchorId == proposed.anchorId and existing.status ~= 'cancelled' and existing.status ~= 'removed' then return nil, 'Montaje ocupado o pendiente.' end
         end
         local target = account(proposed.installer)
         if not util.object(proposed.materials) or not util.array(proposed.tools, 8) then return nil, 'Contrato de materiales invalido.' end
@@ -290,6 +298,15 @@ function state.apply(snapshot, op, limits)
         end
         nextState.installations[proposed.id] = util.copy(proposed)
         nextState.nextInstallation = snapshot.nextInstallation + 1
+    elseif op.kind == 'remove' then
+        local installation = nextState.installations[op.installationId]
+        if not installation or installation.status ~= 'committed' then return nil, 'Instalacion no montada.' end
+        installation.status, installation.updatedAt = 'removed', op.at
+        if op.principal then
+            local target = account(op.principal)
+            local entry = target.items[op.item] or { count = 0, metadata = {} }
+            entry.count = entry.count + 1; target.items[op.item] = entry
+        end
     else
         local installation = nextState.installations[op.installationId]
         if not installation or installation.status ~= 'pending' then return nil, 'Reserva no pendiente o ya confirmada.' end

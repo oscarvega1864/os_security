@@ -143,6 +143,26 @@ async function main() {
     }
     await until(`document.getElementById('minigame').hidden && window.__calls.some(x => x.endpoint === 'minigame' && x.body.ok === true)`);
     console.log('PASS mouse minigame: drill four holes, screw four screws by turning, link the cables');
+    // Desmontaje: desconectar los cables arrastrandolos a la bandeja y desatornillar en sentido antihorario.
+    await evaluate(`window.__calls.length = 0; window.postMessage({type:'minigame',text:window.__brand.Text.minigame,mode:'remove'},'*')`);
+    await until(`document.querySelectorAll('.mg-plug').length === 4 && document.querySelector('.mg-tray')`);
+    const tray = await evaluate(`(() => { const r = document.querySelector('.mg-tray').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+    fs.writeFileSync(path.join(output, 'minigame-unplug.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    for (const plug of await centers('.mg-plug')) {
+      await mouse('mouseMoved', plug.x, plug.y); await mouse('mousePressed', plug.x, plug.y, 1);
+      await mouse('mouseMoved', (plug.x + tray.x) / 2, plug.y, 1); await mouse('mouseMoved', tray.x, tray.y, 1); await mouse('mouseReleased', tray.x, tray.y);
+    }
+    await until(`document.querySelectorAll('.mg-screw').length === 4`);
+    const unscrewRadius = 15 * await scale();
+    for (const screw of await centers('.mg-screw-head')) {
+      await mouse('mouseMoved', screw.x + unscrewRadius, screw.y); await mouse('mousePressed', screw.x + unscrewRadius, screw.y, 1);
+      for (let degrees = 15; degrees <= 1110; degrees += 15) {
+        const r = -degrees * Math.PI / 180; await mouse('mouseMoved', screw.x + Math.cos(r) * unscrewRadius, screw.y + Math.sin(r) * unscrewRadius, 1); await pause(50);
+      }
+      await mouse('mouseReleased', screw.x + unscrewRadius, screw.y); await pause(200);
+    }
+    await until(`document.getElementById('minigame').hidden && window.__calls.some(x => x.endpoint === 'minigame' && x.body.ok === true)`);
+    console.log('PASS removal minigame: unplug cables to the tray and unscrew counter-clockwise');
     await evaluate(`window.__calls.length = 0; window.postMessage({type:'minigame',text:window.__brand.Text.minigame},'*')`);
     await until(`!document.getElementById('minigame').hidden`);
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
@@ -151,6 +171,7 @@ async function main() {
     // Teclado de alarma (pinpad) y bloque de alarma de la tablet.
     await evaluate(`window.__calls.length = 0; window.postMessage({ type: 'pinpad', data: { deviceId: 'osd_0000000009', label: 'Propiedad 200', mode: 'armed', hasPin: true, tags: true, locked: 0, entry: 22, triggered: false }, text: { pad: window.__brand.Text.alarm.pad, pinFormat: 'formato' } }, '*')`);
     await until(`!document.getElementById('pinpad').hidden && document.querySelector('.pp-status').textContent.includes('22')`);
+    await until(`document.querySelector('.pp-status').textContent.includes('20')`); // la cuenta atras baja sola
     for (const key of ['1', '2', '3', '4']) await evaluate(`Array.from(document.querySelectorAll('.pp-key')).find(b => b.textContent === '${key}').click()`);
     assert(await evaluate(`document.querySelector('.pp-screen').textContent === '••••'`));
     fs.writeFileSync(path.join(output, 'pinpad.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
@@ -175,6 +196,11 @@ async function main() {
     await evaluate(`window.__calls.length = 0; Array.from(document.querySelectorAll('.alarm-block button')).find(b => b.textContent === window.__brand.Text.alarm.disarm).click()`);
     await until(`window.__calls.some(x => x.endpoint === 'request' && x.body.action === 'alarm' && x.body.args.action === 'disarm')`);
     console.log('PASS tablet alarm block shows mode, alert, history as text and sends remote disarm');
+    await evaluate(`window.__device.removable = true; window.__calls.length = 0; document.getElementById('refresh').click()`);
+    await until(`Array.from(document.querySelectorAll('#content button')).some(b => b.textContent === window.__brand.Text.remove)`);
+    await evaluate(`Array.from(document.querySelectorAll('#content button')).find(b => b.textContent === window.__brand.Text.remove).click()`);
+    await until(`window.__calls.some(x => x.endpoint === 'request' && x.body.action === 'remove' && x.body.args.deviceId)`);
+    console.log('PASS removable devices offer an uninstall button that requests the removal');
     console.log(`UI screenshots: ${path.relative(root, output)}`);
   } finally { socket?.close(); child.kill(); }
 }

@@ -105,7 +105,7 @@ function OSSecurity.InstallationService.new(options)
             if anchor.installer == session.actor.principal and anchor.bucket == bucket and distance(point, anchor.position) <= config.PlacementDistance then
                 local occupied = false
                 for _, installation in pairs(snapshot.installations) do
-                    if installation.anchorId == id and installation.status ~= 'cancelled' then occupied = true end
+                    if installation.anchorId == id and installation.status ~= 'cancelled' and installation.status ~= 'removed' then occupied = true end
                 end
                 if not occupied then mounts[#mounts + 1] = { id = id, position = util.copy(anchor.position), normal = util.copy(anchor.normal), radius = anchor.radius } end
             end
@@ -239,7 +239,71 @@ function OSSecurity.InstallationService.new(options)
         while #result > config.MaxStreamedProps do result[#result] = nil end
         return result
     end
-    function service.cancel(source) contexts[source] = nil end
-    function service.clear() contexts = {} end
+    -- Desmontaje de cualquier producto instalado (camara, alarma...). Exige estar junto al dispositivo
+    -- con las herramientas; tras el minijuego el dispositivo se retira, el montaje queda libre y el kit
+    -- vuelve al inventario de quien desmonta. La bateria se da por gastada.
+    local removals = {}
+    local function installed(deviceId)
+        if not OSSecurity.DeviceValidation.id(deviceId) then return nil, 'Dispositivo no valido.' end
+        local device = options.registry.get(0, deviceId)
+        local snapshot = options.inventory.snapshot()
+        local installation = device and snapshot and device.metadata and device.metadata.installationId and snapshot.installations[device.metadata.installationId]
+        if not device or not installation or installation.status ~= 'committed' or installation.deviceId ~= device.id then
+            return nil, 'El dispositivo no esta montado fisicamente.'
+        end
+        if device.state == 'retired' then return nil, 'El dispositivo ya esta retirado.' end
+        return device, installation
+    end
+    local function removable(source, session, deviceId)
+        local device, installation = installed(deviceId)
+        if not device then return nil, installation end
+        if not options.canRemove(session.actor, device) then return nil, 'Sin permiso para desmontar este dispositivo.' end
+        local point, bucket = world(source)
+        if not point then return nil, bucket end
+        if bucket ~= installation.bucket or distance(point, installation.position) > config.PlacementDistance then
+            return nil, 'Acercate al dispositivo para desmontarlo.'
+        end
+        for _, item in ipairs(config.Tools) do
+            if not options.holdings.has(session.actor, item, 1) then return nil, 'Faltan herramientas para desmontar.' end
+        end
+        return device, installation, point
+    end
+    function service.removeBegin(source, session, deviceId)
+        local device, installation, point = removable(source, session, deviceId)
+        if not device then return nil, installation end
+        removals[source] = { token = session.token, deviceId = device.id, expires = options.now() + config.PlacementSeconds, origin = point }
+        return { deviceId = device.id, model = installation.model, seconds = config.PlacementSeconds }
+    end
+    function service.removeConfirm(source, session, deviceId)
+        local context = removals[source]
+        removals[source] = nil
+        if not context or context.token ~= session.token or context.deviceId ~= deviceId or options.now() > context.expires then
+            return nil, 'Desmontaje no valido o caducado.'
+        end
+        local device, installation = removable(source, session, deviceId)
+        if not device then return nil, installation end
+        local definition = productOfModel(installation.model)
+        local kit
+        for item in pairs(definition and definition.materials or {}) do
+            if OSSecurity.ItemCatalog[item].category == 'kit' then kit = item end
+        end
+        local retired, retireError = options.registry.retire(0, device.id)
+        if not retired then return nil, retireError end
+        local external = options.holdings.external()
+        local removed, removeError = options.inventory.apply({ kind = 'remove', installationId = installation.id,
+            principal = (kit and not external) and session.actor.principal or nil, item = (kit and not external) and kit or nil })
+        if not removed then return nil, removeError end
+        if kit and external then
+            local holder = options.holdings.holder(source)
+            local granted = holder and options.holdings.grant(holder, kit, 1, 'g6rm:' .. installation.id)
+            if not granted and options.log then options.log(('Desmontaje %s: kit no devuelto; revisar inventario.'):format(installation.id)) end
+        end
+        if options.removed then options.removed(device.id) end
+        options.audit('installation_removed', source, device.id)
+        return { id = device.id, removed = true, kit = kit }
+    end
+    function service.removeCancel(source) removals[source] = nil end
+    function service.cancel(source) contexts[source] = nil; removals[source] = nil end
+    function service.clear() contexts = {}; removals = {} end
     return service
 end

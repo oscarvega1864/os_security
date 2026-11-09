@@ -18,11 +18,11 @@
   function finish(ok, reason) { if (!run) return; fx({ drilling: false }); stop(); post('minigame', { ok, reason }); }
 
   // Estructura comun: cabecera, superficie SVG, medidores y pie con estado y cancelar.
-  function shell(title, help, step) {
+  function shell(title, help, step, total = 3) {
     root.replaceChildren();
     const panel = el('section', null, 'mg-panel');
     const head = el('header', null, 'mg-head');
-    head.append(el('span', `${run.text.title} · ${step}/3`, 'mg-overline'), el('h2', title), el('p', help, 'mg-help'));
+    head.append(el('span', `${run.mode === 'remove' ? run.text.removeTitle : run.text.title} · ${step}/${total}`, 'mg-overline'), el('h2', title), el('p', help, 'mg-help'));
     const board = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'mg-board' });
     const meters = el('div', null, 'mg-meters');
     const foot = el('footer', null, 'mg-foot');
@@ -118,9 +118,10 @@
 
   // Fase 2: pulsar sobre un tornillo y girar el raton alrededor en sentido horario hasta apretarlo.
   // Girar demasiado deprisa sube la fuerza; mantenerla al maximo pasa la rosca.
-  function screw(previous) {
+  function screw(previous, mode) {
     run.phase = 'screw'; const t = run.text; fx({ phase: 'screw' });
-    const { board, meters, status } = shell(t.screwTitle, t.screwHelp, 2);
+    const removing = mode === 'remove', direction = removing ? -1 : 1;
+    const { board, meters, status } = shell(removing ? t.unscrewTitle : t.screwTitle, removing ? t.unscrewHelp : t.screwHelp, removing ? 2 : 2, removing ? 2 : 3);
     plate(board);
     const TURNS = 3;
     const list = (previous || holes()).map(hole => {
@@ -147,9 +148,10 @@
       const angle = angleOf(state.active, p);
       let delta = angle - state.last; if (delta > 180) delta -= 360; if (delta < -180) delta += 360;
       state.last = angle;
+      delta *= direction; // al desmontar cuenta el giro antihorario
       state.active.angle = Math.max(0, state.active.angle + delta);
       if (delta > 0) state.force = Math.min(1.2, state.force + delta / 260);
-      if (state.active.angle >= TURNS * 360) { state.active.angle = TURNS * 360; fx({ cue: 'hit' }); status.textContent = t.hit; state.active = null; }
+      if (state.active.angle >= TURNS * 360) { state.active.angle = TURNS * 360; fx({ cue: 'hit' }); status.textContent = removing ? t.unscrewed : t.hit; state.active = null; }
     });
     const release = () => { state.active = null; };
     board.addEventListener('pointerup', release); board.addEventListener('pointercancel', release);
@@ -167,10 +169,10 @@
       for (const hole of list) {
         const ratio = hole.angle / (TURNS * 360);
         hole.ring.setAttribute('stroke-dasharray', `${(ratio * 106.8).toFixed(1)} 999`);
-        hole.slot.setAttribute('transform', `rotate(${hole.angle % 360} ${hole.x} ${hole.y})`);
+        hole.slot.setAttribute('transform', `rotate(${(direction * hole.angle) % 360} ${hole.x} ${hole.y})`);
         hole.group.classList.toggle('done', ratio >= 1);
       }
-      if (list.every(hole => hole.angle >= TURNS * 360)) { cables(); return false; }
+      if (list.every(hole => hole.angle >= TURNS * 360)) { if (removing) finish(true); else cables(); return false; }
     });
   }
 
@@ -227,9 +229,60 @@
     });
   }
 
+  // Desmontaje, fase 1: los cables estan conectados; arrastra cada uno desde su borne hasta la bandeja.
+  function unplug() {
+    run.phase = 'cables'; const t = run.text; fx({ phase: 'cables' });
+    const { board, meters, status } = shell(t.unplugTitle, t.unplugHelp, 1, 2);
+    const keys = ['red', 'blue', 'yellow', 'green'];
+    const rows = 4, top = 45, gap = (H - 2 * top) / (rows - 1);
+    board.append(svg('rect', { x: 20, y: 20, width: 90, height: H - 40, rx: 10, class: 'mg-tray' }), svg('rect', { x: W - 90, y: 20, width: 70, height: H - 40, rx: 10, class: 'mg-panel-box' }));
+    board.append(Object.assign(svg('text', { x: 65, y: H / 2, class: 'mg-tray-label', 'text-anchor': 'middle' }), { textContent: '⇠' }));
+    const layer = svg('g'); board.append(layer);
+    const curve = (a, b) => `M ${a.x} ${a.y} C ${a.x + 90} ${a.y}, ${b.x - 90} ${b.y}, ${b.x} ${b.y}`;
+    const order = [...keys].sort(() => Math.random() - 0.5);
+    const cables = order.map((key, i) => {
+      const socket = { x: W - 70, y: top + i * gap };
+      const anchor = { x: 140, y: top + keys.indexOf(key) * gap };
+      board.append(svg('rect', { x: W - 70, y: socket.y - 6, width: 36, height: 12, rx: 4, class: `mg-wire-stub ${key}` }));
+      const path = svg('path', { d: curve(anchor, socket), class: `mg-cable linked ${key}` }); layer.append(path);
+      const plug = svg('circle', { cx: socket.x, cy: socket.y, r: 10, class: `mg-plug ${key}`, 'data-key': key }); board.append(plug);
+      return { key, socket, anchor, path, plug, out: false };
+    });
+    const showErrors = strikes(meters, t.shorts);
+    let dragging = null, errors = 0, removed = 0;
+    board.addEventListener('pointerdown', event => {
+      const p = point(board, event);
+      const cable = cables.find(item => !item.out && Math.hypot(item.socket.x - p.x, item.socket.y - p.y) <= 16);
+      if (!cable) return;
+      board.setPointerCapture?.(event.pointerId); dragging = cable;
+    });
+    board.addEventListener('pointermove', event => {
+      if (!dragging) return;
+      const p = point(board, event);
+      dragging.path.setAttribute('d', curve(dragging.anchor, p)); dragging.plug.setAttribute('cx', p.x); dragging.plug.setAttribute('cy', p.y);
+    });
+    board.addEventListener('pointerup', event => {
+      if (!dragging) return;
+      const cable = dragging; dragging = null; const p = point(board, event);
+      if (p.x <= 110) {
+        cable.out = true; removed++; cable.path.remove(); cable.plug.remove(); fx({ cue: 'connected' }); status.textContent = t.unplugged;
+        if (removed === cables.length) screw(null, 'remove');
+        return;
+      }
+      cable.path.setAttribute('d', curve(cable.anchor, cable.socket)); cable.plug.setAttribute('cx', cable.socket.x); cable.plug.setAttribute('cy', cable.socket.y);
+      if (cables.some(other => other !== cable && !other.out && Math.hypot(other.socket.x - p.x, other.socket.y - p.y) <= 16)) {
+        errors++; showErrors(errors); fx({ cue: 'wrong' }); status.textContent = t.wrongWire;
+        if (errors >= 3) finish(false, 'shorted');
+      }
+    });
+  }
+
   window.addEventListener('keydown', event => { if (run && event.key === 'Escape') finish(false, 'cancelled'); });
   window.addEventListener('message', event => {
-    if (event.data?.type === 'minigame' && event.data.text) { stop(); run = { id: ++runs, text: event.data.text }; drill(); }
+    if (event.data?.type === 'minigame' && event.data.text) {
+      stop(); run = { id: ++runs, text: event.data.text, mode: event.data.mode === 'remove' ? 'remove' : 'install' };
+      if (run.mode === 'remove') unplug(); else drill();
+    }
     else if (event.data?.type === 'minigameClose') stop();
   });
 })();

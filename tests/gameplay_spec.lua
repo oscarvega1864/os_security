@@ -418,6 +418,43 @@ test('Valid placement reserves once, creates real core state/components and cons
     assert(restarted.core.registry.list(0).total == 1 and count(restarted, 1, 'os_cctv_kit') == 1)
 end)
 
+test('Uninstalling retires the device, frees the mount and returns the kit, only near it, with tools and permission', function()
+    local c = fixture(); kit(c); anchor(c)
+    local session = open(c, 1, 'operations')
+    assert(call(c, 1, session, 'place_begin').ok)
+    local installed = call(c, 1, session, 'place_confirm', proposal()); assert(installed.ok, installed.error)
+    local id = installed.data.id
+    assert(count(c, 1, 'os_cctv_kit') == 1)
+    local detail = call(c, 1, session, 'device', { deviceId = id }); assert(detail.data.removable)
+    c.players[1].point = { x = 50, y = 0, z = 1 }
+    assert(not call(c, 1, session, 'remove_begin', { deviceId = id }).ok) -- lejos
+    c.players[1].point = { x = 0, y = 0, z = 1 }
+    local begun = call(c, 1, session, 'remove_begin', { deviceId = id }); assert(begun.ok and begun.removal.deviceId == id, begun.error)
+    assert(not call(c, 1, session, 'remove_confirm', { deviceId = 'osd_0000000099' }).ok) -- otro dispositivo: anula el contexto
+    assert(call(c, 1, session, 'remove_begin', { deviceId = id }).ok)
+    local removed = call(c, 1, session, 'remove_confirm', { deviceId = id }); assert(removed.ok and removed.data.removed, removed.error)
+    assert(c.core.registry.get(0, id).state == 'retired' and count(c, 1, 'os_cctv_kit') == 2)
+    local snapshot = c.game.inventory.snapshot(); assert(snapshot.installations[installed.data.installationId].status == 'removed')
+    assert(not call(c, 1, session, 'remove_begin', { deviceId = id }).ok) -- ya desmontado
+    assert(call(c, 1, session, 'place_begin').ok) -- el montaje vuelve a estar libre
+    local restarted = fixture(c.core.files); assert(restarted.loaded, restarted.loadError)
+end)
+
+test('Supervisors cannot uninstall; the device owner can from the Client tablet', function()
+    local c = fixture(); kit(c); anchor(c)
+    local tech = open(c, 1, 'operations'); assert(call(c, 1, tech, 'place_begin').ok)
+    local installed = call(c, 1, tech, 'place_confirm', proposal()); assert(installed.ok)
+    local id = installed.data.id
+    grant(c, 3, 'g6_operations_tablet'); grant(c, 3, 'os_drill'); grant(c, 3, 'os_screwdriver'); grantAccess(c, 3, id, 'supervisor')
+    c.players[3].point = { x = 0, y = 0, z = 1 }
+    assert(not call(c, 3, open(c, 3, 'operations'), 'remove_begin', { deviceId = id }).ok)
+    grant(c, 2, 'g6_client_tablet'); grant(c, 2, 'os_drill'); grant(c, 2, 'os_screwdriver'); c.players[2].point = { x = 0, y = 0, z = 1 }
+    local owner = open(c, 2, 'client')
+    assert(call(c, 2, owner, 'device', { deviceId = id }).data.removable)
+    assert(call(c, 2, owner, 'remove_begin', { deviceId = id }).ok)
+    assert(call(c, 2, owner, 'remove_confirm', { deviceId = id }).ok and count(c, 2, 'os_cctv_kit') == 1)
+end)
+
 test('The alarm kit installs a physical alarm panel linked to its installation and consumes its own materials', function()
     local c = fixture(); grant(c, 1, 'g6_operations_tablet'); grant(c, 1, 'os_alarm_kit'); grant(c, 1, 'os_battery')
     grant(c, 1, 'os_drill'); grant(c, 1, 'os_screwdriver'); anchor(c)

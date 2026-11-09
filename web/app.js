@@ -101,6 +101,11 @@
     content.append(meta);
     if (device.type === 'cctv_camera') content.append(el('div', text('noSignal'), 'notice'));
     if (device.alarm) content.append(alarmBlock(id, device.alarm));
+    if (device.removable) {
+      const remove = el('div', null, 'actions');
+      remove.append(button(text('remove'), () => request('remove', { deviceId: id }), false, 'danger'), el('span', text('removeHelp'), 'subtle'));
+      content.append(remove);
+    }
     const actions = el('div', null, 'actions');
     const act = async (action, slot) => { const result = await request('maintain', { deviceId: id, action, ...(slot ? { slot } : {}) }); if (result) await showDevice(id); };
     if (device.actions?.inspect && device.schemaVersion === 2) actions.append(button(text('inspect'), () => act('inspect')));

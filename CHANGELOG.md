@@ -10,6 +10,9 @@
 - Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
   (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
   petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
+- Desmontaje de cualquier dispositivo instalado desde la tablet (técnico con acceso o propietario), junto al
+  dispositivo y con herramientas, con minijuego inverso (desconectar y desatornillar): retira el dispositivo,
+  libera el montaje y devuelve el kit. Teclado de alarma con cuenta atrás en vivo y resincronización.
 - Alarmas: sirena propia generada en la NUI (Web Audio) con volumen por distancia, en lugar de un sonido de
   GTA inexistente; pitidos del teclado y del retardo de entrada. Chapa directa: tecla G junto al teclado o
   Usar la chapa desde el inventario. Corrección: VerifyPasswordHash devuelve 1 en el binding de Lua y el

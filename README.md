@@ -101,6 +101,16 @@ y **conectar los cables** a su borne del mismo color (tres errores como máximo)
 cancelas, la colocación se anula y no se consume material. El minijuego es solo de interfaz; el
 servidor revalida zona, plano, giro, distancia y objetos al confirmar.
 
+## Desmontar dispositivos
+
+Cualquier dispositivo instalado (cámara, alarma y los productos que se añadan) se puede **desmontar**
+desde el detalle del dispositivo en la tablet (**Desmontar**): un técnico o administrador con acceso
+desde Operations, o el propietario del dispositivo desde Client. Hay que estar a menos de 4 m con
+taladro y destornillador. Minijuego inverso: **desconectar el cableado** (arrastrar cada cable a la
+bandeja) y **desatornillar** girando el ratón en sentido antihorario. Al terminar, el dispositivo
+queda retirado (con su historial), el montaje queda libre para otra instalación y **el kit vuelve al
+inventario** de quien desmonta; la batería se da por gastada.
+
 ## Alarmas (central con teclado)
 
 El **kit de alarma** (`os_alarm_kit`) se instala igual que una cámara (zona con `/g6anchor`, *Usar*

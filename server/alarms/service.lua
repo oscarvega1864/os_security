@@ -237,6 +237,7 @@ function OSSecurity.AlarmService.new(options)
             end
         end
     end
+    function alarms.forgetDevice(deviceId) stopSiren(deviceId) end
     function alarms.clear() for deviceId in pairs(runtime) do stopSiren(deviceId) end; runtime, attempts = {}, {} end
     function alarms.forget(source)
         for key in pairs(attempts) do if key:match(':' .. source .. '$') then attempts[key] = nil end end

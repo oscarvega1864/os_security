@@ -44,10 +44,16 @@ OSSecurity.Brand = {
             torque = 'Fuerza', strips = 'Roscas pasadas', turnHint = 'Gira en sentido horario', tooStrong = 'Demasiada fuerza: mas despacio',
             stripped = 'Rosca pasada: vuelve a empezar ese tornillo', hit = 'Tornillo apretado',
             cablesTitle = 'Conectar el cableado', cablesHelp = 'Arrastra cada cable desde su conector hasta el borne de su mismo color.',
-            colors = { 'Rojo', 'Azul', 'Amarillo', 'Verde' }, shorts = 'Cortocircuitos', connected = 'Conectado', wrongWire = 'Borne incorrecto'
+            colors = { 'Rojo', 'Azul', 'Amarillo', 'Verde' }, shorts = 'Cortocircuitos', connected = 'Conectado', wrongWire = 'Borne incorrecto',
+            removeTitle = 'Desmontaje', unplugTitle = 'Desconectar el cableado',
+            unplugHelp = 'Arrastra cada cable fuera de su borne hasta la bandeja de la izquierda.', unplugged = 'Desconectado',
+            unscrewTitle = 'Desatornillar el soporte', unscrewHelp = 'Pulsa sobre un tornillo y gira el raton en sentido ANTIHORARIO hasta sacarlo. Sin forzar.',
+            unscrewed = 'Tornillo fuera'
         },
         placementMount = 'Montaje',
         alarmInstallAction = 'Preparar instalacion de alarma',
+        remove = 'Desmontar', removed = 'Dispositivo %s desmontado: el kit vuelve a tu inventario.', removeCancelled = 'Desmontaje cancelado.',
+        removeHelp = 'Debes estar junto al dispositivo con taladro y destornillador.',
         alarm = {
             title = 'Alarma', triggered = 'SALTO DE ALARMA', arm = 'Armar total', partial = 'Armar parcial', disarm = 'Desarmar',
             modes = { disarmed = 'Desarmada', armed = 'Armada (total)', partial = 'Armada (parcial)' },

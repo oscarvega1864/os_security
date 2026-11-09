@@ -9,12 +9,15 @@
   let pad = null; // { data, text, code, screen, status, busy }
 
   function close(notify = true) { if (!pad) return; pad = null; root.hidden = true; root.replaceChildren(); if (notify) post('pinpadClose', {}); }
+  // Segundos restantes descontados localmente desde el ultimo dato del servidor (se actualiza solo).
+  const remaining = value => value == null ? null : Math.max(0, Math.ceil(value - (performance.now() - pad.receivedAt) / 1000));
   function render() {
     const { data, text } = pad;
     let status = text.pad[data.mode] || data.mode;
+    const entry = remaining(data.entry), locked = remaining(data.locked);
     if (data.triggered) status = text.pad.triggered;
-    else if (data.entry != null && data.entry > 0) status = `${text.pad.entry} · ${data.entry}s`;
-    if (data.locked > 0) status = `${text.pad.locked} · ${data.locked}s`;
+    else if (entry != null && entry > 0) status = `${text.pad.entry} · ${entry}s`;
+    if (locked > 0) status = `${text.pad.locked} · ${locked}s`;
     pad.status.textContent = status;
     pad.status.className = `pp-status ${data.triggered ? 'alert' : data.mode}`;
     pad.screen.textContent = pad.code.length ? '•'.repeat(pad.code.length) : '----';
@@ -51,9 +54,10 @@
     if (data.tags) { const tag = el('button', text.pad.tag, 'pp-tag'); tag.type = 'button'; tag.addEventListener('click', () => send('tag')); footer.append(tag); }
     const exit = el('button', text.pad.close, 'pp-exit'); exit.type = 'button'; exit.addEventListener('click', () => close()); footer.append(exit);
     panel.append(brand, status, screen, keys, modes, messageLine, footer); root.append(panel); root.hidden = false;
-    pad = { data, text, code: '', screen, status, message: messageLine, busy: false };
+    pad = { data, text, code: '', screen, status, message: messageLine, busy: false, receivedAt: performance.now() };
     render();
   }
+  setInterval(() => { if (pad) render(); }, 250);
 
   window.addEventListener('keydown', event => {
     if (!pad) return;
@@ -67,10 +71,11 @@
     if (message.type === 'pinpad' && message.data && message.text) open(message.data, message.text);
     else if (message.type === 'pinpadResult' && pad) {
       pad.busy = false;
-      if (message.data) pad.data = message.data;
+      if (message.data) { pad.data = message.data; pad.receivedAt = performance.now(); }
       pad.message.textContent = message.text || '';
       pad.message.className = `pp-message ${message.ok ? 'ok' : 'error'}`;
       render();
-    } else if (message.type === 'pinpadClose') close(false);
+    } else if (message.type === 'pinpadUpdate' && pad && message.data) { pad.data = message.data; pad.receivedAt = performance.now(); render(); }
+    else if (message.type === 'pinpadClose') close(false);
   });
 })();
