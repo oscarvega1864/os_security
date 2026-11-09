@@ -8,8 +8,11 @@ for _, id in ipairs({
     definitions[id] = { id = id, defaultModel = 'generic', metadataSchema = {} }
 end
 
--- Correlacion de una instalacion confirmada por el servidor, sin cambiar IDs.
-definitions.cctv_camera.metadataSchema.installationId = { type = 'string', maxLength = 64 }
+-- Correlacion de una instalacion confirmada por el servidor, sin cambiar IDs. Todo tipo instalable
+-- fisicamente (ver GameplayConfig.Products) necesita este vinculo.
+for _, id in ipairs({ 'cctv_camera', 'alarm_panel' }) do
+    definitions[id].metadataSchema.installationId = { type = 'string', maxLength = 64 }
+end
 
 OSSecurity.DeviceCatalog = {}
 
