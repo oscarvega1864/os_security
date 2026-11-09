@@ -29,7 +29,7 @@ client_scripts {
 
 ui_page 'web/index.html'
 nui_callback_strict_mode 'true'
-files { 'web/index.html', 'web/style.css', 'web/app.js', 'web/minigame.js', 'web/pinpad.js' }
+files { 'web/index.html', 'web/style.css', 'web/app.js', 'web/minigame.js', 'web/pinpad.js', 'web/siren.js' }
 server_scripts {
     'config/server.lua',
     'config/components.lua',

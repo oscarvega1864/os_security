@@ -152,7 +152,8 @@ local alarmEffects = {
         return list
     end,
     hash = function(pin) return GetPasswordHash(pin) end,
-    verify = function(pin, hash) return VerifyPasswordHash(pin, hash) == true end,
+    -- El binding de Lua devuelve el BOOL nativo como entero (1/0), igual que SaveResourceFile.
+    verify = function(pin, hash) local result = VerifyPasswordHash(pin, hash); return result == true or result == 1 end,
     serial = function() return ('%08X'):format(math.random(0, 0x7fffffff)) end,
     who = function(player)
         if GetResourceState(identityResource) == 'started' then
@@ -162,10 +163,7 @@ local alarmEffects = {
         return ('jugador %d'):format(player)
     end,
     entry = function(player, device, seconds) TriggerClientEvent('os_security:alarm:entry', player, device.id, seconds, device.position) end,
-    siren = function(deviceId, device)
-        local sound = OSSecurity.GameplayConfig.Alarm.Siren
-        TriggerClientEvent('os_security:alarm:siren', -1, deviceId, device and device.position or nil, sound.name, sound.set)
-    end,
+    siren = function(deviceId, device) TriggerClientEvent('os_security:alarm:siren', -1, deviceId, device and device.position or nil) end,
     notify = function(player, text, kind, position) TriggerClientEvent('os_security:alarm:alert', player, text, kind, position) end
 }
 
@@ -289,11 +287,14 @@ end)
 local function registerUsableTablets()
     if not externalItems or GetResourceState(inventoryResource) ~= 'started' then return end
     for item, definition in pairs(OSSecurity.ItemCatalog) do
-        if definition.tablet or definition.usable == 'placement' then
+        if definition.tablet or definition.usable == 'placement' or definition.usable == 'tag' then
             local ok, registered = pcall(function()
                 return exports[inventoryResource]:RegisterUsableItem(item, function(player)
                     TriggerClientEvent('osinventory:forceClose', player)
                     if definition.tablet then TriggerClientEvent('os_security:g6:openTablet', player, definition.tablet)
+                    elseif definition.usable == 'tag' then
+                        local result, err = gameplay.alarms.tagNearest(player)
+                        TriggerClientEvent('os_security:alarm:result', player, result, err, nil)
                     else TriggerClientEvent('os_security:g6:useItem', player, item) end
                 end)
             end)

@@ -99,7 +99,7 @@ end)
 RegisterNetEvent('os_security:alarm:panelData', function(data, err) if source == 65535 then alarms.show(data, err) end end)
 RegisterNetEvent('os_security:alarm:result', function(result, err, panel) if source == 65535 then alarms.result(result, err, panel) end end)
 RegisterNetEvent('os_security:alarm:entry', function(_, seconds) if source == 65535 and type(seconds) == 'number' then alarms.entry(seconds) end end)
-RegisterNetEvent('os_security:alarm:siren', function(deviceId, position, name, set) if source == 65535 then alarms.siren(deviceId, position, name, set) end end)
+RegisterNetEvent('os_security:alarm:siren', function(deviceId, position) if source == 65535 then alarms.siren(deviceId, position) end end)
 RegisterNetEvent('os_security:alarm:alert', function(text, kind, position) if source == 65535 and type(text) == 'string' then alarms.alert(text, kind, position) end end)
 RegisterNUICallback('pinpad', function(body, callback)
     callback({ ok = true })
@@ -107,7 +107,7 @@ RegisterNUICallback('pinpad', function(body, callback)
     if body.action == 'tag' then TriggerServerEvent('os_security:alarm:tag', alarms.open)
     elseif ({ arm = true, partial = true, disarm = true })[body.action] then TriggerServerEvent('os_security:alarm:keypad', alarms.open, body.action, type(body.pin) == 'string' and body.pin or '') end
 end)
-RegisterNUICallback('pinpadKey', function(_, callback) callback({ ok = true }); PlaySoundFrontend(-1, 'NAV_UP_DOWN', 'HUD_FRONTEND_DEFAULT_SOUNDSET', true) end)
+RegisterNUICallback('pinpadKey', function(_, callback) callback({ ok = true }) end)
 RegisterNUICallback('pinpadClose', function(_, callback) callback({ ok = true }); alarms.close() end)
 CreateThread(function()
     while true do
@@ -118,7 +118,8 @@ CreateThread(function()
             if keypad then
                 sleep = 0
                 BeginTextCommandDisplayHelp('STRING'); AddTextComponentSubstringPlayerName(OSSecurity.Brand.Text.alarm.keypadHint); EndTextCommandDisplayHelp(0, false, false, -1)
-                if IsControlJustPressed(0, 38) then TriggerServerEvent('os_security:alarm:panel', keypad.id) end
+                if IsControlJustPressed(0, 38) then TriggerServerEvent('os_security:alarm:panel', keypad.id)
+                elseif IsControlJustPressed(0, 47) then TriggerServerEvent('os_security:alarm:tag', keypad.id) end -- G: acercar chapa
             end
         end
         Wait(sleep)

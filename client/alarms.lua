@@ -4,7 +4,27 @@ OSSecurity.ClientAlarms = {}
 
 function OSSecurity.ClientAlarms.new()
     local alarms = { keypads = {}, open = nil }
-    local sirens, alertBlips = {}, {}
+    local sirens, alertBlips = {}, {} -- sirens: deviceId -> posicion del teclado
+    local volume = 0
+    local function beep(frequency, duration) SendNUIMessage({ type = 'beep', frequency = frequency, duration = duration }) end
+    -- Volumen de la sirena segun la sirena activa mas cercana (inaudible a 150 m).
+    CreateThread(function()
+        while true do
+            Wait(250)
+            local loudest = 0
+            if next(sirens) then
+                local here = GetEntityCoords(PlayerPedId())
+                for _, position in pairs(sirens) do
+                    local d = #(here - vector3(position.x, position.y, position.z))
+                    loudest = math.max(loudest, 1.0 - math.min(1.0, d / 150.0))
+                end
+            end
+            if math.abs(loudest - volume) > 0.02 or (loudest == 0 and volume ~= 0) then
+                volume = loudest
+                SendNUIMessage({ type = 'siren', volume = volume })
+            end
+        end
+    end)
     local A = OSSecurity.Brand.Text.alarm
 
     -- Teclados cercanos a partir de los props que ya se transmiten (dispositivos instalados).
@@ -29,8 +49,9 @@ function OSSecurity.ClientAlarms.new()
         SendNUIMessage({ type = 'pinpad', data = data, text = { pad = A.pad, pinFormat = OSSecurity.Brand.Text.alarm.pinFormat } })
     end
     function alarms.result(result, err, panel)
-        SendNUIMessage({ type = 'pinpadResult', ok = result ~= nil, text = result and result.message or err, data = panel })
-        PlaySoundFrontend(-1, result and 'SELECT' or 'ERROR', 'HUD_FRONTEND_DEFAULT_SOUNDSET', true)
+        if alarms.open then SendNUIMessage({ type = 'pinpadResult', ok = result ~= nil, text = result and result.message or err, data = panel })
+        else OSSecurity.Notify(result and result.message or err, result and 'success' or 'error') end
+        if result then beep(2200, 0.08); SetTimeout(120, function() beep(2200, 0.08) end) else beep(400, 0.35) end
     end
     function alarms.close()
         if not alarms.open then return end
@@ -44,21 +65,15 @@ function OSSecurity.ClientAlarms.new()
         CreateThread(function()
             local deadline = GetGameTimer() + seconds * 1000
             while GetGameTimer() < deadline do
-                PlaySoundFrontend(-1, 'SELECT', 'HUD_FRONTEND_DEFAULT_SOUNDSET', true)
+                beep(1900, 0.12)
                 Wait(GetGameTimer() > deadline - 10000 and 500 or 1000)
             end
         end)
     end
-    -- Sirena en la posicion del teclado (si estas cerca). Sonido configurable en el servidor.
-    function alarms.siren(deviceId, position, name, set)
-        local current = sirens[deviceId]
-        if current then StopSound(current); ReleaseSoundId(current); sirens[deviceId] = nil end
-        if type(position) ~= 'table' or type(name) ~= 'string' or type(set) ~= 'string' then return end
-        local here = GetEntityCoords(PlayerPedId())
-        if #(here - vector3(position.x, position.y, position.z)) > 150.0 then return end
-        local id = GetSoundId()
-        PlaySoundFromCoord(id, name, position.x + 0.0, position.y + 0.0, position.z + 0.0, set, false, 0, false)
-        sirens[deviceId] = id
+    -- Sirena en la posicion del teclado: la genera la NUI (web/siren.js) con volumen por distancia.
+    function alarms.siren(deviceId, position)
+        if type(position) == 'table' and type(position.x) == 'number' then sirens[deviceId] = { x = position.x, y = position.y, z = position.z }
+        else sirens[deviceId] = nil end
     end
     -- Aviso al titular o a Gruppe Sechs: notificacion y marcador parpadeante temporal.
     function alarms.alert(text, kind, position)
@@ -72,7 +87,7 @@ function OSSecurity.ClientAlarms.new()
     end
     function alarms.clear()
         alarms.close()
-        for deviceId, id in pairs(sirens) do StopSound(id); ReleaseSoundId(id); sirens[deviceId] = nil end
+        sirens = {}; volume = 0; SendNUIMessage({ type = 'siren', volume = 0 })
         for _, blip in ipairs(alertBlips) do if DoesBlipExist(blip) then RemoveBlip(blip) end end
         alertBlips = {}
     end

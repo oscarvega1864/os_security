@@ -17,8 +17,7 @@ OSSecurity.GameplayConfig = {
     Alarm = {
         Radius = 10.0, InteractDistance = 2.0, ExitDelay = 30, EntryDelay = 30, SirenSeconds = 90,
         PinMin = 4, PinMax = 6, MaxPinAttempts = 3, LockoutSeconds = 60, MaxTags = 10, MaxEvents = 20,
-        NotifyRadius = 150.0,
-        Siren = { name = 'Burglar_Bell', set = 'Generic_Alarms' } -- sonido de GTA; sin comprobar, configurable
+        NotifyRadius = 150.0 -- la sirena la genera la NUI de cada cliente; se oye hasta 150 m
     },
     Ace = {
         client = 'ossecurity.g6.client', operations = 'ossecurity.g6.operations',

@@ -341,6 +341,15 @@ test('Armed alarm: entry delay for anyone inside, triggers siren and alerts owne
     local events = disarmed.data.alarm.events; assert(events[1].kind == 'disarmed' and events[2].kind == 'triggered')
 end)
 
+test('Using a tag from the inventory acts on the nearest keypad in reach only', function()
+    local c = fixture(); local panel = alarmPanel(c, 2)
+    grant(c, 2, 'g6_client_tablet'); local session = open(c, 2, 'client')
+    assert(call(c, 2, session, 'alarm', { deviceId = panel.id, action = 'pin', pin = '1111' }).ok)
+    local _, far = c.game.alarms.tagNearest(2); assert(far:find('Acerca'))
+    c.players[2].point = { x = 1, y = 0, z = 1 }
+    local _, unknown = c.game.alarms.tagNearest(2); assert(unknown == 'Chapa no reconocida.') -- sin chapa programada
+end)
+
 test('Partial mode ignores authorized people inside but not strangers', function()
     local c = fixture(); local panel = alarmPanel(c, 2)
     grant(c, 2, 'g6_client_tablet'); local session = open(c, 2, 'client')

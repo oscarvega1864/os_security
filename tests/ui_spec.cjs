@@ -68,7 +68,7 @@ async function main() {
           employeeId:kind==='operations'?'G6-E-TEST':null,canInstall:kind==='operations'&&!supervisor,expires:Math.floor(Date.now()/1000)+90,brand:window.__brand}},'*'); };
     ` });
     await send('Page.navigate', { url: pathToFileURL(path.join(root, 'web/index.html')).href });
-    await until(`document.getElementById('app')?.hidden===true && typeof window.__open==='function'`);
+    await until(`document.readyState==='complete' && document.getElementById('app')?.hidden===true && typeof window.__open==='function'`);
     console.log('PASS UI remains hidden before an authorized session message');
     await evaluate(`window.__open('client')`);
     await until(`document.querySelectorAll('.card').length===1`);
@@ -163,6 +163,9 @@ async function main() {
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
     await until(`document.getElementById('pinpad').hidden && window.__calls.some(x => x.endpoint === 'pinpadClose')`);
     console.log('PASS alarm pinpad: masked code, disarm and tag requests, errors and Escape');
+    await evaluate(`window.postMessage({ type: 'siren', volume: 0.6 }, '*')`); await until(`window.__osSiren.active()`);
+    await evaluate(`window.postMessage({ type: 'siren', volume: 0 }, '*')`); await until(`!window.__osSiren.active()`);
+    console.log('PASS generated siren starts with a volume and stops at zero');
     await evaluate(`window.__fail = false; window.__device.type = 'alarm_panel'; window.__device.alarm = { mode: 'armed', hasPin: true, tags: 2, triggered: true, events: [{ kind: 'triggered', at: 1794100000 }, { kind: 'armed', at: 1794099000, by: '<b>x</b>' }] }; window.__open('client')`);
     await until(`document.querySelectorAll('.card').length === 1`);
     await evaluate(`Array.from(document.querySelectorAll('.card button')).find(b => b.textContent === window.__brand.Text.details).click()`);

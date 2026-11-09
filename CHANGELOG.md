@@ -10,6 +10,10 @@
 - Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
   (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
   petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
+- Alarmas: sirena propia generada en la NUI (Web Audio) con volumen por distancia, en lugar de un sonido de
+  GTA inexistente; pitidos del teclado y del retardo de entrada. Chapa directa: tecla G junto al teclado o
+  Usar la chapa desde el inventario. Corrección: VerifyPasswordHash devuelve 1 en el binding de Lua y el
+  código correcto se daba por incorrecto y bloqueaba el teclado.
 - Alarmas de propiedades y negocios: kit de alarma instalable (productos genéricos de instalación), teclado
   en la pared con pinpad y lector de chapa, modos total y parcial, retardos de salida y entrada, bloqueo
   por códigos incorrectos, sirena, avisos al titular y a G6 de servicio, historial y control desde la

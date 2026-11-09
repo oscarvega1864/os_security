@@ -109,13 +109,13 @@ el kit, colocación y minijuego) y crea una central `alarm_panel` con un teclado
 `osg6 site` para que el titular la gestione.
 
 - **Teclado (E junto a él):** pinpad con código de 4-6 cifras y botones **Total**, **Parcial** y
-  **Desarmar**; **Acercar chapa** usa una chapa programada (si está armada, desarma; si no, arma).
+  **Desarmar**; **Acercar chapa** usa una chapa programada (si está armada, desarma; si no, arma). También con
+  **G** junto al teclado, o *Usar* la chapa desde el inventario.
   Tres códigos incorrectos bloquean el teclado 60 s y avisan al titular.
 - **Modos:** *total* salta con cualquiera dentro de la zona (10 m); *parcial* solo con personas
   sin acceso al dispositivo. Retardo de salida al armar (30 s) y de entrada al detectar a alguien
   (30 s, con pitidos) para desarmar.
-- **Salto:** sirena en la zona durante 90 s (sonido configurable en `Alarm.Siren`; si el sonido no
-  existe en el juego, la alarma funciona igual sin él), aviso y marcador en el mapa al titular y a
+- **Salto:** sirena en la zona durante 90 s (generada por la NUI, se oye hasta 150 m), aviso y marcador en el mapa al titular y a
   los empleados de Gruppe Sechs de servicio, y registro en el historial.
 - **Tablet Client** (sección Alarmas o detalle del dispositivo): armar, armar parcial y desarmar
   a distancia sin código, crear o cambiar el código, programar chapas (gasta una chapa en blanco

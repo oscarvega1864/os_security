@@ -55,7 +55,7 @@ OSSecurity.Brand = {
             tags = 'Chapas', programTag = 'Programar chapa', revokeTags = 'Revocar chapas',
             events = { armed = 'Armada', partial = 'Armada parcial', disarmed = 'Desarmada', triggered = 'Salto de alarma', wrong_pin = 'Codigo o chapa incorrectos',
                 lockout = 'Teclado bloqueado', pin_set = 'Codigo cambiado', tag_added = 'Chapa programada', tags_revoked = 'Chapas revocadas', entry = 'Entrada detectada' },
-            keypadHint = 'E: teclado de alarma',
+            keypadHint = '~INPUT_CONTEXT~ teclado de alarma   ~INPUT_DETONATE~ acercar chapa',
             pad = { armed = 'ARMADA', partial = 'PARCIAL', disarmed = 'DESARMADA', locked = 'BLOQUEADO', entry = 'INTRODUZCA CODIGO', triggered = 'ALARMA',
                 arm = 'Total', partial = 'Parcial', disarm = 'Desarmar', tag = 'Acercar chapa', clear = 'Borrar', close = 'Salir (Esc)' },
             entryWarning = 'Alarma armada: introduce el codigo en %d s o saltara.'

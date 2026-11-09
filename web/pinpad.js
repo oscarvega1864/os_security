@@ -24,7 +24,7 @@
     if (/^\d$/.test(key) && pad.code.length < 6) pad.code += key;
     else if (key === 'clear') pad.code = '';
     else if (key === 'back') pad.code = pad.code.slice(0, -1);
-    post('pinpadKey', {}); render();
+    window.postMessage({ type: 'beep', frequency: 1500, duration: 0.05, volume: 0.12 }, '*'); render();
   }
   function send(action) {
     if (!pad || pad.busy) return;

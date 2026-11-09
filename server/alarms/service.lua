@@ -126,6 +126,23 @@ function OSSecurity.AlarmService.new(options)
         return { mode = mode, message = MESSAGES[mode]:format(config.ExitDelay) }
     end
 
+    -- Chapa usada desde el inventario: actua sobre el teclado mas cercano a alcance.
+    function alarms.tagNearest(source)
+        local snapshot = options.inventory.snapshot()
+        local point = options.world(source)
+        if not snapshot or not point then return nil, 'Alarma no disponible.' end
+        local best, bestDistance
+        for deviceId in pairs(snapshot.alarms or {}) do
+            local device = options.registry.get(0, deviceId)
+            if device and device.type == 'alarm_panel' and device.position then
+                local d = distance(point, device.position)
+                if d <= config.InteractDistance and (not bestDistance or d < bestDistance) then best, bestDistance = deviceId, d end
+            end
+        end
+        if not best then return nil, 'Acerca la chapa a un teclado de alarma.' end
+        return alarms.tag(source, best)
+    end
+
     -- Desde la tablet Client (titular o acceso concedido): sin codigo, como la app del fabricante.
     function alarms.remote(actor, device, action)
         if device.type ~= 'alarm_panel' then return nil, 'No es una central de alarma.' end
