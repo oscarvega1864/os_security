@@ -186,7 +186,17 @@ error (queda libre y no se vuelve a detectar). `/g6puerta <propiedad|negocio> <i
 la añade a mano si no se detecta sola (o la recupera), y `/g6puerta borrar` da de baja la más cercana.
 Las dos primeras también están en el panel F10. Necesita el export `ListAssets` de os_devtools.
 
-## Vehículos: cierre centralizado y alarma
+## Vehículos: llave, motor, cierre centralizado y alarma
+
+Todos los vehículos de os_devtools (matrícula `OS` + ID) tienen **llave**, que solo usa el dueño (personaje
+activo) o un administrador:
+
+- **Abrir / cerrar:** tecla **L** junto a la puerta (3,5 m) o desde dentro. Con cierre centralizado, a 15 m.
+- **Motor:** tecla **Y** al volante. El juego ya no arranca solo al subirse; sin la llave sale "No tienes la
+  llave". Los vehículos que no son de os_devtools (vMenu, NPC) funcionan como siempre.
+
+Las dos teclas se cambian en Ajustes → Teclas → FiveM.
+
 
 Para vehículos de os_devtools (matrícula `OS` + ID). Se instalan **sentado al volante, con el motor
 apagado**, usando el kit desde el inventario con destornillador. Pueden instalar el dueño (personaje
@@ -196,7 +206,7 @@ cada hilo del módulo en su cable, y probar el mando. Requiere `ossecurity_items
 
 | Kit | Función |
 | --- | --- |
-| `os_car_lock_kit` | Cierre centralizado: el dueño (o un admin) abre y cierra con el mando, tecla **L** (configurable en Ajustes → Teclas → FiveM). Destellos y pitido. |
+| `os_car_lock_kit` | Cierre centralizado: abrir y cerrar con el mando (L) a 15 m, con destellos y pitido. |
 | `os_car_alarm_kit` | Alarma (necesita el cierre): se arma al cerrar; si otra persona intenta entrar, suena 30 s y avisa al dueño con un marcador. Abrir con el mando la apaga. |
 
 El estado se guarda en el inventario G6 y el servidor lo reaplica cada 3 s a las entidades con esa

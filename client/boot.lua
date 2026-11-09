@@ -203,8 +203,12 @@ RegisterNUICallback('cylinderFx', function(body, callback)
 end)
 -- Vehiculos: mando (L por defecto, configurable en Ajustes > Teclas > FiveM), efectos e instalacion.
 RegisterCommand('g6mando', function() if not carwireOpen and not cylinderOpen then cars.key() end end, false)
-RegisterKeyMapping('g6mando', 'Mando del vehiculo: abrir / cerrar (Gruppe Sechs)', 'keyboard', 'L')
-RegisterNetEvent('os_security:car:fx', function(netId, locked) if source == 65535 and type(netId) == 'number' then cars.fx(netId, locked == true) end end)
+RegisterKeyMapping('g6mando', 'Llave del vehiculo: abrir / cerrar (Gruppe Sechs)', 'keyboard', 'L')
+RegisterNetEvent('os_security:car:fx', function(netId, locked, remote) if source == 65535 and type(netId) == 'number' then cars.fx(netId, locked == true, remote == true) end end)
+-- Motor: Y por defecto. Solo en vehiculos con matricula OS hace falta la llave.
+RegisterCommand('g6motor', function() if not carwireOpen and not cylinderOpen then cars.engine() end end, false)
+RegisterKeyMapping('g6motor', 'Arrancar / apagar el motor (Gruppe Sechs)', 'keyboard', 'Y')
+RegisterNetEvent('os_security:car:engineResult', function(ok, message) if source == 65535 then cars.engineResult(ok == true, message) end end)
 RegisterNetEvent('os_security:car:alarm', function(netId, seconds)
     if source == 65535 and type(netId) == 'number' and type(seconds) == 'number' then cars.alarm(netId, seconds) end
 end)

@@ -8,6 +8,8 @@
 - Mando (tecla L): abrir y cerrar con destellos y pitido; estado persistente reaplicado a las entidades.
 - Alarma armada al cerrar: un intento de entrar de otra persona la hace sonar y avisa al dueño.
 - `osg6 cars` y entrada en el panel F10.
+- Llave en todos los vehículos con matrícula OS: abrir/cerrar a mano (L, 3,5 m) sin kit y motor con la tecla
+  Y solo para el dueño; el juego deja de arrancarlos solo al subirse.
 
 ## 0.5.1 — Montajes y puertas desde el panel F10
 

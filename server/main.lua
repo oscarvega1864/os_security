@@ -240,9 +240,9 @@ local carVehicles = {
     end
 }
 local carEffects = {
-    locked = function(vehicle, locked, alarm)
+    locked = function(vehicle, locked, alarm, remote)
         carState(vehicle.entity, { locked = locked, alarm = alarm == true })
-        for _, player in ipairs(playersNear(vehicle.position, 60.0)) do TriggerClientEvent('os_security:car:fx', player, vehicle.netId, locked) end
+        for _, player in ipairs(playersNear(vehicle.position, 60.0)) do TriggerClientEvent('os_security:car:fx', player, vehicle.netId, locked, remote == true) end
     end,
     alarm = function(vehicle, seconds)
         for _, player in ipairs(playersNear(vehicle.position, OSSecurity.GameplayConfig.Cars.AlarmHearing)) do
@@ -420,6 +420,12 @@ RegisterNetEvent('os_security:car:tamper', function(netId)
     if not lockAllowed(player) then return end
     local result, err = lockCall(function() return gameplay.cars.tamper(player, vehicleOf(netId)) end)
     if not result and err then TriggerClientEvent('os_security:car:result', player, false, err) end
+end)
+RegisterNetEvent('os_security:car:engine', function()
+    local player = source
+    if not lockAllowed(player) then return end
+    local result, err = lockCall(function() return gameplay.cars.engine(player) end)
+    TriggerClientEvent('os_security:car:engineResult', player, result ~= nil, err)
 end)
 RegisterNetEvent('os_security:car:installFinish', function(success)
     local player = source

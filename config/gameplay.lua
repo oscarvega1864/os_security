@@ -45,7 +45,7 @@ OSSecurity.GameplayConfig = {
     -- entrar con el vehiculo cerrado y avisa al dueno.
     Cars = {
         Kits = { os_car_lock_kit = 'lock', os_car_alarm_kit = 'alarm' }, Tools = { 'os_screwdriver' },
-        InstallSeconds = 180, KeyDistance = 15.0, TamperDistance = 8.0, AlarmSeconds = 30, AlarmCooldown = 45,
+        InstallSeconds = 180, KeyDistance = 15.0, ManualDistance = 3.5, TamperDistance = 8.0, AlarmSeconds = 30, AlarmCooldown = 45,
         AlarmHearing = 150.0, SyncSeconds = 3
     },
     Ace = {

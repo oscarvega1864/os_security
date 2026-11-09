@@ -97,7 +97,6 @@ function state.car(value)
         or type(value.lock) ~= 'boolean' or type(value.alarm) ~= 'boolean' or type(value.locked) ~= 'boolean'
         or not util.integer(value.changes, 0, 2147483647) or not util.integer(value.updatedAt, 0, 253402300799) then return false end
     if value.alarm and not value.lock then return false end -- la alarma va sobre el cierre
-    if value.locked and not value.lock then return false end
     return true
 end
 

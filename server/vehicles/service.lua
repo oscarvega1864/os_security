@@ -95,15 +95,19 @@ function OSSecurity.CarService.new(options)
                 or 'Alarma instalada: se arma al cerrar con el mando.' }
     end
 
-    -- Mando: abrir o cerrar un vehiculo con cierre centralizado, a KeyDistance como maximo.
+    -- Llave: abrir o cerrar un vehiculo propio. Sin kit, con la llave en la cerradura (ManualDistance o
+    -- dentro); con cierre centralizado, con el mando a KeyDistance (destellos y pitido).
     function cars.toggle(source, vehicle)
         if type(vehicle) ~= 'table' then return nil, 'Vehiculo no disponible.' end
         local car = asset(vehicle.plate)
-        local record = car and records()[tostring(car.id)]
-        if not record or not record.lock then return nil, 'Ese vehiculo no tiene cierre centralizado.' end
+        if not car then return nil, 'Ese vehiculo no tiene dueno registrado (matricula OS).' end
+        local record = records()[tostring(car.id)] or blank(car)
         local point = options.world(source)
-        if not point or distance(point, vehicle.position) > config.KeyDistance then return nil, 'Acercate al vehiculo.' end
-        if not owns(source, car) then return nil, 'No tienes el mando de este vehiculo.' end
+        local reach = record.lock and config.KeyDistance or config.ManualDistance
+        if not point or distance(point, vehicle.position) > reach then
+            return nil, record.lock and 'Acercate al vehiculo.' or 'Acercate a la puerta: sin cierre centralizado se cierra con la llave.'
+        end
+        if not owns(source, car) then return nil, 'No tienes la llave de este vehiculo.' end
         record.locked = not record.locked
         local saved, err = save(record)
         if not saved then return nil, err end
@@ -111,7 +115,7 @@ function OSSecurity.CarService.new(options)
             sounding[record.id] = nil
             options.effects.alarm(vehicle, 0)
         end
-        options.effects.locked(vehicle, record.locked, record.alarm)
+        options.effects.locked(vehicle, record.locked, record.alarm, record.lock)
         return { locked = record.locked, alarm = record.alarm,
             message = record.locked and (record.alarm and 'Vehiculo cerrado y alarma armada.' or 'Vehiculo cerrado.') or 'Vehiculo abierto.' }
     end
@@ -134,11 +138,21 @@ function OSSecurity.CarService.new(options)
         options.audit('car_alarm', source, tostring(record.id))
         return true
     end
+    -- Arrancar o apagar: solo quien conduce un vehiculo propio (o un administrador). Los vehiculos que no
+    -- son de os_devtools quedan libres, como en GTA.
+    function cars.engine(source)
+        local driving = options.vehicles.driving(source)
+        if not driving then return nil, 'Sientate al volante.' end
+        local car = asset(driving.plate)
+        if not car then return { free = true } end
+        if not owns(source, car) then return nil, 'No tienes la llave de este vehiculo.' end
+        return { owned = true }
+    end
     -- Estado que deben tener las entidades de ese vehiculo (sincronizacion periodica).
     function cars.desired(plate)
         local id = OSSecurity.CarService.plateId(plate)
         local record = id and records()[tostring(id)]
-        if not record or not record.lock then return nil end
+        if not record or (not record.lock and not record.locked) then return nil end
         return { locked = record.locked, alarm = record.alarm }
     end
     function cars.describe()

@@ -1097,7 +1097,7 @@ local function carFixture()
         isAdmin = function(source) return v.admins[source] == true end,
         vehicles = { asset = function(id) return v.assets[id] end, alias = function(source) return v.aliases[source] end,
             driving = function(source) return v.driving[source] end },
-        effects = { locked = function(vehicle, locked, alarm) v.log[#v.log + 1] = { 'locked', vehicle.plate, locked, alarm } end,
+        effects = { locked = function(vehicle, locked, alarm, remote) v.log[#v.log + 1] = { 'locked', vehicle.plate, locked, alarm, remote } end,
             alarm = function(vehicle, seconds) v.log[#v.log + 1] = { 'alarm', vehicle.plate, seconds } end,
             notifyOwner = function(alias, text) v.log[#v.log + 1] = { 'notify', alias, text } end } })
     return c, e, v
@@ -1146,7 +1146,7 @@ test('Only the owner (or an admin) locks with the key fob; a stranger trying to 
     e.give(2, 'os_car_lock_kit'); e.give(2, 'os_screwdriver')
     assert(v.cars.installBegin(2, 'os_car_lock_kit')); assert(v.cars.installFinish(2, true))
     c.players[2].point = { x = 5, y = 0, z = 1 }; c.players[5].point = { x = 1, y = 0, z = 1 }
-    local _, why = v.cars.toggle(5, carAt()); assert(why:find('mando'))
+    local _, why = v.cars.toggle(5, carAt()); assert(why:find('llave'))
     c.players[2].point = { x = 40, y = 0, z = 1 }; assert(not v.cars.toggle(2, carAt())) -- lejos
     c.players[2].point = { x = 5, y = 0, z = 1 }
     local locked = assert(v.cars.toggle(2, carAt())); assert(locked.locked and v.log[#v.log][1] == 'locked' and v.log[#v.log][3] == true)
@@ -1171,4 +1171,22 @@ test('Inventory state rejects malformed vehicle security records', function()
     assert(OSSecurity.InventoryState.car(base))
     local function bad(field, value) local r = util.copy(base); r[field] = value; return not OSSecurity.InventoryState.car(r) end
     assert(bad('lock', false) and bad('plate', 'OS 12') and bad('id', 0) and bad('locked', 'si') and bad('extra', 1))
+end)
+
+test('Without a kit the owner still locks with the key next to the car, and only the owner can start the engine', function()
+    local c, e, v = carFixture()
+    c.players[2].point = { x = 3, y = 0, z = 1 }; c.players[5].point = { x = 1, y = 0, z = 1 }
+    local _, why = v.cars.toggle(2, { plate = 'XX1234', position = { x = 0, y = 0, z = 1 } }); assert(why:find('matricula OS'))
+    c.players[2].point = { x = 6, y = 0, z = 1 }
+    _, why = v.cars.toggle(2, carAt()); assert(why:find('puerta')) -- sin cierre centralizado: hay que estar junto al coche
+    c.players[2].point = { x = 3, y = 0, z = 1 }
+    local locked = assert(v.cars.toggle(2, carAt())); assert(locked.locked and v.log[#v.log][5] == false) -- sin destellos de mando
+    assert(v.cars.desired('OS000012').locked == true)
+    _, why = v.cars.tamper(5, carAt()); assert(why == 'Esta cerrado.')
+    assert(not v.cars.toggle(2, carAt()).locked and v.cars.desired('OS000012') == nil)
+    _, why = v.cars.engine(2); assert(why:find('volante'))
+    v.driving[5] = { plate = 'OS000012', engine = false, speed = 0 }; _, why = v.cars.engine(5); assert(why:find('llave'))
+    v.driving[2] = { plate = 'OS000012', engine = false, speed = 0 }; assert(v.cars.engine(2).owned)
+    v.driving[5] = { plate = 'VMENU01', engine = false, speed = 0 }; assert(v.cars.engine(5).free) -- vehiculos ajenos a os_devtools: libres
+    v.driving[4] = { plate = 'OS000012', engine = true, speed = 0 }; assert(v.cars.engine(4).owned) -- administrador
 end)
