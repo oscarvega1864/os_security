@@ -10,6 +10,9 @@
 - Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
   (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
   petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
+- Corrección: montajes y colocaciones guardan coordenadas a 0,1 mm, normales a 9 decimales y ángulos a
+  0,01°. Los residuos del raycast (p. ej. 2e-17) no se releían exactos con el JSON del runtime y el
+  guardado se bloqueaba por integridad. El error de integridad indica ahora la ruta y los valores.
 - Editor de colocación CCTV: la vista previa se ancla al montaje (sin seguir la mira) y se ajusta
   con flechas sobre los ejes X/Y de la pared, Mayús+flechas para girar e inclinar, Ctrl fino, Tab
   para cambiar de montaje y E/Intro para colocar, limitado al radio e inclinación del servidor.

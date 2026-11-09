@@ -5,8 +5,10 @@ local function distance(a, b)
     return math.sqrt((a.x - b.x)^2 + (a.y - b.y)^2 + (a.z - b.z)^2)
 end
 
-local function canonical(vector)
-    return { x = OSSecurity.ComponentWear.number(vector.x), y = OSSecurity.ComponentWear.number(vector.y), z = OSSecurity.ComponentWear.number(vector.z) }
+-- Posiciones a 0,1 mm y angulos a 0,01 grados: valores que el JSON del runtime relee exactamente.
+local function canonical(vector, decimals)
+    local round = OSSecurity.Util.round
+    return { x = round(vector.x, decimals or 4), y = round(vector.y, decimals or 4), z = round(vector.z, decimals or 4) }
 end
 
 function OSSecurity.InstallationService.new(options)
@@ -153,7 +155,7 @@ function OSSecurity.InstallationService.new(options)
         end
         local installation = {
             id = ('g6i_%010d'):format(snapshot.nextInstallation), anchorId = anchor.id, owner = anchor.owner,
-            installer = session.actor.principal, position = position, rotation = canonical(proposal.rotation), bucket = bucket,
+            installer = session.actor.principal, position = position, rotation = canonical(proposal.rotation, 2), bucket = bucket,
             model = config.CameraModel, status = 'pending', createdAt = options.now(), updatedAt = options.now(),
             materials = util.copy(config.Materials), tools = util.copy(config.Tools), holder = holder
         }

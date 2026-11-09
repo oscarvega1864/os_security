@@ -37,6 +37,25 @@ function OSSecurity.JsonStorage.new(options)
         return nil, message
     end
 
+    -- Primera diferencia tras serializar: ruta (identidades enmascaradas) y, si es numero, ambos valores.
+    local function difference(left, right, path)
+        if type(left) ~= type(right) then return ('path=%s types=%s/%s'):format(path, type(left), type(right)) end
+        if type(left) ~= 'table' then
+            if left == right then return nil end
+            if type(left) == 'number' then return ('path=%s before=%.17g after=%.17g'):format(path, left, right) end
+            return ('path=%s type=%s'):format(path, type(left))
+        end
+        local function label(key)
+            key = tostring(key)
+            return key:match('^license:') and 'license:*' or key
+        end
+        for key, item in pairs(left) do
+            local found = difference(item, right[key], path .. '.' .. label(key))
+            if found then return found end
+        end
+        for key in pairs(right) do if left[key] == nil then return ('path=%s extra'):format(path .. '.' .. label(key)) end end
+    end
+
     local function reject(stage, message, context)
         message = diagnostic(stage, message, context)
         options.log(message)
@@ -112,7 +131,9 @@ function OSSecurity.JsonStorage.new(options)
         end
         local decoded, reason = decode(encoded)
         if not decoded then return reject('serialization', 'Serializacion invalida: ' .. reason) end
-        if not OSSecurity.Util.equal(snapshot, decoded) then return reject('integrity', 'Serializacion altera los datos.') end
+        if not OSSecurity.Util.equal(snapshot, decoded) then
+            return reject('integrity', 'Serializacion altera los datos.', difference(snapshot, decoded, '$'))
+        end
         -- Detectar ediciones/corrupcion externa antes de sobrescribir un slot.
         for index, path in ipairs(paths) do
             local content, readError, details = read(path)

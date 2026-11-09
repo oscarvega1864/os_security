@@ -264,6 +264,17 @@ test('Aimed anchors require admin, a nearby point and valid data, then persist w
     assert(anchor.installer == c.players[1].principal and anchor.radius == 1.5)
 end)
 
+test('Aimed anchors and placements persist only runtime-safe numbers (no residual raycast exponents)', function()
+    local c = fixture(); c.players[4].point = { x = 1170.1, y = 2711.5, z = 39.1 }
+    assert(c.game.anchorAt(4, { id = 'wall', client = 1, position = { x = 1170.226318359375, y = 2712.0000000001, z = 39.093368530273438 },
+        normal = { x = -0.99999994039536, y = 2.3283064365387e-17, z = -4.3711388286738e-08 } }))
+    local anchor = c.game.inventory.snapshot().anchors.wall
+    assert(anchor.normal.x == -1 and anchor.normal.y == 0 and anchor.normal.z == 0)
+    assert(anchor.position.x == 1170.2263 and anchor.position.y == 2712 and anchor.position.z == 39.0934)
+    assert(OSSecurity.Util.round(359.99999999999994, 2) == 360 and OSSecurity.Util.round(5.6843418860808e-14, 2) == 0)
+    assert(math.type(OSSecurity.Util.round(-1.0000000001, 6)) == 'integer')
+end)
+
 test('Inventory state rejects malformed site links', function()
     local limits = config
     for _, site in ipairs({ { kind = 'house', id = 1 }, { kind = 'property', id = 0 }, { kind = 'property', id = 1.5 }, { kind = 'property', id = 1, owner = 'x' } }) do

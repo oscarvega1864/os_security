@@ -19,6 +19,17 @@ function util.equal(left, right)
     return true
 end
 
+-- Redondeo a decimales fijos para coordenadas y angulos persistidos. Evita mantisas largas y
+-- exponentes muy negativos (p. ej. 2e-17 en normales del raycast) que el JSON del runtime no
+-- relee de forma exacta, lo que bloquearia el guardado por integridad.
+function util.round(value, decimals)
+    if not util.finite(value) then return value end
+    local rounded = tonumber(('%.' .. decimals .. 'f'):format(value))
+    if rounded == 0 then return 0 end
+    if rounded == math.floor(rounded) and math.abs(rounded) < 2^53 then return math.tointeger(rounded) end
+    return rounded
+end
+
 function util.finite(value)
     return type(value) == 'number' and value == value
         and value ~= math.huge and value ~= -math.huge
