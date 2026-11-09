@@ -88,8 +88,7 @@ OSSecurity.Brand = {
                 trimTitle = 'Quitar el embellecedor bajo el volante', trimHelp = 'Manten pulsado sobre cada grapa y suelta cuando la tension este en la franja verde. Si te pasas, la grapa se rompe.',
                 tension = 'Tension', broken = 'Grapas rotas', pulling = 'Tirando...', clipOut = 'Grapa fuera', notEnough = 'Poca fuerza: vuelve a tirar',
                 clipBroken = 'Grapa rota',
-                wireTitle = 'Medir y empalmar', wireHelp = 'Pulsa un cable para medirlo con el multimetro. Arrastra cada hilo del modulo hasta el cable que le corresponde.',
-                leads = { ['12v'] = '+12V perm.', gnd = 'Masa', can = 'Cierre CAN', door = 'Puerta' },
+                wireTitle = 'Medir y empalmar', wireHelp = '1) Pulsa cada cable: el multimetro dice que es y su nombre queda escrito debajo. 2) Arrastra cada hilo del modulo hasta el cable con su mismo nombre.',
                 probe = 'Lectura', spliced = 'Empalmado', wrongWire = 'Cable equivocado: el modulo no responde', shorts = 'Fallos',
                 testTitle = 'Probar el mando', testHelp = 'Pulsa el boton del mando: el LED del modulo debe responder.', works = 'Funciona'
             }

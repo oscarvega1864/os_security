@@ -13,12 +13,14 @@
   const svg = (tag, attrs = {}) => { const node = document.createElementNS(NS, tag); for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value)); return node; };
   const W = 400, H = 260, TOTAL = 3;
   const COLORS = ['red', 'black', 'green', 'white', 'yellow', 'blue', 'brown', 'purple'];
-  // Hilos del modulo y la lectura del cable correcto; el resto del mazo son senuelos.
+  // Hilos del modulo: cada uno va al cable del mazo que tiene su mismo nombre. El multimetro dice que es
+  // cada cable (lectura y nombre); los demas cables del mazo son de otros sistemas del coche.
   const LEADS = {
-    lock: [{ id: '12v', reading: '12.6 V' }, { id: 'gnd', reading: '0.0 V · continuidad' }, { id: 'can', reading: '2.5 V · datos' }],
-    alarm: [{ id: '12v', reading: '12.6 V' }, { id: 'gnd', reading: '0.0 V · continuidad' }, { id: 'door', reading: '12.1 V · cae al abrir' }]
+    lock: [{ id: '12v', name: '+12V', reading: '12.6 V' }, { id: 'gnd', name: 'Masa', reading: '0 V con continuidad' }, { id: 'can', name: 'CAN', reading: '2.5 V de datos' }],
+    alarm: [{ id: '12v', name: '+12V', reading: '12.6 V' }, { id: 'gnd', name: 'Masa', reading: '0 V con continuidad' }, { id: 'door', name: 'Puerta', reading: '12 V, cae al abrir' }]
   };
-  const DECOYS = ['0.0 V · con contacto 12 V', '5.0 V · sensor', '0.0 V · sin continuidad', '12.4 V · con contacto'];
+  const DECOYS = [{ name: 'Llave', reading: '12 V solo con contacto' }, { name: 'Sensor', reading: '5 V de referencia' },
+    { name: 'Luz', reading: '0 V sin continuidad' }, { name: 'Bocina', reading: '0 V hasta pitar' }];
   let run = null; let runs = 0;
 
   function post(endpoint, body) {
@@ -113,7 +115,8 @@
     const t = run.text;
     const { board, meters, status } = shell(t.wireTitle, t.wireHelp, 2);
     const leads = LEADS[run.data.kind] || LEADS.lock;
-    const readings = shuffled([...leads.map(lead => ({ reading: lead.reading, lead: lead.id })), ...shuffled(DECOYS).slice(0, 3).map(reading => ({ reading, lead: null }))]);
+    const readings = shuffled([...leads.map(lead => ({ name: lead.name, reading: lead.reading, lead: lead.id })),
+      ...shuffled(DECOYS).slice(0, 3).map(decoy => ({ name: decoy.name, reading: decoy.reading, lead: null }))]);
     const colors = shuffled(COLORS);
     board.append(svg('rect', { x: 150, y: 14, width: 240, height: 34, rx: 6, class: 'cw-meter' }));
     const display = svg('text', { x: 270, y: 37, class: 'cw-display', 'text-anchor': 'middle' }); display.textContent = '--.- V'; board.append(display);
@@ -127,7 +130,7 @@
     const plugs = leads.map((lead, i) => {
       const y = 95 + i * 50;
       const node = svg('circle', { cx: 100, cy: y, r: 10, class: 'cw-lead' }); board.append(node);
-      const name = svg('text', { x: 30, y: y + 4, class: 'cw-lead-label' }); name.textContent = t.leads[lead.id]; board.append(name);
+      const name = svg('text', { x: 26, y: y + 4, class: 'cw-lead-label' }); name.textContent = lead.name; board.append(name);
       const cable = svg('path', { d: '', class: 'cw-lead-cable' }); board.insertBefore(cable, node);
       return { ...lead, x: 100, y, node, cable, done: false };
     });
@@ -140,8 +143,8 @@
       if (plug) { board.setPointerCapture?.(event.pointerId); dragging = plug; return; }
       const wire = nearWire(p);
       if (wire) {
-        wire.probed = true; display.textContent = wire.reading; wire.label.textContent = wire.reading.split(' · ')[0];
-        status.textContent = `${t.probe}: ${wire.reading}`;
+        wire.probed = true; display.textContent = `${wire.reading} → ${wire.name}`; wire.label.textContent = wire.name;
+        status.textContent = `${t.probe}: ${wire.name} (${wire.reading})`;
       }
     });
     board.addEventListener('pointermove', event => {
@@ -157,7 +160,7 @@
       if (wire.lead === plug.id) {
         plug.done = wire.used = true; plug.node.classList.add('done'); wire.line.classList.add('spliced');
         plug.cable.setAttribute('d', `M ${plug.x} ${plug.y} C ${plug.x + 40} ${plug.y + 30}, ${wire.x - 40} ${p.y + 30}, ${wire.x} ${p.y}`);
-        status.textContent = `${t.spliced}: ${t.leads[plug.id]}`;
+        status.textContent = `${t.spliced}: ${plug.name}`;
         if (plugs.every(item => item.done)) next(test);
       } else {
         plug.cable.setAttribute('d', ''); errors++; showErrors(errors); status.textContent = t.wrongWire;

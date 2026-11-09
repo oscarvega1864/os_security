@@ -228,15 +228,16 @@ async function main() {
       await mouse('mouseReleased', clip.x, clip.y); await pause(120);
     }
     await until(`document.querySelectorAll('.cw-wire').length === 6`);
-    const expected = { '12.6 V': 0, '0.0 V · continuidad': 1, '2.5 V · datos': 2 };
+    const expected = { '+12V': 0, 'Masa': 1, 'CAN': 2 };
     const wiresAt = await centers('.cw-wire');
     const byLead = [];
     for (const wire of wiresAt) {
       await mouse('mouseMoved', wire.x, wire.y); await mouse('mousePressed', wire.x, wire.y, 1); await mouse('mouseReleased', wire.x, wire.y); await pause(60);
-      const reading = await evaluate(`document.querySelector('#carwire .mg-status').textContent.split(': ').slice(1).join(': ')`);
+      const reading = await evaluate(`document.querySelector('#carwire .mg-status').textContent.split(': ').slice(1).join(': ').split(' (')[0]`);
       if (reading in expected) byLead[expected[reading]] = wire; else byLead.decoy = wire;
     }
-    assert(byLead[0] && byLead[1] && byLead[2] && byLead.decoy, 'Probing reveals every reading');
+    assert(byLead[0] && byLead[1] && byLead[2] && byLead.decoy, 'Probing reveals what every wire is');
+    assert(await evaluate(`Array.from(document.querySelectorAll('.cw-reading')).every(n => n.textContent.length > 0) && Array.from(document.querySelectorAll('.cw-lead-label')).map(n => n.textContent).join() === '+12V,Masa,CAN'`), 'Wire names under each wire match the module leads');
     fs.writeFileSync(path.join(output, 'car-wiring.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
     const leadsAt = await centers('.cw-lead');
     await mouse('mouseMoved', leadsAt[0].x, leadsAt[0].y); await mouse('mousePressed', leadsAt[0].x, leadsAt[0].y, 1);
