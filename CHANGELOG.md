@@ -10,6 +10,8 @@
 - Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
   (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
   petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
+- Sección **Gruppe Sechs** en el panel y la consola de `os_admin` (opcional): dispositivos, mantenimiento,
+  equipo, accesos, vínculos e instalaciones mediante los comandos existentes y su mismo ACE.
 - `osmaint fault <id> <slot> <salud>`: avería controlada de una pieza para pruebas y demostraciones;
   solo baja la salud, se registra en el historial y se reproduce al validar el almacenamiento.
 - Profundidad de la cámara ajustable con Q/Z en el editor (−0,15 a +0,30 m respecto a la superficie),

@@ -118,6 +118,16 @@ activo, deja de verse. La tarjeta muestra "Propiedad 200" o "Negocio 3 · Nombre
 no da acceso a Operations ni a mantenimiento. `set ossecurity_sites_resource none` lo
 desactiva. Sigue haciendo falta la tablet Client y el ACE `ossecurity.g6.client`.
 
+## Panel de administración (os_admin)
+
+Si `os_admin` está iniciado, OS Security registra la sección **Gruppe Sechs** en su panel (F10) y
+en su consola (`adm gruppe6 ...`): listar dispositivos, detalle y diagnóstico, cambiar estado,
+registrar o retirar, provocar avería, reparar, sustituir, historial, dar tablets/kits/herramientas,
+ver el equipo de un jugador, dar o quitar acceso, vincular a propiedad o negocio, instalaciones y
+estado del sistema. Cada acción ejecuta el comando `osdev`/`osmaint`/`osg6` equivalente, con el
+mismo ACE `ossecurity.admin` y auditoría; las respuestas vuelven al panel en lugar del chat. No hay
+dependencia: sin `os_admin` no se registra nada. Las zonas se siguen creando con `/g6anchor`.
+
 ## Mensajes al jugador
 
 Los avisos de la tablet y de la instalación (errores, "cargando", CCTV registrado o colocación cancelada)

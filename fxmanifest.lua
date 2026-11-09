@@ -53,6 +53,7 @@ server_scripts {
     'server/security/identity.lua',
     'server/integrations/contracts.lua',
     'server/integrations/sites.lua',
+    'server/integrations/admin_panel.lua',
     'server/inventory/state.lua',
     'server/inventory/standalone.lua',
     'server/inventory/external.lua',

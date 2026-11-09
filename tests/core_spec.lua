@@ -521,6 +521,18 @@ test('FiveM wiring: startup, commands, restart persistence and safe file errors'
         commands.osdev(0, { 'create', 'bodycam' })
         assert(OSSecurity.Registry.status(), 'SaveResourceFile wrote the snapshot and returned integer 1, but the core blocked it')
         commands.osdev(7, { 'list' })
+        -- Panel de os_admin: mismos comandos, respuestas recogidas en lugar de enviadas al chat.
+        local panel = {}
+        for _, action in ipairs(OSSecurity.AdminPanel.build(OSSecurity.AdminPanelRun).actions) do panel[action.id] = action end
+        local sent = 0; TriggerClientEvent = function() sent = sent + 1 end
+        local created = panel.crear.handler(7, { tipo = 'alarm_panel' }); assert(created.ok and created.message:find('^Persistido'), created.message)
+        local listed = panel.dispositivos.handler(7, {}); assert(listed.ok and listed.message:find('^Dispositivos: 2') and #listed.rows == 2)
+        local detail = panel.detalle.handler(7, { dispositivo = 'osd_0000000002' }); assert(detail.ok and #detail.rows >= 2)
+        assert(not panel.crear.handler(9, { tipo = 'bodycam' }).ok) -- sin ossecurity.admin
+        assert(not panel.estado.handler(7, { dispositivo = 'osd_0000000099', estado = 'active' }).ok)
+        assert(not panel.vincular.handler(7, { dispositivo = 'osd_0000000002', tipo = 'propiedad' }).ok)
+        assert(sent == 0, 'Panel replies must not reach the chat')
+        TriggerClientEvent = function(_, source) assert(source > 0) end
         commands.osstatus(0, {})
         local logCount = #logs
         handlers.onResourceStop('another_resource'); assert(#logs == logCount)
@@ -528,7 +540,7 @@ test('FiveM wiring: startup, commands, restart persistence and safe file errors'
         boot() -- mismas cadenas JSON, nuevo registro y adaptador
         assert(OSSecurity.Registry.get(0, 'osd_0000000001'))
         commands.osdev(0, { 'create', 'bodycam' })
-        assert(OSSecurity.Registry.get(0, 'osd_0000000002'))
+        assert(OSSecurity.Registry.get(0, 'osd_0000000003'))
         source = 7; handlers.playerDropped()
         readUnavailable = true
         io.open = function() return nil, 'permission denied', 13 end

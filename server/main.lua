@@ -48,13 +48,22 @@ OSSecurity.Registry = OSSecurity.DeviceRegistry.new({
 })
 local registry = OSSecurity.Registry
 
+-- Comandos guardados por nombre para que el panel de os_admin los ejecute recogiendo sus respuestas.
+local commandHandlers, panelCapture = {}, { current = nil }
+local function registerCommand(name, handler, restricted)
+    commandHandlers[name] = handler
+    return RegisterCommand(name, handler, restricted)
+end
+
 local commandOptions = {
     registry = registry,
     permissions = permissions,
-    register = RegisterCommand,
+    register = registerCommand,
     defaultPageSize = serverConfig.DefaultPageSize,
     encode = json.encode,
     reply = function(source, message)
+        local capture = panelCapture.current
+        if capture and capture.source == source then capture.lines[#capture.lines + 1] = tostring(message); return end
         if source == 0 then
             print(('%s %s'):format(constants.LOG_PREFIX, message))
         else
@@ -130,7 +139,7 @@ local sites = sitesResource ~= 'none' and OSSecurity.Sites.new({
 local sessionSalt
 local gameplay = OSSecurity.Gameplay.new({
     registry = registry, files = resourceFiles, permissions = permissions,
-    register = RegisterCommand, reply = commandOptions.reply, now = os.time,
+    register = registerCommand, reply = commandOptions.reply, now = os.time,
     connected = function(source) return GetPlayerName(source) ~= nil end,
     identifier = function(source) return GetPlayerIdentifierByType(source, 'license') end,
     ace = isAceAllowed,
@@ -214,6 +223,11 @@ AddEventHandler('onResourceStart', function(started)
     if started == inventoryResource then registerUsableTablets() end
 end)
 
+-- Panel y consola de os_admin (opcional).
+local runPanelCommand = OSSecurity.AdminPanel.runner(commandHandlers, panelCapture)
+OSSecurity.AdminPanelRun = runPanelCommand
+AddEventHandler('os_admin:ready', function() OSSecurity.AdminPanel.publish(runPanelCommand) end)
+
 RegisterCommand('osstatus', function(source)
     local ready = registry.status()
     local message = ('Estado: %s | Version: %s | Device Core: %s'):format(
@@ -250,6 +264,7 @@ AddEventHandler('onResourceStart', function(startedResource)
     if not gameLoaded then storageLog('Flujo Gruppe Sechs bloqueado: ' .. tostring(gameError)) end
     print(('%s Objetos: %s'):format(constants.LOG_PREFIX, externalItems and ('%s por personaje (%s)'):format(inventoryResource, identityResource) or 'registro local (standalone)'))
     registerUsableTablets()
+    OSSecurity.AdminPanel.publish(runPanelCommand)
 
     if config.Debug then
         print(('%s [DEBUG] Nombre del recurso: %s'):format(constants.LOG_PREFIX, resourceName))
