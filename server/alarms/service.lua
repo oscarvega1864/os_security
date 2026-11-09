@@ -37,6 +37,14 @@ function OSSecurity.AlarmService.new(options)
         local point = options.world(source)
         return point ~= nil and distance(point, device.position) <= config.InteractDistance
     end
+    -- Dentro de la zona protegida: si el cliente informa de que la central esta en un interior, cuenta
+    -- solo quien esta en ese interior (hasta 3 radios); si no hay dato, la esfera alrededor del teclado.
+    local function protected(player, deviceId, device)
+        local d = distance(player.position, device.position)
+        local reported = player.inside and player.inside[deviceId]
+        if reported ~= nil then return reported and d <= config.Radius * 3 end
+        return d <= config.Radius
+    end
     local function stopSiren(deviceId)
         local state = runtime[deviceId]
         if state and state.sirenUntil then options.siren(deviceId, nil) end
@@ -218,7 +226,7 @@ function OSSecurity.AlarmService.new(options)
                         players = players or options.players()
                         local intruders = {}
                         for _, player in ipairs(players) do
-                            if player.bucket == (device.bucket or 0) and distance(player.position, device.position) <= config.Radius
+                            if player.bucket == (device.bucket or 0) and protected(player, deviceId, device)
                                 and not (alarm.mode == 'partial' and options.authorized(options.actorOf(player.source), device)) then
                                 intruders[#intruders + 1] = player.source
                             end

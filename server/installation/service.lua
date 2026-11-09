@@ -137,20 +137,28 @@ function OSSecurity.InstallationService.new(options)
         contexts[source] = nil -- Confirmacion de un solo uso, tambien si se rechaza.
         if not context or context.token ~= session.token or options.now() > context.expires
             or session.actor.kind ~= 'operations' or not config.Profiles[session.actor.role].install
-            or not util.object(proposal, { anchorId = true, position = true, rotation = true }) then return nil, 'Colocacion no valida o caducada.' end
+            or not util.object(proposal, { anchorId = true, position = true, rotation = true, pivot = true }) then return nil, 'Colocacion no valida o caducada.' end
         local point, bucket = world(source)
         if not point then return nil, bucket end
         if bucket ~= context.bucket or distance(point, context.origin) > config.MaxPlacementMove then return nil, 'Se ha alejado de la colocacion.' end
         local snapshot, err = options.inventory.snapshot()
         if not snapshot then return nil, err end
         local anchor = type(proposal.anchorId) == 'string' and snapshot.anchors[proposal.anchorId]
+        -- Pivote: centro visual del modelo, sobre el que gira en el editor. Es el que se valida contra el
+        -- cuadrado y el plano; el origen del modelo (lo que se guarda) debe quedar muy cerca de el.
+        local pivot = proposal.position
+        if proposal.pivot ~= nil then
+            if not OSSecurity.InventoryState.vector(proposal.pivot, 1000000) or not OSSecurity.InventoryState.vector(proposal.position, 1000000)
+                or distance(proposal.pivot, proposal.position) > config.MaxPivotOffset then return nil, 'Montaje, proximidad o coordenadas no autorizados.' end
+            pivot = proposal.pivot
+        end
         if not anchor or anchor.installer ~= session.actor.principal or anchor.bucket ~= bucket
             or not OSSecurity.InventoryState.vector(proposal.position, 1000000)
             or not OSSecurity.InventoryState.vector(proposal.rotation, 360)
             or math.abs(proposal.rotation.x) > 90 or math.abs(proposal.rotation.y) > 180
-            or distance(point, proposal.position) > config.PlacementDistance
-            or not OSSecurity.Geometry.inside(anchor, proposal.position) then return nil, 'Montaje, proximidad o coordenadas no autorizados.' end
-        local delta = { x = proposal.position.x - anchor.position.x, y = proposal.position.y - anchor.position.y, z = proposal.position.z - anchor.position.z }
+            or distance(point, pivot) > config.PlacementDistance
+            or not OSSecurity.Geometry.inside(anchor, pivot) then return nil, 'Montaje, proximidad o coordenadas no autorizados.' end
+        local delta = { x = pivot.x - anchor.position.x, y = pivot.y - anchor.position.y, z = pivot.z - anchor.position.z }
         local planeDistance = delta.x * anchor.normal.x + delta.y * anchor.normal.y + delta.z * anchor.normal.z
         -- Profundidad elegida en el editor (Q/Z): el origen del modelo puede quedar algo dentro o separado
         -- de la superficie, dentro de MinDepth..MaxDepth. Se guarda tal cual, sin proyectar.

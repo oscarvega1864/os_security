@@ -177,48 +177,57 @@
   }
 
   // Fase 3: arrastrar cada cable desde su conector hasta el borne del mismo color.
+  // Cableado real de baja tension (alarmas y CCTV): cada color va a la senal de su borne segun el codigo
+  // (rojo +12V, negro GND, verde A+, blanco B-, amarillo TAMPER). Como en la vida real los bornes no
+  // tienen color, solo la etiqueta. Cuatro de los cinco cables, en orden y alturas aleatorias, y
+  // cables que cuelgan (curvos), no en lineas rectas.
+  const WIRES = [{ key: 'red', terminal: '+12V' }, { key: 'black', terminal: 'GND' }, { key: 'green', terminal: 'A+' },
+    { key: 'white', terminal: 'B-' }, { key: 'yellow', terminal: 'TAMP' }];
+  const shuffled = list => { const copy = [...list]; for (let i = copy.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [copy[i], copy[j]] = [copy[j], copy[i]]; } return copy; };
+  // Alturas aleatorias sin solaparse: 4 de 5 franjas, con un pequeno desplazamiento dentro de cada una.
+  const rowsFor = count => shuffled([0, 1, 2, 3, 4]).slice(0, count).sort((a, b) => a - b).map(i => 50 + i * 42 + (Math.random() * 14 - 7));
+  const sagging = (a, b, sag) => `M ${a.x} ${a.y} C ${a.x + 70} ${a.y + sag}, ${b.x - 70} ${b.y + sag}, ${b.x} ${b.y}`;
   function cables() {
     run.phase = 'cables'; const t = run.text; fx({ phase: 'cables' });
     const { board, meters, status } = shell(t.cablesTitle, t.cablesHelp, 3);
-    const keys = ['red', 'blue', 'yellow', 'green'];
-    const colors = t.colors.map((name, i) => ({ name, key: keys[i] }));
-    const order = [...colors].sort(() => Math.random() - 0.5);
-    const rows = colors.length, top = 45, gap = (H - 2 * top) / (rows - 1);
-    board.append(svg('rect', { x: 20, y: 20, width: 70, height: H - 40, rx: 10, class: 'mg-panel-box' }), svg('rect', { x: W - 90, y: 20, width: 70, height: H - 40, rx: 10, class: 'mg-panel-box' }));
+    const wires = shuffled(WIRES).slice(0, 4);
+    board.append(svg('rect', { x: 20, y: 20, width: 90, height: H - 40, rx: 10, class: 'mg-panel-box' }), svg('rect', { x: W - 110, y: 20, width: 90, height: H - 40, rx: 10, class: 'mg-panel-box' }));
+    board.append(Object.assign(svg('text', { x: W / 2, y: 14, class: 'mg-wire-code', 'text-anchor': 'middle' }), { textContent: t.wireCode }));
     const layer = svg('g'); board.append(layer);
-    const sources = colors.map((color, i) => {
-      const node = { ...color, x: 70, y: top + i * gap, linked: false };
-      board.append(svg('rect', { x: 34, y: node.y - 6, width: 36, height: 12, rx: 4, class: `mg-wire-stub ${color.key}` }));
-      node.plug = svg('circle', { cx: node.x, cy: node.y, r: 9, class: `mg-plug ${color.key}`, 'data-key': color.key }); board.append(node.plug);
+    const leftRows = rowsFor(wires.length), rightRows = rowsFor(wires.length);
+    const sources = shuffled(wires).map((wire, i) => {
+      const node = { ...wire, x: 70 + Math.random() * 25, y: leftRows[i], linked: false, sag: 25 + Math.random() * 45 };
+      board.append(svg('path', { d: `M 20 ${node.y + 12} Q 45 ${node.y + 18} ${node.x} ${node.y}`, class: `mg-loose ${wire.key}` }));
+      node.plug = svg('circle', { cx: node.x, cy: node.y, r: 9, class: `mg-plug ${wire.key}`, 'data-key': wire.key }); board.append(node.plug);
       return node;
     });
-    const targets = order.map((color, i) => {
-      const node = { ...color, x: W - 70, y: top + i * gap, linked: false };
-      board.append(svg('rect', { x: W - 70, y: node.y - 6, width: 36, height: 12, rx: 4, class: `mg-wire-stub ${color.key}` }));
-      node.socket = svg('circle', { cx: node.x, cy: node.y, r: 11, class: `mg-socket ${color.key}`, 'data-key': color.key }); board.append(node.socket);
+    const targets = shuffled(wires).map((wire, i) => {
+      const node = { ...wire, x: W - 80, y: rightRows[i], linked: false };
+      board.append(svg('rect', { x: W - 72, y: node.y - 10, width: 50, height: 20, rx: 3, class: 'mg-terminal' }));
+      board.append(Object.assign(svg('text', { x: W - 47, y: node.y + 4, class: 'mg-terminal-label', 'text-anchor': 'middle' }), { textContent: wire.terminal }));
+      node.socket = svg('circle', { cx: node.x, cy: node.y, r: 10, class: 'mg-socket', 'data-key': wire.key }); board.append(node.socket);
       return node;
     });
     const showErrors = strikes(meters, t.shorts);
     let dragging = null, errors = 0, linked = 0;
-    const curve = (a, b) => `M ${a.x} ${a.y} C ${a.x + 90} ${a.y}, ${b.x - 90} ${b.y}, ${b.x} ${b.y}`;
     board.addEventListener('pointerdown', event => {
       const p = point(board, event);
       const source = sources.find(node => !node.linked && Math.hypot(node.x - p.x, node.y - p.y) <= 16);
       if (!source) return;
       board.setPointerCapture?.(event.pointerId);
-      dragging = { source, path: svg('path', { d: curve(source, p), class: `mg-cable ${source.key}` }) };
+      dragging = { source, path: svg('path', { d: sagging(source, p, source.sag), class: `mg-cable ${source.key}` }) };
       layer.append(dragging.path);
     });
-    board.addEventListener('pointermove', event => { if (dragging) dragging.path.setAttribute('d', curve(dragging.source, point(board, event))); });
+    board.addEventListener('pointermove', event => { if (dragging) dragging.path.setAttribute('d', sagging(dragging.source, point(board, event), dragging.source.sag)); });
     board.addEventListener('pointerup', event => {
       if (!dragging) return;
       const p = point(board, event); const current = dragging; dragging = null;
       const target = targets.find(node => !node.linked && Math.hypot(node.x - p.x, node.y - p.y) <= 20);
       if (target && target.key === current.source.key) {
-        current.path.setAttribute('d', curve(current.source, target)); current.path.classList.add('linked');
-        current.source.linked = target.linked = true; target.socket.classList.add('linked'); current.source.plug.classList.add('linked');
-        linked++; fx({ cue: 'connected' }); status.textContent = t.connected;
-        if (linked === colors.length) finish(true);
+        current.path.setAttribute('d', sagging(current.source, target, current.source.sag)); current.path.classList.add('linked');
+        current.source.linked = target.linked = true; target.socket.classList.add('linked', target.key); current.source.plug.classList.add('linked');
+        linked++; fx({ cue: 'connected' }); status.textContent = `${t.connected}: ${target.terminal}`;
+        if (linked === wires.length) finish(true);
       } else {
         current.path.remove();
         if (target) {
@@ -233,17 +242,18 @@
   function unplug() {
     run.phase = 'cables'; const t = run.text; fx({ phase: 'cables' });
     const { board, meters, status } = shell(t.unplugTitle, t.unplugHelp, 1, 2);
-    const keys = ['red', 'blue', 'yellow', 'green'];
-    const rows = 4, top = 45, gap = (H - 2 * top) / (rows - 1);
-    board.append(svg('rect', { x: 20, y: 20, width: 90, height: H - 40, rx: 10, class: 'mg-tray' }), svg('rect', { x: W - 90, y: 20, width: 70, height: H - 40, rx: 10, class: 'mg-panel-box' }));
+    board.append(svg('rect', { x: 20, y: 20, width: 90, height: H - 40, rx: 10, class: 'mg-tray' }), svg('rect', { x: W - 110, y: 20, width: 90, height: H - 40, rx: 10, class: 'mg-panel-box' }));
     board.append(Object.assign(svg('text', { x: 65, y: H / 2, class: 'mg-tray-label', 'text-anchor': 'middle' }), { textContent: '⇠' }));
     const layer = svg('g'); board.append(layer);
-    const curve = (a, b) => `M ${a.x} ${a.y} C ${a.x + 90} ${a.y}, ${b.x - 90} ${b.y}, ${b.x} ${b.y}`;
-    const order = [...keys].sort(() => Math.random() - 0.5);
-    const cables = order.map((key, i) => {
-      const socket = { x: W - 70, y: top + i * gap };
-      const anchor = { x: 140, y: top + keys.indexOf(key) * gap };
-      board.append(svg('rect', { x: W - 70, y: socket.y - 6, width: 36, height: 12, rx: 4, class: `mg-wire-stub ${key}` }));
+    const wires = shuffled(WIRES).slice(0, 4);
+    const leftRows = rowsFor(wires.length), rightRows = rowsFor(wires.length);
+    const curve = (a, b) => sagging(a, b, 40);
+    const cables = wires.map((wire, i) => {
+      const key = wire.key;
+      const socket = { x: W - 80, y: rightRows[i] };
+      const anchor = { x: 140, y: leftRows[i] };
+      board.append(svg('rect', { x: W - 72, y: socket.y - 10, width: 50, height: 20, rx: 3, class: 'mg-terminal' }));
+      board.append(Object.assign(svg('text', { x: W - 47, y: socket.y + 4, class: 'mg-terminal-label', 'text-anchor': 'middle' }), { textContent: wire.terminal }));
       const path = svg('path', { d: curve(anchor, socket), class: `mg-cable linked ${key}` }); layer.append(path);
       const plug = svg('circle', { cx: socket.x, cy: socket.y, r: 10, class: `mg-plug ${key}`, 'data-key': key }); board.append(plug);
       return { key, socket, anchor, path, plug, out: false };

@@ -52,7 +52,7 @@ local function fixture(files, external)
             players = function()
                 local list = {}
                 for id, player in pairs(c.players) do
-                    if player.connected then list[#list + 1] = { source = id, position = util.copy(player.point), bucket = player.bucket } end
+                    if player.connected then list[#list + 1] = { source = id, position = util.copy(player.point), bucket = player.bucket, inside = player.inside } end
                 end
                 return list
             end,
@@ -343,6 +343,24 @@ test('Armed alarm: entry delay for anyone inside, triggers siren and alerts owne
     local events = disarmed.data.alarm.events; assert(events[1].kind == 'disarmed' and events[2].kind == 'triggered')
 end)
 
+test('Interior presence: someone just outside the property is ignored, someone inside the interior counts', function()
+    local c = fixture(); local panel = alarmPanel(c, 2)
+    c.players[2].point = { x = 1, y = 0, z = 1 }; c.players[5].point = { x = 500, y = 0, z = 1 }; c.players[3].point = { x = 900, y = 0, z = 1 }
+    grant(c, 2, 'g6_client_tablet'); local session = open(c, 2, 'client')
+    assert(call(c, 2, session, 'alarm', { deviceId = panel.id, action = 'pin', pin = '4321' }).ok)
+    assert(c.game.alarms.keypad(2, panel.id, 'arm', '4321'))
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Alarm.ExitDelay + 1
+    c.players[2].point = { x = 4, y = 0, z = 1 }; c.players[2].inside = { [panel.id] = false } -- en la calle, junto a la puerta
+    c.game.alarms.tick(); assert(#logged(c, 'entry') == 0)
+    c.players[2].inside = nil -- sin dato del cliente: esfera
+    c.game.alarms.tick(); assert(#logged(c, 'entry') == 1)
+    c.players[2].point = { x = 1, y = 0, z = 1 }
+    assert(c.game.alarms.keypad(2, panel.id, 'disarm', '4321')); assert(c.game.alarms.keypad(2, panel.id, 'arm', '4321'))
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Alarm.ExitDelay + 1
+    c.players[2].point = { x = 25, y = 0, z = 1 }; c.players[2].inside = { [panel.id] = true } -- dentro, al fondo de la casa
+    c.game.alarms.tick(); assert(#logged(c, 'entry') == 2)
+end)
+
 test('Disarming during the entry delay stops the entry beeps and never triggers', function()
     local c = fixture(); local panel = alarmPanel(c, 2)
     c.players[2].point = { x = 1, y = 0, z = 1 }; c.players[5].point = { x = 500, y = 0, z = 1 }; c.players[3].point = { x = 900, y = 0, z = 1 }
@@ -473,8 +491,10 @@ test('Supervisors cannot uninstall; the device owner can from the Client tablet'
     assert(call(c, 2, owner, 'remove_confirm', { deviceId = id }).ok and count(c, 2, 'os_cctv_kit') == 1)
 end)
 
-for kitItem, model in pairs({ os_alarm_kit = 'prop_ld_keypad_01', os_alarm_kit_panel = 'hei_prop_hei_securitypanel' }) do
-test('The alarm kit ' .. kitItem .. ' installs a physical alarm panel (' .. model .. ') and consumes its own materials', function()
+for kitItem, model in pairs({ os_alarm_kit = 'prop_ld_keypad_01', os_alarm_kit_panel = 'hei_prop_hei_securitypanel',
+    os_cctv_kit_mini = 'hei_prop_bank_cctv_01', os_cctv_kit_dome = 'prop_cctv_cam_05a' }) do
+local deviceType = OSSecurity.GameplayConfig.Products[kitItem].deviceType
+test('The kit ' .. kitItem .. ' installs a physical ' .. deviceType .. ' (' .. model .. ') and consumes its own materials', function()
     local c = fixture(); grant(c, 1, 'g6_operations_tablet'); grant(c, 1, kitItem); grant(c, 1, 'os_battery')
     grant(c, 1, 'os_drill'); grant(c, 1, 'os_screwdriver'); anchor(c)
     local session = open(c, 1, 'operations')
@@ -485,10 +505,26 @@ test('The alarm kit ' .. kitItem .. ' installs a physical alarm panel (' .. mode
     local response = call(c, 1, operations, 'place_confirm', proposal())
     assert(response.ok, response.error)
     local device = c.core.registry.get(0, response.data.id)
-    assert(device.type == 'alarm_panel' and device.model == model and device.metadata.installationId == response.data.installationId)
+    assert(device.type == deviceType and device.model == model and device.metadata.installationId == response.data.installationId)
     assert(count(c, 1, kitItem) == 0 and count(c, 1, 'os_battery') == 0 and count(c, 1, 'os_drill') == 1)
 end)
 end
+
+test('Placement validates the rotation pivot against the zone and stores the model origin next to it', function()
+    local c = fixture(); kit(c); anchor(c)
+    local session = open(c, 1, 'operations')
+    assert(call(c, 1, session, 'place_begin').ok)
+    local far = proposal(); far.pivot = { x = 1, y = 0, z = 1 }; far.position = { x = 1, y = -1.2, z = 1 }
+    assert(not call(c, 1, session, 'place_confirm', far).ok) -- origen demasiado lejos del pivote
+    assert(call(c, 1, session, 'place_begin').ok)
+    local outside = proposal(); outside.pivot = { x = 1, y = 0.9, z = 1 }; outside.position = { x = 1, y = 0.7, z = 1 }
+    assert(not call(c, 1, session, 'place_confirm', outside).ok) -- pivote fuera del cuadrado
+    assert(call(c, 1, session, 'place_begin').ok)
+    local good = proposal(); good.pivot = { x = 1, y = 0.2, z = 1.1 }; good.position = { x = 1, y = 0.45, z = 1.05 }
+    local response = call(c, 1, session, 'place_confirm', good); assert(response.ok, response.error)
+    local device = c.core.registry.get(0, response.data.id)
+    assert(math.abs(device.position.y - 0.45) < 1e-6 and math.abs(device.position.z - 1.05) < 1e-6)
+end)
 
 test('Square mount zones accept corners and inverted ceiling orientation, and reject points outside the square', function()
     local c = fixture(); kit(c); anchor(c)

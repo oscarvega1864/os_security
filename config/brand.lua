@@ -43,7 +43,8 @@ OSSecurity.Brand = {
             screwTitle = 'Atornillar el soporte', screwHelp = 'Pulsa sobre un tornillo y gira el raton a su alrededor en sentido horario. Sin prisas: con demasiada fuerza se pasa la rosca.',
             torque = 'Fuerza', strips = 'Roscas pasadas', turnHint = 'Gira en sentido horario', tooStrong = 'Demasiada fuerza: mas despacio',
             stripped = 'Rosca pasada: vuelve a empezar ese tornillo', hit = 'Tornillo apretado',
-            cablesTitle = 'Conectar el cableado', cablesHelp = 'Arrastra cada cable desde su conector hasta el borne de su mismo color.',
+            cablesTitle = 'Conectar el cableado', cablesHelp = 'Arrastra cada cable hasta el borne de su senal segun el codigo de colores (los bornes solo llevan la etiqueta).',
+            wireCode = 'Rojo +12V · Negro GND · Verde A+ · Blanco B- · Amarillo TAMP',
             colors = { 'Rojo', 'Azul', 'Amarillo', 'Verde' }, shorts = 'Cortocircuitos', connected = 'Conectado', wrongWire = 'Borne incorrecto',
             removeTitle = 'Desmontaje', unplugTitle = 'Desconectar el cableado',
             unplugHelp = 'Arrastra cada cable fuera de su borne hasta la bandeja de la izquierda.', unplugged = 'Desconectado',
@@ -51,6 +52,7 @@ OSSecurity.Brand = {
             unscrewed = 'Tornillo fuera'
         },
         placementMount = 'Montaje',
+        miniInstallAction = 'Instalar camara mini (interior)', domeInstallAction = 'Instalar camara domo 360',
         alarmInstallAction = 'Instalar alarma (teclado)', alarmPanelInstallAction = 'Instalar alarma (panel lector)',
         remove = 'Desmontar', removed = 'Dispositivo %s desmontado: el kit vuelve a tu inventario.', removeCancelled = 'Desmontaje cancelado.',
         removeHelp = 'Debes estar junto al dispositivo con taladro y destornillador.',

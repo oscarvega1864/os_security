@@ -137,6 +137,22 @@ local sites = sitesResource ~= 'none' and OSSecurity.Sites.new({
     end
 }) or nil
 
+-- Presencia en el interior de cada central (deviceId -> dentro), comunicada por el cliente cada 2 s
+-- solo para centrales instaladas dentro de un interior. Caduca a los 6 s; sin dato se usa la esfera.
+local alarmPresence = {}
+RegisterNetEvent('os_security:alarm:presence', function(map)
+    local player = source
+    if type(map) ~= 'table' then return end
+    local inside, count = {}, 0
+    for deviceId, value in pairs(map) do
+        count = count + 1
+        if count > 16 then return end
+        if OSSecurity.DeviceValidation.id(deviceId) and type(value) == 'boolean' then inside[deviceId] = value end
+    end
+    alarmPresence[player] = { at = GetGameTimer(), inside = inside }
+end)
+AddEventHandler('playerDropped', function() alarmPresence[source] = nil end)
+
 -- Efectos de las alarmas en el juego: jugadores conectados, hash del codigo, sirena y avisos.
 local alarmEffects = {
     players = function()
@@ -146,7 +162,9 @@ local alarmEffects = {
             local ped = GetPlayerPed(player)
             if ped and ped ~= 0 then
                 local point = GetEntityCoords(ped)
-                list[#list + 1] = { source = player, position = { x = point.x, y = point.y, z = point.z }, bucket = GetPlayerRoutingBucket(player) }
+                local presence = alarmPresence[player]
+                list[#list + 1] = { source = player, position = { x = point.x, y = point.y, z = point.z }, bucket = GetPlayerRoutingBucket(player),
+                    inside = presence and GetGameTimer() - presence.at <= 6000 and presence.inside or nil }
             end
         end
         return list

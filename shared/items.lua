@@ -3,7 +3,9 @@ local prefix = OSSecurity.Brand.Name .. ' · '
 OSSecurity.ItemCatalog = {
     g6_client_tablet = { name = OSSecurity.Brand.Tablets.client.name, category = 'tablet', weight = 1, tablet = 'client' },
     g6_operations_tablet = { name = OSSecurity.Brand.Tablets.operations.name, category = 'tablet', weight = 1, tablet = 'operations' },
-    os_cctv_kit = { name = prefix .. 'Kit CCTV', category = 'kit', weight = 3, usable = 'placement' },
+    os_cctv_kit = { name = prefix .. 'Kit CCTV (exterior)', category = 'kit', weight = 3, usable = 'placement' },
+    os_cctv_kit_mini = { name = prefix .. 'Kit CCTV (mini interior)', category = 'kit', weight = 1, usable = 'placement' },
+    os_cctv_kit_dome = { name = prefix .. 'Kit CCTV (domo 360)', category = 'kit', weight = 2, usable = 'placement' },
     os_alarm_kit = { name = prefix .. 'Kit alarma (teclado)', category = 'kit', weight = 3, usable = 'placement' },
     os_alarm_kit_panel = { name = prefix .. 'Kit alarma (panel lector)', category = 'kit', weight = 3, usable = 'placement' },
     g6_alarm_tag = { name = prefix .. 'Chapa de alarma', category = 'access', weight = 0, usable = 'tag' },

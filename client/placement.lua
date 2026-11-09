@@ -15,14 +15,20 @@ OSSecurity.ClientPlacement.Depth = { min = -0.15, max = 0.3 } -- igual que MinDe
 OSSecurity.ClientPlacement.TiltLimit = 90.0 -- igual que el servidor
 -- Modelos planos que van pegados a la pared (teclados, paneles): su cara ancha se orienta hacia fuera
 -- y su parte trasera queda a ras de la superficie. R les da la vuelta (cara delantera o trasera).
+-- Todos los modelos giran sobre su centro (pivote), no alrededor de su origen: el punto editado es el
+-- centro y el origen se recoloca a partir de la rotacion.
 OSSecurity.ClientPlacement.FlatModels = { prop_ld_keypad_01 = true, hei_prop_hei_securitypanel = true }
 
 -- A partir de las dimensiones del modelo: giro extra para que el eje mas fino mire hacia fuera y
 -- profundidad que deja la trasera a ras para cada sentido (1: eje positivo hacia fuera, -1: negativo).
 function OSSecurity.ClientPlacement.flatFit(min, max)
     local sx, sy = max.x - min.x, max.y - min.y
-    if sx < sy then return { offset = 90.0, depth = { [1] = -min.x, [-1] = max.x } } end
-    return { offset = 0.0, depth = { [1] = -min.y, [-1] = max.y } }
+    -- Con el pivote en el centro, la trasera queda a ras a media profundidad en ambos sentidos.
+    if sx < sy then return { offset = 90.0, depth = { [1] = sx / 2, [-1] = sx / 2 } } end
+    return { offset = 0.0, depth = { [1] = sy / 2, [-1] = sy / 2 } }
+end
+function OSSecurity.ClientPlacement.center(min, max)
+    return { x = (min.x + max.x) / 2, y = (min.y + max.y) / 2, z = (min.z + max.z) / 2 }
 end
 
 -- Rumbo inicial: mirando hacia fuera de la pared (vector frontal de GTA: -sin(h), cos(h)).
@@ -78,10 +84,9 @@ function OSSecurity.ClientPlacement.new()
             if not prop or prop == 0 then SetModelAsNoLongerNeeded(model); callback(nil); return end
             SetEntityCollision(prop, false, false); FreezeEntityPosition(prop, true); SetEntityAlpha(prop, 170, false)
             local flat, facing = nil, 1
-            if OSSecurity.ClientPlacement.FlatModels[context.model] then
-                local min, max = GetModelDimensions(model)
-                flat = OSSecurity.ClientPlacement.flatFit(min, max)
-            end
+            local min, max = GetModelDimensions(model)
+            local center = OSSecurity.ClientPlacement.center(min, max)
+            if OSSecurity.ClientPlacement.FlatModels[context.model] then flat = OSSecurity.ClientPlacement.flatFit(min, max) end
             local mounts = context.mounts or {}
             -- Empieza por el montaje mas cercano al jugador.
             local index, best = 1, math.huge
@@ -138,11 +143,16 @@ function OSSecurity.ClientPlacement.new()
                 target, x, y = OSSecurity.Geometry.point(mount, x, y, 0.95)
                 local n = OSSecurity.Geometry.frame(mount.normal).normal
                 target = { x = target.x + n.x * depth, y = target.y + n.y * depth, z = target.z + n.z * depth }
+                -- Girar sobre el centro: se coloca el origen en el punto, se mide donde cae el centro con la
+                -- rotacion actual y se desplaza el origen para que el centro quede en el punto editado.
                 SetEntityCoordsNoOffset(prop, target.x, target.y, target.z, false, false, false)
                 SetEntityRotation(prop, tilt, roll, yaw, 2, true)
+                local shifted = GetOffsetFromEntityInWorldCoords(prop, center.x, center.y, center.z)
+                local origin = { x = 2 * target.x - shifted.x, y = 2 * target.y - shifted.y, z = 2 * target.z - shifted.z }
+                SetEntityCoordsNoOffset(prop, origin.x, origin.y, origin.z, false, false, false)
                 OSSecurity.ClientPlacement.drawZone(mount)
                 if IsDisabledControlJustPressed(0, CONTROLS.confirm) or IsDisabledControlJustPressed(0, CONTROLS.enter) then
-                    local proposal = { anchorId = mount.id, position = target, rotation = { x = tilt, y = roll, z = yaw } }
+                    local proposal = { anchorId = mount.id, position = origin, pivot = target, rotation = { x = tilt, y = roll, z = yaw } }
                     manager.cancel(); callback(proposal); break
                 end
                 BeginTextCommandDisplayHelp('STRING')

@@ -33,3 +33,9 @@ button{font:inherit;cursor:pointer;color:inherit;border:1px solid color-mix(in s
 .alarm-block button{font-size:11px;padding:8px 12px}
 button.danger{border-color:#c0604a;color:#c0604a}button.danger:hover:not(:disabled){background:color-mix(in srgb,#c0604a 14%,transparent);border-color:#c0604a}
 .mg-tray{fill:#1a2420;stroke:#a9c66f;stroke-dasharray:5 5;stroke-width:1.5}.mg-tray-label{fill:#a9c66f;font-size:28px}
+.black{--wire:#2a2a2a}.white{--wire:#e6e6e0}.mg-wire-stub.black,.mg-plug.black{fill:#2a2a2a}.mg-wire-stub.white,.mg-plug.white{fill:#e6e6e0}.mg-cable.black{stroke:#2a2a2a}.mg-cable.white{stroke:#e6e6e0}
+.mg-plug.black{stroke:#8a8a8a}.mg-loose{fill:none;stroke-width:5;stroke-linecap:round;stroke:var(--wire)}
+.mg-terminal{fill:#c9c2a8;stroke:#6f6a58}.mg-terminal-label{fill:#1d1a12;font:700 11px Consolas,monospace;pointer-events:none}
+.mg-socket.linked.red{stroke:#d65a4a}.mg-socket.linked.black{stroke:#8a8a8a}.mg-socket.linked.white{stroke:#e6e6e0}.mg-socket.linked.green{stroke:#64b06b}.mg-socket.linked.yellow{stroke:#e0c049}
+.mg-wire-code{fill:#a9c66f;font:600 9px Inter,Arial,sans-serif;pointer-events:none}
+.mg-socket:not(.linked){stroke:#5d6b62}

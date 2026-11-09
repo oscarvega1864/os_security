@@ -28,12 +28,47 @@ function OSSecurity.ClientAlarms.new()
         end
     end)
     local A = OSSecurity.Brand.Text.alarm
+    -- Interior de cada central (cache): el punto del teclado esta pegado a la pared, asi que se prueba
+    -- tambien medio metro alrededor. 0 = exterior (el servidor usa entonces la esfera).
+    local interiors = {}
+    local function interiorOf(entry)
+        if interiors[entry.id] then return interiors[entry.id] end
+        local p = entry.position
+        local found = GetInteriorAtCoords(p.x + 0.0, p.y + 0.0, p.z + 0.0)
+        if found == 0 then
+            for _, o in ipairs({ { 0.5, 0 }, { -0.5, 0 }, { 0, 0.5 }, { 0, -0.5 } }) do
+                found = GetInteriorAtCoords(p.x + o[1], p.y + o[2], p.z + 0.0)
+                if found ~= 0 then break end
+            end
+        end
+        interiors[entry.id] = found
+        return found
+    end
+    CreateThread(function()
+        while true do
+            Wait(2000)
+            if #alarms.keypads > 0 then
+                local ped = PlayerPedId()
+                local here, mine = GetEntityCoords(ped), GetInteriorFromEntity(ped)
+                local map, any = {}, false
+                for _, entry in ipairs(alarms.keypads) do
+                    local p = entry.position
+                    if #(here - vector3(p.x, p.y, p.z)) <= 40.0 then
+                        local interior = interiorOf(entry)
+                        if interior ~= 0 then map[entry.id] = mine == interior; any = true end
+                    end
+                end
+                if any then TriggerServerEvent('os_security:alarm:presence', map) end
+            end
+        end
+    end)
 
     -- Teclados cercanos a partir de los props que ya se transmiten (dispositivos instalados).
     function alarms.sync(list)
         local keypads = {}
         for _, entry in ipairs(list or {}) do if entry.kind == 'alarm_panel' then keypads[#keypads + 1] = entry end end
         alarms.keypads = keypads
+        interiors = {}
     end
     function alarms.nearest(point, maxDistance)
         local best, bestDistance
