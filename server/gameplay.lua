@@ -95,6 +95,7 @@ function OSSecurity.Gameplay.new(options)
             return items.makeTag(actor.holder, device.id, serial)
         end,
         entry = effects.entry or function() end,
+        entryStop = effects.entryStop or function() end,
         siren = effects.siren or function() end,
         alert = function(device, text, kind)
             if not effects.notify then return end

@@ -40,6 +40,7 @@ function OSSecurity.AlarmService.new(options)
     local function stopSiren(deviceId)
         local state = runtime[deviceId]
         if state and state.sirenUntil then options.siren(deviceId, nil) end
+        if state and state.entry then options.entryStop(deviceId) end
         runtime[deviceId] = nil
     end
     local function label(device)
@@ -227,6 +228,7 @@ function OSSecurity.AlarmService.new(options)
                             for _, source in ipairs(intruders) do options.entry(source, device, config.EntryDelay) end
                         elseif state.entry and now >= state.entry.deadline then
                             state.entry, state.sirenUntil = nil, now + config.SirenSeconds
+                            options.entryStop(deviceId)
                             local current = options.inventory.alarm(deviceId)
                             if current then save(deviceId, current, 'triggered') end
                             options.siren(deviceId, device)

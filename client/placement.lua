@@ -13,6 +13,17 @@ local CONTROLS = { left = 174, right = 175, up = 172, down = 173, fine = 36, rot
 local MOVE_SPEED, TURN_SPEED, DEPTH_SPEED = 0.30, 60.0, 0.15 -- m/s, grados/s, m/s
 OSSecurity.ClientPlacement.Depth = { min = -0.15, max = 0.3 } -- igual que MinDepth/MaxDepth del servidor
 OSSecurity.ClientPlacement.TiltLimit = 90.0 -- igual que el servidor
+-- Modelos planos que van pegados a la pared (teclados, paneles): su cara ancha se orienta hacia fuera
+-- y su parte trasera queda a ras de la superficie. R les da la vuelta (cara delantera o trasera).
+OSSecurity.ClientPlacement.FlatModels = { prop_ld_keypad_01 = true }
+
+-- A partir de las dimensiones del modelo: giro extra para que el eje mas fino mire hacia fuera y
+-- profundidad que deja la trasera a ras para cada sentido (1: eje positivo hacia fuera, -1: negativo).
+function OSSecurity.ClientPlacement.flatFit(min, max)
+    local sx, sy = max.x - min.x, max.y - min.y
+    if sx < sy then return { offset = 90.0, depth = { [1] = -min.x, [-1] = max.x } } end
+    return { offset = 0.0, depth = { [1] = -min.y, [-1] = max.y } }
+end
 
 -- Rumbo inicial: mirando hacia fuera de la pared (vector frontal de GTA: -sin(h), cos(h)).
 -- En techo o suelo no hay "fuera": se usa el rumbo de reserva (el del jugador).
@@ -66,6 +77,11 @@ function OSSecurity.ClientPlacement.new()
             prop = CreateObjectNoOffset(model, origin.x, origin.y, origin.z, false, false, false)
             if not prop or prop == 0 then SetModelAsNoLongerNeeded(model); callback(nil); return end
             SetEntityCollision(prop, false, false); FreezeEntityPosition(prop, true); SetEntityAlpha(prop, 170, false)
+            local flat, facing = nil, 1
+            if OSSecurity.ClientPlacement.FlatModels[context.model] then
+                local min, max = GetModelDimensions(model)
+                flat = OSSecurity.ClientPlacement.flatFit(min, max)
+            end
             local mounts = context.mounts or {}
             -- Empieza por el montaje mas cercano al jugador.
             local index, best = 1, math.huge
@@ -76,9 +92,11 @@ function OSSecurity.ClientPlacement.new()
             end
             local x, y, yaw, tilt, roll, depth = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
             local depthLimit = OSSecurity.ClientPlacement.Depth
+            local function clampDepth(value) return math.max(depthLimit.min, math.min(depthLimit.max, value)) end
             local function reset()
                 x, y, depth = 0.0, 0.0, 0.0
                 yaw, tilt, roll = OSSecurity.ClientPlacement.initial(mounts[index], GetEntityHeading(ped))
+                if flat then facing = 1; yaw = (yaw + flat.offset) % 360; tilt, roll = 0.0, 0.0; depth = clampDepth(flat.depth[facing]) end
             end
             if mounts[1] then reset() end
             local limit = OSSecurity.ClientPlacement.TiltLimit
@@ -110,9 +128,12 @@ function OSSecurity.ClientPlacement.new()
                 end
                 if IsDisabledControlJustPressed(0, CONTROLS.wheelUp) then yaw = (yaw + 5 * scale) % 360 end
                 if IsDisabledControlJustPressed(0, CONTROLS.wheelDown) then yaw = (yaw - 5 * scale) % 360 end
-                if IsDisabledControlJustPressed(0, CONTROLS.flip) then roll = roll == 0.0 and 180.0 or 0.0 end
+                if IsDisabledControlJustPressed(0, CONTROLS.flip) then
+                    if flat then facing = -facing; yaw = (yaw + 180.0) % 360; depth = clampDepth(flat.depth[facing])
+                    else roll = roll == 0.0 and 180.0 or 0.0 end
+                end
                 local d = (IsDisabledControlPressed(0, CONTROLS.out) and 1 or 0) - (IsDisabledControlPressed(0, CONTROLS.into) and 1 or 0)
-                depth = math.max(depthLimit.min, math.min(depthLimit.max, depth + d * DEPTH_SPEED * scale * dt))
+                depth = clampDepth(depth + d * DEPTH_SPEED * scale * dt)
                 local target
                 target, x, y = OSSecurity.Geometry.point(mount, x, y, 0.95)
                 local n = OSSecurity.Geometry.frame(mount.normal).normal

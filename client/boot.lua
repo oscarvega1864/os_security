@@ -99,7 +99,7 @@ end)
 -- Alarmas: teclado junto al dispositivo, aviso de entrada, sirena y avisos.
 RegisterNetEvent('os_security:alarm:panelData', function(data, err) if source == 65535 then alarms.show(data, err) end end)
 RegisterNetEvent('os_security:alarm:result', function(result, err, panel) if source == 65535 then alarms.result(result, err, panel) end end)
-RegisterNetEvent('os_security:alarm:entry', function(_, seconds) if source == 65535 and type(seconds) == 'number' then alarms.entry(seconds) end end)
+RegisterNetEvent('os_security:alarm:entry', function(deviceId, seconds) if source == 65535 and type(seconds) == 'number' then alarms.entry(deviceId, seconds) end end)
 RegisterNetEvent('os_security:alarm:siren', function(deviceId, position) if source == 65535 then alarms.siren(deviceId, position) end end)
 RegisterNetEvent('os_security:alarm:alert', function(text, kind, position) if source == 65535 and type(text) == 'string' then alarms.alert(text, kind, position) end end)
 RegisterNUICallback('pinpad', function(body, callback)

@@ -57,6 +57,7 @@ local function fixture(files, external)
                 return list
             end,
             entry = function(source, device, seconds) c.alarmLog[#c.alarmLog + 1] = { 'entry', source, device.id, seconds } end,
+            entryStop = function(deviceId) c.alarmLog[#c.alarmLog + 1] = { 'entry_stop', deviceId } end,
             siren = function(deviceId, device) c.alarmLog[#c.alarmLog + 1] = { device and 'siren_on' or 'siren_off', deviceId } end,
             notify = function(source, text) c.alarmLog[#c.alarmLog + 1] = { 'alert', source, text } end
         },
@@ -333,12 +334,29 @@ test('Armed alarm: entry delay for anyone inside, triggers siren and alerts owne
     c.game.alarms.tick(); assert(#logged(c, 'entry') == 1 and logged(c, 'entry')[1][2] == 5)
     c.core.time = c.core.time + OSSecurity.GameplayConfig.Alarm.EntryDelay + 1
     c.game.alarms.tick(); assert(#logged(c, 'siren_on') == 1)
+    assert(#logged(c, 'entry_stop') == 1) -- al saltar se cortan los pitidos de entrada
     local alerted = {}; for _, entry in ipairs(logged(c, 'alert')) do alerted[entry[2]] = true end
     assert(alerted[2] and alerted[3] and not alerted[5]) -- titular y G6 de servicio, no el intruso
     assert(call(c, 2, session, 'device', { deviceId = panel.id }).data.alarm.triggered)
     local disarmed = call(c, 2, session, 'alarm', { deviceId = panel.id, action = 'disarm' }); assert(disarmed.ok and disarmed.data.alarm.mode == 'disarmed')
     assert(#logged(c, 'siren_off') == 1)
     local events = disarmed.data.alarm.events; assert(events[1].kind == 'disarmed' and events[2].kind == 'triggered')
+end)
+
+test('Disarming during the entry delay stops the entry beeps and never triggers', function()
+    local c = fixture(); local panel = alarmPanel(c, 2)
+    c.players[2].point = { x = 1, y = 0, z = 1 }; c.players[5].point = { x = 500, y = 0, z = 1 }; c.players[3].point = { x = 900, y = 0, z = 1 }
+    grant(c, 2, 'g6_client_tablet'); local session = open(c, 2, 'client')
+    assert(call(c, 2, session, 'alarm', { deviceId = panel.id, action = 'pin', pin = '4321' }).ok)
+    assert(c.game.alarms.keypad(2, panel.id, 'arm', '4321'))
+    c.players[2].point = { x = 400, y = 0, z = 1 }
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Alarm.ExitDelay + 1
+    c.players[2].point = { x = 1, y = 0, z = 1 } -- vuelve el titular
+    c.game.alarms.tick(); assert(#logged(c, 'entry') == 1 and #logged(c, 'entry_stop') == 0)
+    assert(c.game.alarms.keypad(2, panel.id, 'disarm', '4321'))
+    local stops = logged(c, 'entry_stop'); assert(#stops == 1 and stops[1][2] == panel.id)
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Alarm.EntryDelay + 1
+    c.game.alarms.tick(); assert(#logged(c, 'siren_on') == 0)
 end)
 
 test('Using a tag from the inventory acts on the nearest keypad in reach only', function()

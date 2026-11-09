@@ -120,6 +120,14 @@ test('Player messages use os_notify with their kind when started and fall back t
     assert(ok, err)
 end)
 
+test('Flat wall models turn their thin axis outwards and sit flush for both facings', function()
+    local fit = OSSecurity.ClientPlacement.flatFit({ x = -0.02, y = -0.08, z = -0.1 }, { x = 0.03, y = 0.08, z = 0.1 })
+    assert(fit.offset == 90.0 and math.abs(fit.depth[1] - 0.02) < 1e-9 and math.abs(fit.depth[-1] - 0.03) < 1e-9)
+    fit = OSSecurity.ClientPlacement.flatFit({ x = -0.1, y = 0, z = -0.1 }, { x = 0.1, y = 0.04, z = 0.1 })
+    assert(fit.offset == 0.0 and fit.depth[1] == 0 and math.abs(fit.depth[-1] - 0.04) < 1e-9)
+    assert(OSSecurity.ClientPlacement.FlatModels.prop_ld_keypad_01 and not OSSecurity.ClientPlacement.FlatModels.prop_cctv_cam_01a)
+end)
+
 test('Mount geometry keeps the camera inside the square zone on walls and ceilings', function()
     local G, P = OSSecurity.Geometry, OSSecurity.ClientPlacement
     local wall = { id = 'm', position = { x = 10, y = 5, z = 2 }, normal = { x = 0, y = -1, z = 0 }, radius = 0.75 }

@@ -67,15 +67,23 @@ function OSSecurity.ClientAlarms.new()
         SetNuiFocus(false, false)
         SendNUIMessage({ type = 'pinpadClose' })
     end
-    -- Aviso de entrada: pitidos durante el retardo.
-    function alarms.entry(seconds)
+    -- Aviso de entrada: pitidos durante el retardo. Se cortan cuando el servidor avisa (segundos 0)
+    -- de que la central se ha desarmado o ha saltado.
+    local entries = {} -- deviceId -> generacion del aviso en curso
+    local entryCount = 0
+    function alarms.entry(deviceId, seconds)
+        if seconds <= 0 then entries[deviceId] = nil; return end
+        entryCount = entryCount + 1
+        local current = entryCount
+        entries[deviceId] = current
         OSSecurity.Notify(A.entryWarning:format(seconds), 'warning')
         CreateThread(function()
             local deadline = GetGameTimer() + seconds * 1000
-            while GetGameTimer() < deadline do
+            while entries[deviceId] == current and GetGameTimer() < deadline do
                 beep(1900, 0.12)
                 Wait(GetGameTimer() > deadline - 10000 and 500 or 1000)
             end
+            if entries[deviceId] == current then entries[deviceId] = nil end
         end)
     end
     -- Sirena en la posicion del teclado: la genera la NUI (web/siren.js) con volumen por distancia.
@@ -95,6 +103,7 @@ function OSSecurity.ClientAlarms.new()
     end
     function alarms.clear()
         alarms.close()
+        entries = {}
         sirens = {}; volume = 0; SendNUIMessage({ type = 'siren', volume = 0 })
         for _, blip in ipairs(alertBlips) do if DoesBlipExist(blip) then RemoveBlip(blip) end end
         alertBlips = {}

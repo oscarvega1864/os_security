@@ -163,6 +163,7 @@ local alarmEffects = {
         return ('jugador %d'):format(player)
     end,
     entry = function(player, device, seconds) TriggerClientEvent('os_security:alarm:entry', player, device.id, seconds, device.position) end,
+    entryStop = function(deviceId) TriggerClientEvent('os_security:alarm:entry', -1, deviceId, 0) end,
     siren = function(deviceId, device) TriggerClientEvent('os_security:alarm:siren', -1, deviceId, device and device.position or nil) end,
     notify = function(player, text, kind, position) TriggerClientEvent('os_security:alarm:alert', player, text, kind, position) end
 }
