@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 — Ganzúa
+
+- `os_lockpick` para forzar puertas cerradas (dificultad según el bombín: 3, 5 o 7 pines y zona verde
+  menor) y vehículos cerrados (3 pines sin cierre, 5 con cierre centralizado), con minijuego de pines.
+- Validación en el servidor: objetivo elegido por el servidor, distancia, objeto y tiempo mínimo por pin.
+  Éxito: abre, avisa al dueño y la alarma del vehículo salta. Fallo: la ganzúa puede romperse.
+- Editor de zonas con + y −; paso de cables del vehículo con nombres claros.
+
 ## 0.6.0 — Vehículos: cierre centralizado y alarma
 
 - Kits `os_car_lock_kit` y `os_car_alarm_kit` para vehículos de os_devtools, instalados al volante con el

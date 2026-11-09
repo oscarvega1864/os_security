@@ -238,6 +238,29 @@ RegisterNUICallback('carwire', function(body, callback)
     carwireClose(type(body) == 'table' and body.ok == true)
 end)
 
+-- Ganzua: minijuego de pines; el servidor ya ha elegido la puerta o el vehiculo y valida el resultado.
+local lockpickOpen = false
+RegisterNetEvent('os_security:lockpick:start', function(challenge)
+    if source ~= 65535 or type(challenge) ~= 'table' or lockpickOpen or carwireOpen or cylinderOpen or minigame.active() or controller.visible then return end
+    lockpickOpen = true
+    minigameFx.phase('cables')
+    SetNuiFocus(true, true)
+    SendNUIMessage({ type = 'lockpick', data = { kind = challenge.kind, tier = challenge.tier, pins = challenge.pins, zone = challenge.zone,
+        speed = challenge.speed, seconds = challenge.seconds }, text = OSSecurity.Brand.Text.lockpick })
+end)
+RegisterNUICallback('lockpick', function(body, callback)
+    callback({ ok = true })
+    if not lockpickOpen then return end
+    lockpickOpen = false
+    SetNuiFocus(false, false); minigameFx.stop()
+    local result = type(body) == 'table' and (body.cancel == true and 'cancel' or body.ok == true) or false
+    TriggerServerEvent('os_security:lockpick:finish', result)
+end)
+RegisterNetEvent('os_security:lockpick:result', function(ok, message, broken)
+    if source ~= 65535 or type(message) ~= 'string' then return end
+    OSSecurity.Notify(message, ok and 'success' or (broken and 'error' or 'warning'))
+end)
+
 -- Puerta apuntada desde el panel F10: E sobre la puerta la registra; Retroceso o Esc sale.
 local aimingDoor = 0
 RegisterNetEvent('os_security:locks:aimDoor', function(site)
@@ -279,5 +302,6 @@ AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
     if cylinderOpen then cylinderOpen = false; SetNuiFocus(false, false); minigameFx.stop() end
     if carwireOpen then carwireOpen = false; SetNuiFocus(false, false) end
+    if lockpickOpen then lockpickOpen = false; SetNuiFocus(false, false) end
     locks.clear()
 end)

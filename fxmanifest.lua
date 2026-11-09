@@ -31,7 +31,7 @@ client_scripts {
 
 ui_page 'web/index.html'
 nui_callback_strict_mode 'true'
-files { 'web/index.html', 'web/style.css', 'web/app.js', 'web/minigame.js', 'web/pinpad.js', 'web/siren.js', 'web/cylinder.js', 'web/carwire.js' }
+files { 'web/index.html', 'web/style.css', 'web/app.js', 'web/minigame.js', 'web/pinpad.js', 'web/siren.js', 'web/cylinder.js', 'web/carwire.js', 'web/lockpick.js' }
 server_scripts {
     'config/server.lua',
     'config/components.lua',
@@ -67,6 +67,7 @@ server_scripts {
     'server/alarms/service.lua',
     'server/locks/service.lua',
     'server/vehicles/service.lua',
+    'server/lockpick/service.lua',
     'server/tablet/service.lua',
     'server/tablet/controller.lua',
     'server/commands/gameplay.lua',

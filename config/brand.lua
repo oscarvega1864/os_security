@@ -93,6 +93,12 @@ OSSecurity.Brand = {
                 testTitle = 'Probar el mando', testHelp = 'Pulsa el boton del mando: el LED del modulo debe responder.', works = 'Funciona'
             }
         },
+        lockpick = {
+            title = 'Ganzua', heading = 'Forzar la cerradura', cancel = 'Dejarlo (Esc)', misses = 'Fallos',
+            help = 'Haz clic o pulsa Espacio cuando el pin que se mueve pase por su zona verde. Uno tras otro; con tres fallos lo dejas.',
+            set = 'Pin fijado', miss = 'Se escapa el pin',
+            kinds = { door = 'Puerta', vehicle = 'Vehiculo' }, tiers = { 'Seguridad basica', 'Seguridad media', 'Alta seguridad' }
+        },
         hello = 'Gruppe Sechs: servicio de seguridad disponible.',
         profileAbilities = 'Funciones de su perfil',
         abilities = { view = 'Consultar', inspect = 'Inspeccionar', repair = 'Reparar', replace = 'Sustituir piezas',

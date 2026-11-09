@@ -761,7 +761,7 @@ test('Native server wiring keeps replies private, normalizes ACE and creates uni
     local handlers, commands, files, replies, hashes = {}, {}, {}, {}, 0
     local ok, err = pcall(function()
         stub('RegisterNetEvent', function(name, callback)
-            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name:match('^os_security:alarm:') or name:match('^os_security:locks:') or name:match('^os_security:car:'))
+            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name:match('^os_security:alarm:') or name:match('^os_security:locks:') or name:match('^os_security:car:') or name:match('^os_security:lockpick:'))
             if name == 'os_security:g6:request' then handlers.request = callback else handlers.anchorAim = callback end
         end)
         stub('RegisterCommand', function(name, callback) commands[name] = callback end)
@@ -1189,4 +1189,53 @@ test('Without a kit the owner still locks with the key next to the car, and only
     v.driving[2] = { plate = 'OS000012', engine = false, speed = 0 }; assert(v.cars.engine(2).owned)
     v.driving[5] = { plate = 'VMENU01', engine = false, speed = 0 }; assert(v.cars.engine(5).free) -- vehiculos ajenos a os_devtools: libres
     v.driving[4] = { plate = 'OS000012', engine = true, speed = 0 }; assert(v.cars.engine(4).owned) -- administrador
+end)
+
+-- Ganzua ---------------------------------------------------------------------------------------
+test('Lockpicking a locked property door: difficulty by cylinder, minimum time per pin, breaks on failure and alerts the owner on success', function()
+    local e = externalItems(); local c = fixture(nil, e); property(c, 7, 'ana')
+    c.players[2].point = { x = 102, y = 100, z = 30 }
+    assert(c.game.locks.report(2, doorReport(7, { FRONT })) == 1)
+    local alerts, roll = {}, 100
+    local pick = OSSecurity.LockpickService.new({ holdings = c.game.holdings, world = function(source) return util.copy(c.players[source].point), 0 end,
+        now = function() return c.core.time end, locks = c.game.locks, cars = { pickTarget = function() return nil end },
+        random = function() return roll end, notifyOwner = function(alias, text) alerts[#alerts + 1] = { alias, text } end, audit = function() end })
+    c.players[5].point = { x = 102.5, y = 100, z = 30 }
+    local _, why = pick.begin(5, nil); assert(why == 'No tienes ganzua.')
+    e.give(5, 'os_lockpick', 2)
+    local challenge = assert(pick.begin(5, nil)); assert(challenge.kind == 'door' and challenge.pins == 3 and challenge.tier == 1)
+    c.core.time = c.core.time + 1 -- 3 pines en 1 s: demasiado rapido
+    roll = 1; local fast = assert(pick.finish(5, true)); assert(not fast.ok and fast.broken and e.count(5, 'os_lockpick') == 1)
+    assert(pick.begin(5, nil)); c.core.time = c.core.time + 5; roll = 100
+    local failed = assert(pick.finish(5, false)); assert(not failed.ok and not failed.broken and e.count(5, 'os_lockpick') == 1)
+    assert(pick.begin(5, nil)); assert(pick.finish(5, 'cancel').ok == false and e.count(5, 'os_lockpick') == 1)
+    assert(pick.begin(5, nil)); c.core.time = c.core.time + 5
+    local opened = assert(pick.finish(5, true)); assert(opened.ok and c.game.inventory.doors().p7_1.locked == false)
+    assert(#alerts == 1 and alerts[1][1] == 'ana' and alerts[1][2]:find('forzado'))
+    local _, open = pick.begin(5, nil); assert(open:find('abierta'))
+    -- Bombin de alta seguridad: mas pines y zona mas pequena.
+    c.active[2] = { alias = 'ana' }; e.give(2, 'os_lock_kit_high'); e.give(2, 'os_screwdriver')
+    assert(c.game.locks.changeBegin(2, 'os_lock_kit_high')); assert(c.game.locks.changeFinish(2, true))
+    assert(c.game.locks.toggle(2).locked)
+    local hard = assert(pick.begin(5, nil)); assert(hard.pins == 7 and hard.zone < challenge.zone)
+    c.players[5].point = { x = 130, y = 100, z = 30 }; assert(not pick.finish(5, true)) -- se alejo
+end)
+
+test('Lockpicking a locked vehicle opens it, sets its alarm off and alerts the owner', function()
+    local c, e, v = carFixture()
+    v.driving[2] = { plate = 'OS000012', engine = false, speed = 0 }
+    e.give(2, 'os_car_lock_kit'); e.give(2, 'os_car_alarm_kit'); e.give(2, 'os_screwdriver')
+    assert(v.cars.installBegin(2, 'os_car_lock_kit')); assert(v.cars.installFinish(2, true))
+    assert(v.cars.installBegin(2, 'os_car_alarm_kit')); assert(v.cars.installFinish(2, true))
+    c.players[2].point = { x = 5, y = 0, z = 1 }; assert(v.cars.toggle(2, carAt()).locked)
+    local alerts = {}
+    local pick = OSSecurity.LockpickService.new({ holdings = c.game.holdings, world = function(source) return util.copy(c.players[source].point), 0 end,
+        now = function() return c.core.time end, locks = { pickTarget = function() return nil, 'No hay ninguna puerta con cerradura a tu alcance.' end },
+        cars = v.cars, random = function() return 100 end, notifyOwner = function(alias, text) alerts[#alerts + 1] = { alias, text } end, audit = function() end })
+    e.give(5, 'os_lockpick'); c.players[5].point = { x = 1, y = 0, z = 1 }
+    local challenge = assert(pick.begin(5, carAt())); assert(challenge.kind == 'vehicle' and challenge.pins == 5)
+    c.core.time = c.core.time + 10
+    assert(pick.finish(5, true).ok)
+    assert(not c.game.inventory.cars()['12'].locked and logged(v, 'alarm') == 1 and alerts[1][1] == 'ana')
+    local _, none = pick.begin(5, carAt()); assert(none:find('cerrado'))
 end)

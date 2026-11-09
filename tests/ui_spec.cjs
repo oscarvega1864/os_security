@@ -251,6 +251,23 @@ async function main() {
     await evaluate(`document.querySelector('.cw-button').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
     await until(`document.getElementById('carwire').hidden && window.__calls.some(x => x.endpoint === 'carwire' && x.body.ok === true)`);
     console.log('PASS vehicle install: trim clips with the right tension, probe and splice the module, test the key fob');
+    // Ganzua: fijar cada pin con Espacio cuando pasa por la zona verde; fallar suma un fallo.
+    await evaluate(`window.__calls.length = 0; window.postMessage({type:'lockpick',text:window.__brand.Text.lockpick,data:{kind:'door',tier:2,pins:3,zone:0.3,speed:0.5,seconds:60}},'*')`);
+    await until(`!document.getElementById('lockpick').hidden && document.querySelectorAll('.lp-column').length === 3`);
+    await until(`document.querySelector('.lp-column.active .lp-zone:not(.hot)')`);
+    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }))`);
+    assert(await evaluate(`document.querySelectorAll('#lockpick .mg-strike.on').length === 1`), 'Pressing outside the green zone is a miss');
+    fs.writeFileSync(path.join(output, 'lockpick.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    for (let pin = 0; pin < 3; pin++) {
+      await until(`document.querySelector('.lp-column.active .lp-zone.hot')`);
+      await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ' }))`);
+    }
+    await until(`document.getElementById('lockpick').hidden && window.__calls.some(x => x.endpoint === 'lockpick' && x.body.ok === true)`);
+    await evaluate(`window.postMessage({type:'lockpick',text:window.__brand.Text.lockpick,data:{kind:'vehicle',tier:1,pins:3,zone:0.2,speed:1,seconds:60}},'*')`);
+    await until(`!document.getElementById('lockpick').hidden`);
+    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
+    await until(`document.getElementById('lockpick').hidden && window.__calls.some(x => x.endpoint === 'lockpick' && x.body.cancel === true)`);
+    console.log('PASS lockpick: miss outside the zone, set every pin in the green zone, Escape gives up');
     // Teclado de alarma (pinpad) y bloque de alarma de la tablet.
     await evaluate(`window.__calls.length = 0; window.postMessage({ type: 'pinpad', data: { deviceId: 'osd_0000000009', label: 'Propiedad 200', mode: 'armed', hasPin: true, tags: true, locked: 0, entry: 22, triggered: false }, text: { pad: window.__brand.Text.alarm.pad, pinFormat: 'formato' } }, '*')`);
     await until(`!document.getElementById('pinpad').hidden && document.querySelector('.pp-status').textContent.includes('22')`);

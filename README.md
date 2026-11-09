@@ -1,4 +1,4 @@
-# Gruppe Sechs — OS Security 0.6.0
+# Gruppe Sechs — OS Security 0.7.0
 
 Recurso standalone para FiveM y GTA V Legacy. La experiencia comercial pertenece
 a Gruppe Sechs; el nombre técnico sigue siendo `os_security`. Incluye Device Core,
@@ -212,6 +212,22 @@ cada hilo del módulo en su cable, y probar el mando. Requiere `ossecurity_items
 El estado se guarda en el inventario G6 y el servidor lo reaplica cada 3 s a las entidades con esa
 matrícula (puertas bloqueadas y state bag `g6car`), también tras reaparecer el vehículo. `osg6 cars` y
 F10 → *Vehículos con cierre o alarma* lo listan.
+
+## Ganzúa (forzar puertas y vehículos)
+
+`os_lockpick`: "Usar" junto a una puerta cerrada de una propiedad o negocio (2,2 m) o un vehículo con
+matrícula OS cerrado (3 m; el servidor elige el vehículo más cercano). Minijuego de pines: fijar cada pin
+(clic o Espacio) cuando pasa por su zona verde; tres fallos y se deja.
+
+| Nivel | Pines | Zona verde |
+| --- | --- | --- |
+| 1 · Bombín de serie / vehículo sin cierre | 3 | grande |
+| 2 · Bombín de seguridad / cierre centralizado | 5 | media |
+| 3 · Bombín de alta seguridad | 7 | pequeña |
+
+El servidor exige un tiempo mínimo por pin y que sigas cerca. Si sale bien, abre la puerta (y su otra hoja)
+o el vehículo, avisa al dueño con un marcador y, si el vehículo tiene alarma, salta. Si sale mal, la ganzúa
+se rompe con un 40 % de probabilidad. Abrir el coche no lo arranca: el motor sigue necesitando la llave.
 
 ## Panel de administración (os_admin)
 

@@ -48,6 +48,12 @@ OSSecurity.GameplayConfig = {
         InstallSeconds = 180, KeyDistance = 15.0, ManualDistance = 3.5, TamperDistance = 8.0, AlarmSeconds = 30, AlarmCooldown = 45,
         AlarmHearing = 150.0, SyncSeconds = 3
     },
+    -- Ganzua: forzar puertas cerradas (segun el bombin) y vehiculos cerrados (manual 1, cierre centralizado 2).
+    -- Levels por nivel de seguridad: pines, tamano de la zona verde (0-1) y velocidad del pin.
+    Lockpick = {
+        Item = 'os_lockpick', Reach = 2.2, VehicleReach = 3.0, Seconds = 60, MinPinSeconds = 0.5, BreakChance = 40,
+        Levels = { { pins = 3, zone = 0.22, speed = 0.9 }, { pins = 5, zone = 0.15, speed = 1.15 }, { pins = 7, zone = 0.10, speed = 1.4 } }
+    },
     Ace = {
         client = 'ossecurity.g6.client', operations = 'ossecurity.g6.operations',
         technician = 'ossecurity.g6.technician', supervisor = 'ossecurity.g6.supervisor', admin = 'ossecurity.admin'

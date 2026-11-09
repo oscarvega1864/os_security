@@ -138,6 +138,30 @@ function OSSecurity.CarService.new(options)
         options.audit('car_alarm', source, tostring(record.id))
         return true
     end
+    -- Ganzua: vehiculo cerrado (cualquiera puede intentarlo) y apertura forzada.
+    function cars.pickTarget(vehicle)
+        if type(vehicle) ~= 'table' then return nil, 'Vehiculo no disponible.' end
+        local car = asset(vehicle.plate)
+        local record = car and records()[tostring(car.id)]
+        if not record or not record.locked then return nil, 'Ese vehiculo no esta cerrado.' end
+        return { id = record.id, tier = record.lock and 2 or 1, owner = car.owner, plate = record.plate, alarm = record.alarm }
+    end
+    function cars.forceOpen(source, vehicle)
+        local car = vehicle and asset(vehicle.plate)
+        local record = car and records()[tostring(car.id)]
+        if not record or not record.locked then return nil, 'El vehiculo ya no esta cerrado.' end
+        record.locked = false
+        local saved, err = save(record)
+        if not saved then return nil, err end
+        options.effects.locked(vehicle, false, record.alarm, false)
+        if record.alarm then
+            local now = options.now()
+            lastAlarm[record.id], sounding[record.id] = now, now + config.AlarmSeconds
+            options.effects.alarm(vehicle, config.AlarmSeconds)
+        end
+        options.audit('car_forced', source, tostring(record.id))
+        return { alarm = record.alarm }
+    end
     -- Arrancar o apagar: solo quien conduce un vehiculo propio (o un administrador). Los vehiculos que no
     -- son de os_devtools quedan libres, como en GTA.
     function cars.engine(source)

@@ -128,7 +128,11 @@ function OSSecurity.Gameplay.new(options)
         vehicles = options.vehicles or { asset = noop, alias = noop, driving = noop },
         effects = { locked = carEffects.locked or noop, alarm = carEffects.alarm or noop, notifyOwner = carEffects.notifyOwner or noop },
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
-    local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks, cars = cars }
+    local lockpick = OSSecurity.LockpickService.new({ holdings = holdings, world = options.world, now = options.now, locks = locks, cars = cars,
+        random = options.random or math.random, notifyOwner = carEffects.notifyOwner or noop,
+        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks, cars = cars,
+        lockpick = lockpick }
     function gameplay.status() return ready and inventory.status() and options.registry.status() end
     function gameplay.load()
         ready = false
@@ -144,8 +148,8 @@ function OSSecurity.Gameplay.new(options)
         if not gameplay.status() then return { ok = false, error = 'Flujo Gruppe Sechs no disponible; revisar servidor.', close = true } end
         return controller.handle(source, request)
     end
-    function gameplay.drop(source) controller.drop(source); locks.drop(source); cars.drop(source) end
-    function gameplay.clear() ready = false; controller.clear(); alarms.clear(); locks.clear(); cars.clear() end
+    function gameplay.drop(source) controller.drop(source); locks.drop(source); cars.drop(source); lockpick.drop(source) end
+    function gameplay.clear() ready = false; controller.clear(); alarms.clear(); locks.clear(); cars.clear(); lockpick.clear() end
     local commands = OSSecurity.GameplayCommands.register({ sites = options.sites, register = options.register, reply = options.reply, permissions = options.permissions,
         identity = identity, inventory = inventory, holdings = holdings, registry = options.registry, world = options.world, ready = gameplay.status,
         locks = locks, cars = cars })

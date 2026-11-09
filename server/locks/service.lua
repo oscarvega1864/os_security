@@ -221,6 +221,28 @@ function OSSecurity.LockService.new(options)
         return { id = door.id, locked = locked, message = locked and 'Puerta cerrada con llave.' or 'Puerta abierta.' }
     end
 
+    -- Ganzua: puerta cerrada mas cercana (cualquiera puede intentarlo) y apertura forzada de sus hojas.
+    function locks.pickTarget(source, reach)
+        local door, err = nearest(source, reach)
+        if not door then return nil, err end
+        if not door.locked then return nil, 'Esa puerta ya esta abierta.' end
+        for _, context in pairs(changes) do if context.doorId == door.id then return nil, 'Estan cambiando el bombin de esta puerta.' end end
+        local site = ownedSites()[key(door.site)]
+        return { id = door.id, tier = door.tier, position = util.copy(door.position), owner = site and site.owner or nil,
+            label = options.sites and options.sites.label(door.site) or key(door.site) }
+    end
+    function locks.forceOpen(doorId)
+        local door = active()[doorId]
+        if not door or not door.locked then return nil, 'La puerta ya no esta cerrada.' end
+        for _, leaf in ipairs(group(door, active())) do
+            leaf.locked = false
+            local saved, err = write(leaf)
+            if not saved then notify(); return nil, err end
+        end
+        notify()
+        return true
+    end
+
     -- Cambio de bombin, paso 1: comprobar todo y reservar el cambio mientras dura el minijuego.
     function locks.changeBegin(source, item)
         local tier = config.Cylinders[item]

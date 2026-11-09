@@ -203,6 +203,18 @@ local function vehicleOf(netId)
     local p = GetEntityCoords(entity)
     return { entity = entity, netId = netId, plate = GetVehicleNumberPlateText(entity), position = { x = p.x, y = p.y, z = p.z } }
 end
+-- Vehiculo mas cercano al jugador (para la ganzua): lo elige el servidor, no el cliente.
+local function nearestVehicle(player, radius)
+    local ped = GetPlayerPed(player)
+    if not ped or ped == 0 then return nil end
+    local here = GetEntityCoords(ped)
+    local best, bestDistance
+    for _, entity in ipairs(GetAllVehicles()) do
+        local d = #(GetEntityCoords(entity) - here)
+        if d <= radius and (not bestDistance or d < bestDistance) then best, bestDistance = entity, d end
+    end
+    return best and vehicleOf(NetworkGetNetworkIdFromEntity(best)) or nil
+end
 local function playersNear(position, radius)
     local list = {}
     for _, value in ipairs(GetPlayers()) do
@@ -433,6 +445,14 @@ RegisterNetEvent('os_security:car:installFinish', function(success)
     local result, err = lockCall(function() return gameplay.cars.installFinish(player, success == true) end)
     TriggerClientEvent('os_security:car:result', player, result ~= nil, result and result.message or err)
 end)
+-- Ganzua: resultado del minijuego de pines.
+RegisterNetEvent('os_security:lockpick:finish', function(result)
+    local player = source
+    if not lockAllowed(player) then return end
+    local outcome, err = lockCall(function() return gameplay.lockpick.finish(player, result == 'cancel' and 'cancel' or result == true) end)
+    TriggerClientEvent('os_security:lockpick:result', player, outcome ~= nil and outcome.ok == true, outcome and outcome.message or err, outcome and outcome.broken == true)
+end)
+
 -- Las entidades nacen abiertas: cada pocos segundos se les aplica el estado guardado (puertas y state bag).
 CreateThread(function()
     while true do
@@ -476,11 +496,17 @@ end)
 local function registerUsableTablets()
     if not externalItems or GetResourceState(inventoryResource) ~= 'started' then return end
     for item, definition in pairs(OSSecurity.ItemCatalog) do
-        if definition.tablet or definition.usable == 'placement' or definition.usable == 'tag' or definition.usable == 'cylinder' or definition.usable == 'car' then
+        if definition.tablet or ({ placement = true, tag = true, cylinder = true, car = true, lockpick = true })[definition.usable] then
             local ok, registered = pcall(function()
                 return exports[inventoryResource]:RegisterUsableItem(item, function(player)
                     TriggerClientEvent('osinventory:forceClose', player)
                     if definition.tablet then TriggerClientEvent('os_security:g6:openTablet', player, definition.tablet)
+                    elseif definition.usable == 'lockpick' then
+                        local challenge, err = lockCall(function()
+                            return gameplay.lockpick.begin(player, nearestVehicle(player, OSSecurity.GameplayConfig.Lockpick.VehicleReach))
+                        end)
+                        if challenge then TriggerClientEvent('os_security:lockpick:start', player, challenge)
+                        else TriggerClientEvent('os_security:lockpick:result', player, false, err, false) end
                     elseif definition.usable == 'car' then
                         local data, err = lockCall(function() return gameplay.cars.installBegin(player, item) end)
                         if data then TriggerClientEvent('os_security:car:install', player, data)

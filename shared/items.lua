@@ -14,6 +14,7 @@ OSSecurity.ItemCatalog = {
     os_car_lock_kit = { name = prefix .. 'Cierre centralizado (vehiculo)', category = 'kit', weight = 2, usable = 'car' },
     os_car_alarm_kit = { name = prefix .. 'Alarma de vehiculo', category = 'kit', weight = 2, usable = 'car' },
     os_tracker_kit = { name = prefix .. 'Kit localizador', category = 'kit', weight = 1 },
+    os_lockpick = { name = prefix .. 'Ganzua', category = 'tool', weight = 0, usable = 'lockpick' },
     os_drill = { name = prefix .. 'Taladro', category = 'tool', weight = 2 },
     os_screwdriver = { name = prefix .. 'Destornillador', category = 'tool', weight = 1 },
     os_battery = { name = prefix .. 'Bateria', category = 'material', weight = 1 }
