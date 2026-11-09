@@ -1065,3 +1065,21 @@ test('Inventory state rejects malformed doors', function()
     local upgraded = util.copy(base); upgraded.cylinder, upgraded.tier = 'os_lock_kit_high', 3
     assert(OSSecurity.InventoryState.door(upgraded))
 end)
+
+test('A mount created for a property links the installed device to it without another step', function()
+    local c = fixture(); kit(c)
+    c.assets.properties[7] = { id = 7, owner = 'ana', position = { x = 0, y = 0, z = 1 } }
+    c.players[4].point = { x = 0, y = 0, z = 1 }; c.players[1].point = { x = 0, y = 0, z = 1 }
+    local base = { id = 'prop7_zona', client = 2, installer = 1, position = { x = 1, y = 0, z = 1 }, normal = { x = -1, y = 0, z = 0 } }
+    local missing = util.copy(base); missing.site = { kind = 'property', id = 99 }
+    local _, err = c.game.anchorAt(4, missing); assert(err:find('inexistente'))
+    local forged = util.copy(base); forged.site = { kind = 'garage', id = 7 }; assert(not c.game.anchorAt(4, forged))
+    base.site = { kind = 'property', id = 7 }
+    local message = assert(c.game.anchorAt(4, base)); assert(message:find('Propiedad 7', 1, true))
+    assert(c.game.inventory.snapshot().anchors.prop7_zona.site.id == 7)
+    local session = open(c, 1, 'operations')
+    assert(call(c, 1, session, 'place_begin').ok)
+    local result = call(c, 1, session, 'place_confirm', proposal('prop7_zona')); assert(result.ok, result.error)
+    local site = c.game.inventory.site(result.data.id)
+    assert(site and site.kind == 'property' and site.id == 7)
+end)

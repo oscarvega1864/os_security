@@ -390,6 +390,11 @@ AddEventHandler('onResourceStart', function(started)
 end)
 
 -- Panel y consola de os_admin (opcional).
+OSSecurity.AdminPanel.hooks = {
+    anchorEditor = function(player, payload) TriggerClientEvent('os_security:g6:anchorEditor', player, payload) end,
+    aimDoor = function(player, site) TriggerClientEvent('os_security:locks:aimDoor', player, site) end,
+    removeNearDoor = function(player) return gameplay.locks.unregister(player) end
+}
 local runPanelCommand = OSSecurity.AdminPanel.runner(commandHandlers, panelCapture)
 OSSecurity.AdminPanelRun = runPanelCommand
 AddEventHandler('os_admin:ready', function() OSSecurity.AdminPanel.publish(runPanelCommand) end)

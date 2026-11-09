@@ -1,4 +1,4 @@
-# Gruppe Sechs — OS Security 0.5.0
+# Gruppe Sechs — OS Security 0.5.1
 
 Recurso standalone para FiveM y GTA V Legacy. La experiencia comercial pertenece
 a Gruppe Sechs; el nombre técnico sigue siendo `os_security`. Incluye Device Core,
@@ -66,7 +66,13 @@ proveedor falla o no está iniciado no se concede nada por empleo.
 
 ## Registrar zonas de montaje
 
-En el juego, con `ossecurity.admin`:
+Sin comandos: **F10 → Gruppe Sechs → Crear zona de montaje**. Eliges cliente, técnico (vacío: tú) y,
+opcionalmente, la propiedad o negocio; el nombre se genera solo. Al aceptar se cierra el panel y se abre
+el editor. Si la zona es de una propiedad, el dispositivo que se instale en ella queda vinculado a esa
+propiedad automáticamente (sin `osg6 site`). En el mismo panel: **Añadir la puerta que apunto** y **Dar de
+baja la puerta más cercana** para las cerraduras.
+
+Con comando, en el juego y con `ossecurity.admin`:
 
 ```text
 /g6anchor <id> <idCliente> [idInstalador]

@@ -93,7 +93,7 @@ test('Manifest paths, loading order, version and Lua 5.4 syntax', function()
     equal(declarations, { fx_version = 'cerulean', game = 'gta5' })
     for _, file in ipairs(__luaFiles) do assert(loadfile(root .. file)) end
     for _, file in ipairs(clientScripts) do assert(loadfile(root .. file)) end
-    assert(OSSecurity.Config.Version == '0.5.0')
+    assert(OSSecurity.Config.Version == '0.5.1')
     assert(nuiPage == 'web/index.html' and strictMode == 'true')
     for _, file in ipairs(nuiFiles) do local handle = assert(io.open(root .. file, 'rb')); handle:close() end
     assert(#scripts > 0 and scripts[#scripts] == 'server/main.lua')
@@ -534,6 +534,19 @@ test('FiveM wiring: startup, commands, restart persistence and safe file errors'
         assert(not panel.estado.handler(7, { dispositivo = 'osd_0000000099', estado = 'active' }).ok)
         assert(not panel.vincular.handler(7, { dispositivo = 'osd_0000000002', tipo = 'propiedad' }).ok)
         assert(sent == 0, 'Panel replies must not reach the chat')
+        -- Acciones que siguen en el juego: abren el editor en el cliente y cierran el panel.
+        local events = {}; TriggerClientEvent = function(name, player, payload) events[#events + 1] = { name, player, payload } end
+        local zone = panel.montaje.handler(7, { cliente = 7, vinculo = 'propiedad', id = 5 })
+        assert(zone.ok and zone.close and events[1][1] == 'os_security:g6:anchorEditor' and events[1][2] == 7)
+        assert(events[1][3].site.kind == 'property' and events[1][3].site.id == 5 and events[1][3].id:match('^prop5_') and events[1][3].client == 7)
+        assert(not panel.montaje.handler(7, { cliente = 7, vinculo = 'negocio' }).ok) -- falta el ID
+        assert(not panel.montaje.handler(7, { cliente = 7, vinculo = 'none', nombre = 'con espacios' }).ok)
+        local door = panel.puertaapuntada.handler(7, { tipo = 'propiedad', id = 5 })
+        assert(door.ok and door.close and events[#events][1] == 'os_security:locks:aimDoor' and events[#events][3].id == 5)
+        GetPlayerPed = function() return 0 end -- sin posicion: no hay puerta cercana
+        assert(not panel.puertacercana.handler(7, {}).ok)
+        GetPlayerPed = nil
+        assert(#events == 2)
         TriggerClientEvent = function(_, source) assert(source > 0) end
         commands.osstatus(0, {})
         local logCount = #logs

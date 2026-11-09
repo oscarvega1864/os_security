@@ -204,6 +204,11 @@ function OSSecurity.InstallationService.new(options)
         end
         local saved, finishError = finalize(installation, device)
         if not saved then return nil, finishError or 'Instalacion pendiente de recuperacion.' end
+        -- Montaje creado para una propiedad o negocio: el dispositivo queda vinculado sin otro paso.
+        if anchor.site then
+            local linked, linkError = options.inventory.apply({ kind = 'site', deviceId = device.id, site = util.copy(anchor.site) })
+            if not linked and options.log then options.log(('Instalacion %s: vinculo con la propiedad pendiente (%s).'):format(installation.id, tostring(linkError))) end
+        end
         options.audit('installation_committed', source, device.id)
         return { id = device.id, installationId = installation.id, status = 'committed' }
     end

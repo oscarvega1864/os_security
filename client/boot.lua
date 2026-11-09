@@ -45,6 +45,16 @@ RegisterCommand('g6anchor', function(_, args)
     OSSecurity.ClientAnchor.begin(args, function(payload) TriggerServerEvent('os_security:g6:anchorAim', payload) end, OSSecurity.Notify)
 end, false)
 
+-- Editor de zona abierto desde el panel F10 (os_admin): mismo editor y misma validacion del servidor.
+RegisterNetEvent('os_security:g6:anchorEditor', function(payload)
+    if source ~= 65535 or type(payload) ~= 'table' or type(payload.id) ~= 'string' or controller.placing then return end
+    local args = { payload.id, tostring(payload.client), payload.installer and tostring(payload.installer) or nil }
+    OSSecurity.ClientAnchor.begin(args, function(aimed)
+        aimed.site = payload.site
+        TriggerServerEvent('os_security:g6:anchorAim', aimed)
+    end, OSSecurity.Notify)
+end)
+
 RegisterNetEvent('os_security:g6:anchorResult', function(ok, message)
     if source ~= 65535 or type(message) ~= 'string' then return end
     OSSecurity.Notify(message, ok and 'success' or 'error')
@@ -189,6 +199,34 @@ RegisterNUICallback('cylinderFx', function(body, callback)
     if type(body.phase) == 'string' then minigameFx.phase(body.phase) end
     if type(body.cue) == 'string' then minigameFx.cue(body.cue) end
 end)
+-- Puerta apuntada desde el panel F10: E sobre la puerta la registra; Retroceso o Esc sale.
+local aimingDoor = 0
+RegisterNetEvent('os_security:locks:aimDoor', function(site)
+    if source ~= 65535 or type(site) ~= 'table' then return end
+    aimingDoor = aimingDoor + 1
+    local mine = aimingDoor
+    CreateThread(function()
+        local deadline = GetGameTimer() + 60000
+        while mine == aimingDoor and GetGameTimer() < deadline do
+            Wait(0)
+            DisableControlAction(0, 38, true)
+            local entity = locks.aimed(8.0)
+            local text = entity and '~INPUT_CONTEXT~ registrar esta puerta   ~INPUT_FRONTEND_RRIGHT~ salir' or 'Apunta a la puerta   ~INPUT_FRONTEND_RRIGHT~ salir'
+            BeginTextCommandDisplayHelp('STRING'); AddTextComponentSubstringPlayerName(text); EndTextCommandDisplayHelp(0, false, false, -1)
+            if entity then
+                local p = GetEntityCoords(entity)
+                DrawMarker(0, p.x, p.y, p.z + 1.2, 0, 0, 0, 0, 0, 0, 0.3, 0.3, 0.3, 230, 200, 60, 200, true, true, 2, false, nil, nil, false)
+                if IsDisabledControlJustPressed(0, 38) then
+                    TriggerServerEvent('os_security:locks:register', { kind = site.kind, id = site.id, model = GetEntityModel(entity),
+                        position = { x = p.x, y = p.y, z = p.z } })
+                    return
+                end
+            end
+            if IsControlJustPressed(0, 177) or IsControlJustPressed(0, 200) then OSSecurity.Notify('Registro de puerta cancelado.', 'info'); return end
+        end
+    end)
+end)
+
 -- /g6puerta <propiedad|negocio> <id> | borrar: apano manual para una puerta que no se detecte sola.
 RegisterCommand('g6puerta', function(_, args)
     if args[1] == 'borrar' then TriggerServerEvent('os_security:locks:register', { remove = true }); return end

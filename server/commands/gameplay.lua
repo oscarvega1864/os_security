@@ -16,7 +16,7 @@ function OSSecurity.GameplayCommands.register(options)
         return actor
     end
     -- Alta de montaje comun a la consola (coordenadas escritas) y a /g6anchor (punto apuntado en el juego).
-    local function createAnchor(id, ownerSource, installerSource, position, normal, radius, bucket)
+    local function createAnchor(id, ownerSource, installerSource, position, normal, radius, bucket, site)
         local owner = options.identity.resolve(tonumber(ownerSource))
         local installer = options.identity.resolve(tonumber(installerSource))
         if not owner or not installer or not OSSecurity.InventoryState.vector(position, 1000000)
@@ -32,7 +32,7 @@ function OSSecurity.GameplayCommands.register(options)
         for _, axis in ipairs({ 'x', 'y', 'z' }) do normal[axis] = round(normal[axis] / length, 9) end
         if bucket == nil then local _, installerBucket = options.world(tonumber(installerSource)); bucket = installerBucket end
         return options.inventory.apply({ kind = 'anchor', anchor = { id = id, owner = owner, installer = installer,
-            position = position, normal = normal, radius = round(radius, 3), bucket = bucket } })
+            position = position, normal = normal, radius = round(radius, 3), bucket = bucket, site = site } })
     end
     options.register('osg6', function(source, args)
         if not options.permissions.isAdmin(source) then options.reply(source, 'Se requiere ossecurity.admin.'); return end
@@ -137,21 +137,28 @@ function OSSecurity.GameplayCommands.register(options)
     -- El servidor exige ossecurity.admin, valida los datos y que el punto este cerca de su posicion real.
     local function aimed(source, payload)
         if not OSSecurity.Util.integer(source, 1, 2147483647) or not options.permissions.isAdmin(source) then return nil, 'Se requiere ossecurity.admin.' end
-        if not OSSecurity.Util.object(payload, { id = true, client = true, installer = true, radius = true, position = true, normal = true })
+        if not OSSecurity.Util.object(payload, { id = true, client = true, installer = true, radius = true, position = true, normal = true, site = true })
             or type(payload.id) ~= 'string' or not OSSecurity.Util.integer(payload.client, 1, 2147483647)
             or (payload.installer ~= nil and not OSSecurity.Util.integer(payload.installer, 1, 2147483647))
             or (payload.radius ~= nil and not OSSecurity.Util.finite(payload.radius))
             or not OSSecurity.InventoryState.vector(payload.position, 1000000) or not OSSecurity.InventoryState.vector(payload.normal, 1000) then
             return nil, 'Uso: /g6anchor <id> <idCliente> [idInstalador] [radio], apuntando a la pared.'
         end
+        local site
+        if payload.site ~= nil then
+            site = OSSecurity.Util.object(payload.site, { kind = true, id = true }) and { kind = payload.site.kind, id = payload.site.id } or nil
+            if not site or not OSSecurity.InventoryState.site(site) then return nil, 'Propiedad o negocio no valido.' end
+            if not options.sites or not options.sites.get(site) then return nil, ('%s %d inexistente.'):format(OSSecurity.Sites.Labels[site.kind], site.id) end
+        end
         local here, bucket = options.world(source)
         if not here then return nil, 'Posicion del administrador no disponible.' end
         local dx, dy, dz = payload.position.x - here.x, payload.position.y - here.y, payload.position.z - here.z
         if math.sqrt(dx * dx + dy * dy + dz * dz) > OSSecurity.GameplayConfig.AnchorAimDistance then return nil, 'El punto apuntado esta demasiado lejos.' end
-        local result, err = createAnchor(payload.id, payload.client, payload.installer or source, payload.position, payload.normal, payload.radius or 0.75, bucket)
+        local result, err = createAnchor(payload.id, payload.client, payload.installer or source, payload.position, payload.normal, payload.radius or 0.75, bucket, site)
         if not result then return nil, err end
         local anchor = result.anchors[payload.id]
-        return ('Montaje %s registrado en %.2f %.2f %.2f (bucket %d).'):format(payload.id, anchor.position.x, anchor.position.y, anchor.position.z, anchor.bucket)
+        return ('Montaje %s registrado en %.2f %.2f %.2f (bucket %d)%s.'):format(payload.id, anchor.position.x, anchor.position.y, anchor.position.z, anchor.bucket,
+            site and (' para ' .. options.sites.label(site)) or '')
     end
     return { aimed = aimed }
 end

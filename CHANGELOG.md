@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1 — Montajes y puertas desde el panel F10
+
+- F10 → Gruppe Sechs: crear zona de montaje (abre el editor de apuntar, nombre automático y propiedad
+  opcional), añadir la puerta apuntada y dar de baja la puerta más cercana, sin comandos.
+- Un montaje creado para una propiedad o negocio vincula a ella el dispositivo que se instale.
+
 ## 0.5.0 — Cerraduras de puertas
 
 - Puertas reales (GTA o MLO) de cada propiedad o negocio con titular, detectadas automáticamente por el

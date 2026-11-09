@@ -19,7 +19,8 @@ function state.vector(value, maximum)
 end
 
 function state.anchor(anchor)
-    if not util.object(anchor, { id = true, owner = true, installer = true, position = true, normal = true, radius = true, bucket = true })
+    if not util.object(anchor, { id = true, owner = true, installer = true, position = true, normal = true, radius = true, bucket = true, site = true })
+        or (anchor.site ~= nil and not state.site(anchor.site))
         or not label(anchor.id) or not identity.valid(anchor.owner) or not identity.valid(anchor.installer)
         or not state.vector(anchor.position, 1000000) or not state.vector(anchor.normal, 1)
         or not util.finite(anchor.radius) or anchor.radius < 0.25 or anchor.radius > 2

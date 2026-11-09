@@ -78,6 +78,26 @@ function OSSecurity.AdminPanel.build(run)
               handler = cmd('osmaint', function(v) return { 'replace', v.dispositivo, v.pieza } end) },
             { id = 'historial', label = 'Historial de mantenimiento', ace = ace, fields = { device },
               handler = cmd('osmaint', function(v) return { 'history', v.dispositivo, '0', '50' } end) },
+            { id = 'montaje', label = 'Crear zona de montaje (camara o alarma)', ace = ace, self = true,
+              description = 'Al aceptar se abre el editor: apunta a la pared o techo, E fija, flechas/rueda ajustan y E registra.',
+              fields = { { id = 'cliente', label = 'Cliente (dueno del dispositivo)', type = 'player' },
+                  { id = 'instalador', label = 'Tecnico instalador (vacio: tu)', type = 'player', required = false },
+                  { id = 'vinculo', label = 'Para', type = 'select', options = options({ { 'none', 'Sin propiedad' }, { 'propiedad', 'Propiedad' }, { 'negocio', 'Negocio' } }) },
+                  { id = 'id', label = 'ID de la propiedad o negocio', type = 'number', integer = true, min = 1, max = 2147483646, required = false },
+                  { id = 'nombre', label = 'Nombre de la zona (vacio: automatico)', type = 'text', max = 40, required = false } },
+              handler = function(source, values)
+                  local hook = OSSecurity.AdminPanel.hooks.anchorEditor
+                  if not hook then return { ok = false, message = 'No disponible.' } end
+                  local site
+                  if values.vinculo ~= 'none' then
+                      if not values.id then return { ok = false, message = 'Indica el ID de la propiedad o negocio.' } end
+                      site = { kind = values.vinculo == 'negocio' and 'business' or 'property', id = values.id }
+                  end
+                  local name = values.nombre or OSSecurity.AdminPanel.anchorName(source, site)
+                  if not name:match('^[%w_%-]+$') then return { ok = false, message = 'El nombre solo admite letras, numeros, _ y -.' } end
+                  hook(source, { id = name, client = values.cliente, installer = values.instalador, site = site })
+                  return { ok = true, close = true, message = ('Zona %s: apunta a la pared o al techo y pulsa E.'):format(name) }
+              end },
             { id = 'dar', label = 'Dar tablet, kit o herramienta', ace = ace,
               fields = { { id = 'jugador', label = 'Jugador', type = 'player' }, { id = 'objeto', label = 'Objeto', type = 'select', options = items },
                   { id = 'cantidad', label = 'Cantidad', type = 'number', integer = true, min = 1, max = OSSecurity.GameplayConfig.MaxItemQuantity, default = 1 } },
@@ -97,6 +117,24 @@ function OSSecurity.AdminPanel.build(run)
                   return run(source, 'osg6', { 'site', values.dispositivo, values.tipo, tostring(values.id) })
               end },
             { id = 'instalaciones', label = 'Instalaciones registradas', ace = ace, handler = cmd('osg6', function() return { 'installations' } end) },
+            { id = 'puertaapuntada', label = 'Anadir la puerta que apunto', ace = ace, self = true,
+              description = 'Para una puerta que no se detecta sola. Al aceptar, apunta a la puerta y pulsa E.',
+              fields = { { id = 'tipo', label = 'De', type = 'select', options = options({ { 'propiedad', 'Propiedad' }, { 'negocio', 'Negocio' } }) },
+                  { id = 'id', label = 'ID de la propiedad o negocio', type = 'number', integer = true, min = 1, max = 2147483646 } },
+              handler = function(source, values)
+                  local hook = OSSecurity.AdminPanel.hooks.aimDoor
+                  if not hook then return { ok = false, message = 'No disponible.' } end
+                  hook(source, { kind = values.tipo, id = values.id })
+                  return { ok = true, close = true, message = 'Apunta a la puerta y pulsa E (Retroceso: salir).' }
+              end },
+            { id = 'puertacercana', label = 'Dar de baja la puerta mas cercana', ace = ace, self = true, confirm = true,
+              description = 'La puerta con cerradura a menos de 3 m de ti queda libre y no se vuelve a detectar.',
+              handler = function(source)
+                  local hook = OSSecurity.AdminPanel.hooks.removeNearDoor
+                  if not hook then return { ok = false, message = 'No disponible.' } end
+                  local message, err = hook(source)
+                  return { ok = message ~= nil, message = message or err }
+              end },
             { id = 'puertas', label = 'Puertas con cerradura', ace = ace, description = 'Puertas detectadas en propiedades y negocios, bombin y estado.',
               handler = cmd('osg6', function() return { 'doors' } end) },
             { id = 'borrarpuerta', label = 'Dar de baja una puerta', ace = ace, confirm = true,
@@ -106,6 +144,14 @@ function OSSecurity.AdminPanel.build(run)
             { id = 'diagnostico', label = 'Estado del sistema G6', ace = ace, handler = cmd('osg6', function() return { 'diagnose' } end) }
         }
     }
+end
+
+-- Acciones que continuan en el juego (editores de apuntar); las asigna server/main.lua.
+OSSecurity.AdminPanel.hooks = OSSecurity.AdminPanel.hooks or {}
+-- Nombre automatico de zona: propiedad/negocio y una marca de tiempo corta, unico por administrador.
+function OSSecurity.AdminPanel.anchorName(source, site)
+    local base = site and ((site.kind == 'business' and 'negocio' or 'prop') .. site.id) or 'zona'
+    return ('%s_%s%d'):format(base, ('%x'):format(os.time() % 0x1000000), source % 100)
 end
 
 function OSSecurity.AdminPanel.publish(run)
