@@ -10,6 +10,9 @@
 - Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
   (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
   petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
+- Zonas de montaje cuadradas con editor `/g6anchor` (vista en vivo, tamaño con la rueda) en paredes,
+  techos o suelos; colocación con inclinación de hasta 90° y montaje invertido (R). Minijuego de
+  instalación en tres fases (taladrar, atornillar y cablear); fallar o salir cancela sin consumir.
 - Corrección: montajes y colocaciones guardan coordenadas a 0,1 mm, normales a 9 decimales y ángulos a
   0,01°. Los residuos del raycast (p. ej. 2e-17) no se releían exactos con el JSON del runtime y el
   guardado se bloqueaba por integridad. El error de integridad indica ahora la ruta y los valores.

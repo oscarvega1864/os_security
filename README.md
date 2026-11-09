@@ -64,33 +64,40 @@ Con objetos por personaje, el empleo debe ser del mismo personaje que tiene la t
 El empleo nunca concede `admin` ni la tablet Client. Los ACE tienen prioridad, y si el
 proveedor falla o no está iniciado no se concede nada por empleo.
 
-## Registrar montajes apuntando
+## Registrar zonas de montaje
 
-En el juego, con `ossecurity.admin`, apunta a la pared (menos de 8 m) y escribe:
+En el juego, con `ossecurity.admin`:
 
 ```text
-/g6anchor <id> <idCliente> [idInstalador] [radio]
+/g6anchor <id> <idCliente> [idInstalador]
 ```
 
-El instalador por defecto eres tú y el radio 0,75 m. El cliente solo envía el punto y la
-normal de la superficie; el servidor exige el ACE, valida los datos y que el punto esté a
-menos de `AnchorAimDistance` (10 m) de tu posición real, y usa tu bucket. Responde con una
-notificación. `osg6 anchor` con coordenadas sigue disponible en la consola.
+Se abre un editor: apunta a una pared, techo o suelo (menos de 8 m) y verás un cuadrado verde
+sobre la superficie. La rueda cambia su tamaño (de 0,5 × 0,5 a 4 × 4 m), Ctrl hace el ajuste fino,
+E registra la zona y Retroceso o Esc cancela. El instalador por defecto eres tú. El servidor exige
+el ACE, valida los datos y que el centro esté a menos de `AnchorAimDistance` (10 m) de tu posición
+real, y usa tu bucket. `osg6 anchor` con coordenadas sigue disponible en la consola.
 
 ## Colocar la cámara
 
-Al usar el kit CCTV, la cámara aparece en el montaje libre más cercano y no sigue la mira:
+Al usar el kit CCTV, la cámara aparece en la zona libre más cercana y no sigue la mira:
 
 | Tecla | Acción |
 | --- | --- |
-| Flechas | Mover sobre la pared (X horizontal, Y vertical), dentro del radio del montaje |
-| Mayús + flechas, o rueda | Girar (izquierda/derecha) e inclinar (arriba/abajo, máx. 45°) |
+| Flechas | Mover sobre la superficie (X, Y), dentro del cuadrado de la zona |
+| Mayús + flechas, o rueda | Girar (izquierda/derecha) e inclinar (arriba/abajo, máx. 90°) |
+| R | Dar la vuelta a la cámara (montaje invertido, para techos) |
 | Ctrl (mantener) | Ajuste fino |
-| Tab | Siguiente montaje cercano |
+| Tab | Siguiente zona cercana |
 | E o Intro | Colocar |
 | Retroceso o Esc | Cancelar |
 
-El servidor revalida montaje, radio, plano, giro, distancia y objetos al confirmar.
+En techos empieza invertida y mirando hacia abajo. Al colocarla empieza el minijuego de
+instalación, en tres fases: **taladrar** (mantener Espacio con la temperatura en la franja verde),
+**atornillar** (Espacio con el cursor en la zona verde, tres tornillos y tres fallos como máximo)
+y **conectar los cables** a su borne del mismo color (tres errores como máximo). Si fallas o
+cancelas, la colocación se anula y no se consume material. El minijuego es solo de interfaz; el
+servidor revalida zona, plano, giro, distancia y objetos al confirmar.
 
 ## Propiedades y negocios
 

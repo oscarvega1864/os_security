@@ -8,6 +8,7 @@ description 'Gruppe Sechs - dual tablets, standalone inventory and CCTV placemen
 shared_scripts {
     'config/brand.lua',
     'shared/constants.lua',
+    'shared/geometry.lua',
     'config/config.lua',
     'shared/items.lua'
 }
@@ -19,12 +20,14 @@ client_scripts {
     'client/placement.lua',
     'client/props.lua',
     'client/notify.lua',
+    'client/anchor.lua',
+    'client/minigame.lua',
     'client/boot.lua'
 }
 
 ui_page 'web/index.html'
 nui_callback_strict_mode 'true'
-files { 'web/index.html', 'web/style.css', 'web/app.js' }
+files { 'web/index.html', 'web/style.css', 'web/app.js', 'web/minigame.js' }
 server_scripts {
     'config/server.lua',
     'config/components.lua',

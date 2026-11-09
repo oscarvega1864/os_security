@@ -1,6 +1,16 @@
 local view, placement, props = OSSecurity.ClientView.new(), OSSecurity.ClientPlacement.new(), OSSecurity.ClientProps.new()
 local lastUiAlive = GetGameTimer()
+local minigame = OSSecurity.ClientMinigame.new({
+    send = SendNUIMessage,
+    focus = function(value) SetNuiFocus(value, value) end,
+    timeout = function(callback) SetTimeout(120000, callback) end,
+    animate = function(value)
+        local ped = PlayerPedId()
+        if value then TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_HAMMERING', 0, true) else ClearPedTasks(ped) end
+    end
+})
 local controller = OSSecurity.ClientTablet.new({
+    minigame = minigame.run,
     show = function(session) lastUiAlive = GetGameTimer(); view.show(session) end,
     hide = view.hide, cancelPlacement = placement.cancel, beginPlacement = placement.begin, props = props.sync,
     send = function(packet) TriggerServerEvent('os_security:g6:request', packet) end,
@@ -26,24 +36,10 @@ RegisterNetEvent('os_security:g6:useItem', function(item)
     controller.useItem(item)
 end)
 
--- /g6anchor <id> <idCliente> [idInstalador] [radio]: registra un montaje en el punto de la pared al que se apunta.
--- Solo propone punto y normal; el servidor exige ossecurity.admin y revalida distancia, identidades y datos.
+-- /g6anchor: editor de zona de montaje (client/anchor.lua); el servidor revalida todo.
 RegisterCommand('g6anchor', function(_, args)
-    local client, installer, radius = tonumber(args[2]), args[3] and tonumber(args[3]) or nil, args[4] and tonumber(args[4]) or nil
-    if not args[1] or not client or (args[3] and not installer) or (args[4] and not radius) then
-        OSSecurity.Notify('Uso: /g6anchor <id> <idCliente> [idInstalador] [radio], apuntando a la pared.', 'warning'); return
-    end
-    local camera, rotation = GetGameplayCamCoord(), GetGameplayCamRot(2)
-    local pitch, yaw, distance = math.rad(rotation.x), math.rad(rotation.z), 8.0
-    local horizontal = math.abs(math.cos(pitch))
-    local handle = StartExpensiveSynchronousShapeTestLosProbe(camera.x, camera.y, camera.z,
-        camera.x - math.sin(yaw) * horizontal * distance, camera.y + math.cos(yaw) * horizontal * distance,
-        camera.z + math.sin(pitch) * distance, 1, PlayerPedId(), 7)
-    local _, hit, point, normal = GetShapeTestResult(handle)
-    if hit ~= 1 and hit ~= true then OSSecurity.Notify('Apunta a una pared o superficie a menos de 8 m.', 'warning'); return end
-    TriggerServerEvent('os_security:g6:anchorAim', { id = args[1], client = math.floor(client),
-        installer = installer and math.floor(installer) or nil, radius = radius,
-        position = { x = point.x, y = point.y, z = point.z }, normal = { x = normal.x, y = normal.y, z = normal.z } })
+    if controller.placing then return end
+    OSSecurity.ClientAnchor.begin(args, function(payload) TriggerServerEvent('os_security:g6:anchorAim', payload) end, OSSecurity.Notify)
 end, false)
 
 RegisterNetEvent('os_security:g6:anchorResult', function(ok, message)
@@ -55,6 +51,7 @@ RegisterCommand('g6inventory', function() controller.open('inventory') end, fals
 RegisterCommand('g6client', function() controller.open('client') end, false)
 RegisterCommand('g6operations', function() controller.open('operations') end, false)
 
+RegisterNUICallback('minigame', function(body, callback) minigame.finish(body); callback({ ok = true }) end)
 RegisterNUICallback('close', function(_, callback) controller.close(); callback({ ok = true }) end)
 RegisterNUICallback('alive', function(body, callback)
     lastUiAlive = GetGameTimer()
@@ -73,7 +70,7 @@ CreateThread(function()
     local lastHeartbeat = GetGameTimer()
     while true do
         Wait(1000)
-        if (controller.visible or controller.placing) and IsEntityDead(PlayerPedId()) then controller.close() end
+        if (controller.visible or controller.placing) and IsEntityDead(PlayerPedId()) then minigame.cancel(); controller.close() end
         if controller.visible then
             if GetGameTimer() - lastUiAlive > 12000 then controller.close()
             else SendNUIMessage({ type = 'ping' }) end
@@ -87,5 +84,5 @@ end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
-    controller.stop(); placement.cancel(); props.clear(); view.hide()
+    minigame.cancel(); controller.stop(); placement.cancel(); props.clear(); view.hide()
 end)

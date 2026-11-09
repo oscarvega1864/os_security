@@ -136,9 +136,9 @@ function OSSecurity.InstallationService.new(options)
         if not anchor or anchor.installer ~= session.actor.principal or anchor.bucket ~= bucket
             or not OSSecurity.InventoryState.vector(proposal.position, 1000000)
             or not OSSecurity.InventoryState.vector(proposal.rotation, 360)
-            or math.abs(proposal.rotation.x) > 45 or math.abs(proposal.rotation.y) > 5
+            or math.abs(proposal.rotation.x) > 90 or math.abs(proposal.rotation.y) > 180
             or distance(point, proposal.position) > config.PlacementDistance
-            or distance(anchor.position, proposal.position) > anchor.radius then return nil, 'Montaje, proximidad o coordenadas no autorizados.' end
+            or not OSSecurity.Geometry.inside(anchor, proposal.position) then return nil, 'Montaje, proximidad o coordenadas no autorizados.' end
         local delta = { x = proposal.position.x - anchor.position.x, y = proposal.position.y - anchor.position.y, z = proposal.position.z - anchor.position.z }
         local planeDistance = delta.x * anchor.normal.x + delta.y * anchor.normal.y + delta.z * anchor.normal.z
         if math.abs(planeDistance) > 0.08 then return nil, 'La posicion no pertenece al plano de montaje autorizado.' end

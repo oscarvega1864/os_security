@@ -330,6 +330,20 @@ test('Valid placement reserves once, creates real core state/components and cons
     assert(restarted.core.registry.list(0).total == 1 and count(restarted, 1, 'os_cctv_kit') == 1)
 end)
 
+test('Square mount zones accept corners and inverted ceiling orientation, and reject points outside the square', function()
+    local c = fixture(); kit(c); anchor(c)
+    local session = open(c, 1, 'operations')
+    assert(call(c, 1, session, 'place_begin').ok)
+    local outside = proposal(); outside.position = { x = 1, y = 0.8, z = 1 }
+    assert(not call(c, 1, session, 'place_confirm', outside).ok)
+    assert(call(c, 1, session, 'place_begin').ok)
+    local corner = proposal(); corner.position = { x = 1, y = 0.7, z = 1.7 } -- fuera del circulo, dentro del cuadrado
+    corner.rotation = { x = -60, y = 180, z = 270 }
+    local response = call(c, 1, session, 'place_confirm', corner); assert(response.ok, response.error)
+    local device = c.core.registry.get(0, response.data.id)
+    assert(device.rotation.x == -60 and device.rotation.y == 180 and device.position.y == 0.7)
+end)
+
 test('Placement rejects missing tools, foreign mounts, out-of-plane coordinates, distance and bucket changes', function()
     local c = fixture(); grant(c, 1, 'g6_operations_tablet'); grant(c, 1, 'os_cctv_kit'); anchor(c)
     local session = open(c, 1, 'operations'); assert(not call(c, 1, session, 'place_begin').ok)

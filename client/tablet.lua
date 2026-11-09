@@ -55,12 +55,21 @@ function OSSecurity.ClientTablet.new(options)
         end
         if response.placement then
             hide(); controller.placing = true
-            options.beginPlacement(response.placement, function(proposal)
+            local function submit(proposal, failure)
                 controller.request(proposal and 'place_confirm' or 'place_cancel', proposal or {}, function(result)
                     controller.placing = false; options.cancelPlacement()
+                    if failure and result.ok then options.notify(failure, 'error'); return end
                     options.notify(result.ok and (result.data and result.data.id and ('CCTV registrado: ' .. result.data.id) or 'Colocacion cancelada.') or result.error,
                         result.ok and (result.data and result.data.id and 'success' or 'info') or 'error')
                     if result.ok then controller.stream() end
+                end)
+            end
+            options.beginPlacement(response.placement, function(proposal)
+                if not proposal or not options.minigame then submit(proposal); return end
+                -- Colocada la camara: minijuego de instalacion antes de confirmar. Fallar o salir cancela sin cobrar.
+                options.minigame(function(ok, reason)
+                    if ok then submit(proposal)
+                    else submit(nil, reason ~= 'cancelled' and OSSecurity.Brand.Text.installFailed or nil) end
                 end)
             end)
         elseif session then showSession(session) end

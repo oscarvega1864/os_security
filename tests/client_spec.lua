@@ -3,6 +3,8 @@ dofile('/repo/client/tablet.lua')
 dofile('/repo/client/view.lua')
 dofile('/repo/client/props.lua')
 dofile('/repo/client/placement.lua')
+dofile('/repo/client/anchor.lua')
+dofile('/repo/client/minigame.lua')
 
 local function fixture()
     local c = { packets = {}, timers = {}, notifications = {}, shown = {}, hidden = 0, cancelled = 0, props = {} }
@@ -117,19 +119,67 @@ test('Player messages use os_notify with their kind when started and fall back t
     assert(ok, err)
 end)
 
-test('Placement editor keeps the camera on the mount plane, inside its radius, facing out of the wall', function()
-    local P = OSSecurity.ClientPlacement
-    local mount = { id = 'm', position = { x = 10, y = 5, z = 2 }, normal = { x = 0, y = -1, z = 0 }, radius = 0.75 }
-    local frame = P.frame(mount)
+test('Mount geometry keeps the camera inside the square zone on walls and ceilings', function()
+    local G, P = OSSecurity.Geometry, OSSecurity.ClientPlacement
+    local wall = { id = 'm', position = { x = 10, y = 5, z = 2 }, normal = { x = 0, y = -1, z = 0 }, radius = 0.75 }
+    local frame = G.frame(wall.normal)
     assert(math.abs(frame.up.z - 1) < 1e-9 and math.abs(frame.right.z) < 1e-9) -- pared vertical: Y es la altura
-    local offset = { x = 0.3, y = 0.2 }; local p = P.compose(mount, offset)
+    local p, x, y = G.point(wall, 0.3, 0.2, 0.95)
     assert(math.abs(p.y - 5) < 1e-9 and math.abs(p.z - 2.2) < 1e-9 and math.abs(p.x - 10.3) < 1e-9) -- quien mira hacia +y tiene la derecha en +x
-    offset = { x = 5, y = 0 }; p = P.compose(mount, offset) -- fuera del radio: se limita
-    assert(math.abs(offset.x - 0.75 * 0.95) < 1e-9 and math.abs(p.y - 5) < 1e-9)
+    p, x, y = G.point(wall, 5, 5, 0.95) -- fuera: se limita a la esquina del cuadrado, no a un circulo
+    assert(math.abs(x - 0.7125) < 1e-9 and math.abs(y - 0.7125) < 1e-9 and G.inside(wall, p))
+    assert(G.inside(wall, { x = 10.74, y = 5, z = 2.74 }) and not G.inside(wall, { x = 10.8, y = 5, z = 2 }))
     -- Mirando fuera de la pared: vector frontal (-sin h, cos h) igual a la normal
-    local h = math.rad(P.heading(mount)); assert(math.abs(-math.sin(h) - 0) < 1e-9 and math.abs(math.cos(h) + 1) < 1e-9)
-    local floor = { id = 'f', position = { x = 0, y = 0, z = 0 }, normal = { x = 0, y = 0, z = 1 }, radius = 1 }
-    p = P.compose(floor, { x = 0.5, y = 0 }); assert(math.abs(p.z) < 1e-9 and P.heading(floor) == 0.0)
+    local h = math.rad(P.heading(wall)); assert(math.abs(-math.sin(h)) < 1e-9 and math.abs(math.cos(h) + 1) < 1e-9)
+    local ceiling = { id = 'c', position = { x = 0, y = 0, z = 3 }, normal = { x = 0, y = 0, z = -1 }, radius = 1 }
+    p = G.point(ceiling, 0.5, -0.5); assert(math.abs(p.z - 3) < 1e-9 and G.inside(ceiling, p))
+    local yaw, tilt, roll = P.initial(ceiling, 90); assert(yaw == 90 and tilt == -45 and roll == 180)
+    assert(#G.corners(ceiling) == 4 and math.abs(G.corners(ceiling, 0.01)[1].z - 2.99) < 1e-9)
+    assert(OSSecurity.ClientAnchor.size(0.75, 1) == 0.8 and OSSecurity.ClientAnchor.size(2, 1) == 2 and OSSecurity.ClientAnchor.size(0.25, -1) == 0.25)
+    assert(OSSecurity.ClientAnchor.size(0.75, 1, true) == 0.76)
+end)
+
+test('Placement asks for the installation minigame and only confirms when it is passed', function()
+    local function setup(outcome)
+        local c = { packets = {}, notes = {} }
+        c.client = OSSecurity.ClientTablet.new({
+            send = function(packet) c.packets[#c.packets + 1] = packet end, timeout = function() end,
+            show = function() end, hide = function() end, cancelPlacement = function() end, props = function() end, expiry = function() end,
+            beginPlacement = function(_, callback) c.confirm = callback end,
+            minigame = function(callback) c.played = true; callback(outcome[1], outcome[2]) end,
+            notify = function(message, kind) c.notes[#c.notes + 1] = { message, kind } end
+        })
+        c.client.useItem('os_cctv_kit')
+        c.client.response(c.packets[#c.packets].id, { ok = true, session = { kind = 'inventory', token = 't', sequence = 0, expires = 9999999999, brand = OSSecurity.Brand } })
+        c.client.response(c.packets[#c.packets].id, { ok = true, session = { kind = 'operations', token = 'o', sequence = 0, expires = 9999999999, brand = OSSecurity.Brand }, placement = { mounts = {} } })
+        c.confirm({ anchorId = 'm', position = { x = 0, y = 0, z = 0 }, rotation = { x = 0, y = 0, z = 0 } })
+        return c
+    end
+    local passed = setup({ true }); assert(passed.played and passed.packets[#passed.packets].action == 'place_confirm')
+    local failed = setup({ false, nil }); assert(failed.packets[#failed.packets].action == 'place_cancel')
+    failed.client.response(failed.packets[#failed.packets].id, { ok = true, data = { cancelled = true } })
+    assert(failed.notes[#failed.notes][1] == OSSecurity.Brand.Text.installFailed and failed.notes[#failed.notes][2] == 'error')
+    local left = setup({ false, 'cancelled' }); assert(left.packets[#left.packets].action == 'place_cancel')
+    left.client.response(left.packets[#left.packets].id, { ok = true, data = { cancelled = true } })
+    assert(left.notes[#left.notes][1] == 'Colocacion cancelada.')
+end)
+
+test('Minigame controller owns NUI focus only while running and reports a single result', function()
+    local log = { sent = {}, focus = {}, anim = {} }
+    local timers = {}
+    local m = OSSecurity.ClientMinigame.new({ send = function(message) log.sent[#log.sent + 1] = message.type end,
+        focus = function(value) log.focus[#log.focus + 1] = value end, animate = function(value) log.anim[#log.anim + 1] = value end,
+        timeout = function(callback) timers[#timers + 1] = callback end })
+    local results = {}
+    m.run(function(ok, reason) results[#results + 1] = { ok, reason } end)
+    assert(m.active() and log.sent[1] == 'minigame' and log.focus[1] == true and log.anim[1] == true)
+    m.finish({ ok = true }); m.finish({ ok = false }) -- el segundo resultado se ignora
+    assert(#results == 1 and results[1][1] == true and log.focus[2] == false and log.sent[2] == 'minigameClose' and not m.active())
+    timers[1](); assert(#results == 1) -- el temporizador de una partida terminada no hace nada
+    m.run(function(ok, reason) results[#results + 1] = { ok, reason } end); m.cancel()
+    assert(results[2][1] == false and results[2][2] == 'cancelled')
+    m.run(function(ok, reason) results[#results + 1] = { ok, reason } end); timers[3]()
+    assert(results[3][1] == false and results[3][2] == nil)
 end)
 
 local function natives(run)

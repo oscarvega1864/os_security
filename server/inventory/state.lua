@@ -51,7 +51,7 @@ local function placement(value)
         and (value.holder == nil or state.holder(value.holder))
         and state.installationId(value.id) and label(value.anchorId) and identity.valid(value.owner) and identity.valid(value.installer)
         and state.vector(value.position, 1000000) and state.vector(value.rotation, 360)
-        and math.abs(value.rotation.x) <= 45 and math.abs(value.rotation.y) <= 5
+        and math.abs(value.rotation.x) <= 90 and math.abs(value.rotation.y) <= 180
         and util.integer(value.bucket, 0, 2147483647) and type(value.model) == 'string' and OSSecurity.GameplayConfig.Models[value.model] == true
         and util.integer(value.createdAt, 0, 253402300799) and util.integer(value.updatedAt, value.createdAt, 253402300799)
         and ((value.status == 'pending' and value.deviceId == nil and value.reason == nil)

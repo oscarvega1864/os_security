@@ -105,6 +105,15 @@ async function main() {
     await evaluate(`window.__fail=true;document.getElementById('refresh').click()`);
     await until(`document.getElementById('app').hidden`);
     console.log('PASS failed NUI requests close safely');
+    await evaluate(`window.postMessage({type:'minigame',text:window.__brand.Text.minigame},'*')`);
+    await until(`!document.getElementById('minigame').hidden && document.querySelector('.mg-meter .mg-band')`);
+    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{code:'Space',key:' '}))`); await pause(700);
+    await evaluate(`window.dispatchEvent(new KeyboardEvent('keyup',{code:'Space',key:' '}))`);
+    assert(await evaluate(`parseFloat(document.querySelector('.mg-fill.heat').style.width)>0`), 'Holding space must heat the drill');
+    fs.writeFileSync(path.join(output, 'minigame.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
+    await until(`document.getElementById('minigame').hidden && window.__calls.some(x=>x.endpoint==='minigame' && x.body.ok===false && x.body.reason==='cancelled')`);
+    console.log('PASS installation minigame renders, reacts to the drill key and reports cancellation once');
     console.log(`UI screenshots: ${path.relative(root, output)}`);
   } finally { socket?.close(); child.kill(); }
 }
