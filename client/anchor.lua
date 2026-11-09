@@ -1,13 +1,20 @@
 -- /g6anchor <id> <idCliente> [idInstalador]: editor para registrar la zona de montaje, en dos pasos.
 --   1. Apuntar: el cuadrado sigue la mira sobre pared, techo o suelo. E fija la superficie.
---   2. Ajustar: flechas para mover el cuadrado sobre la superficie, rueda para el tamano
+--   2. Ajustar: flechas para mover el cuadrado sobre la superficie, + y - para el tamano
 --      (semilado 0,25-2 m), Ctrl ajuste fino. E registra; Retroceso vuelve a apuntar.
 -- Esc cancela en cualquier momento. Solo propone centro, normal y tamano: el servidor exige
 -- ossecurity.admin y revalida todo.
 OSSecurity.ClientAnchor = {}
 local SIZE_MIN, SIZE_MAX, SIZE_STEP, REACH, MOVE_SPEED, MOVE_LIMIT = 0.25, 2.0, 0.05, 8.0, 0.5, 3.0
-local CONTROLS = { left = 174, right = 175, up = 172, down = 173, wheelUp = 14, wheelDown = 15, fine = 36,
+local CONTROLS = { left = 174, right = 175, up = 172, down = 173, fine = 36,
     confirm = 38, enter = 191, back = 177, escape = 200 }
+-- Tamano con + y - (teclado principal o teclado numerico), configurables en Ajustes > Teclas > FiveM.
+local sizeSteps = 0
+RegisterCommand('g6zona_mas', function() sizeSteps = sizeSteps + 1 end, false)
+RegisterCommand('g6zona_menos', function() sizeSteps = sizeSteps - 1 end, false)
+RegisterKeyMapping('g6zona_mas', 'Zona de montaje G6: mas grande', 'keyboard', 'PLUS')
+RegisterKeyMapping('g6zona_menos', 'Zona de montaje G6: mas pequena', 'keyboard', 'MINUS')
+local NUMPAD_PLUS, NUMPAD_MINUS = 96, 97
 
 function OSSecurity.ClientAnchor.size(current, delta, fine)
     local step = fine and SIZE_STEP / 5 or SIZE_STEP
@@ -29,6 +36,7 @@ function OSSecurity.ClientAnchor.begin(args, send, notify)
         notify('Uso: /g6anchor <id> <idCliente> [idInstalador], y apunta a la pared o al techo.', 'warning'); return
     end
     active = active + 1
+    sizeSteps = 0
     local current, size, mode = active, 0.75, 'aim'
     CreateThread(function()
         local handle, hit, point, normal, base, x, y, last = nil, false, nil, nil, nil, 0.0, 0.0, GetGameTimer()
@@ -43,8 +51,13 @@ function OSSecurity.ClientAnchor.begin(args, send, notify)
             end
             DisableControlAction(0, 24, true); DisableControlAction(0, 25, true)
             local fine = IsDisabledControlPressed(0, CONTROLS.fine)
-            if IsDisabledControlJustPressed(0, CONTROLS.wheelUp) then size = OSSecurity.ClientAnchor.size(size, 1, fine) end
-            if IsDisabledControlJustPressed(0, CONTROLS.wheelDown) then size = OSSecurity.ClientAnchor.size(size, -1, fine) end
+            DisableControlAction(0, NUMPAD_PLUS, true); DisableControlAction(0, NUMPAD_MINUS, true)
+            if IsDisabledControlJustPressed(0, NUMPAD_PLUS) then sizeSteps = sizeSteps + 1 end
+            if IsDisabledControlJustPressed(0, NUMPAD_MINUS) then sizeSteps = sizeSteps - 1 end
+            if sizeSteps ~= 0 then
+                size = OSSecurity.ClientAnchor.size(size, sizeSteps > 0 and 1 or -1, fine)
+                sizeSteps = 0
+            end
             local confirm = IsDisabledControlJustPressed(0, CONTROLS.confirm) or IsDisabledControlJustPressed(0, CONTROLS.enter)
             if mode == 'aim' then
                 if IsDisabledControlJustPressed(0, CONTROLS.back) then active = active + 1; notify('Registro de zona cancelado.', 'info'); return end

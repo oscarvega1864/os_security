@@ -80,7 +80,7 @@ Con comando, en el juego y con `ossecurity.admin`:
 
 Se abre un editor en dos pasos. **Apuntar:** el cuadrado verde sigue la mira sobre una pared,
 techo o suelo (menos de 8 m) y E fija esa superficie. **Ajustar:** las flechas mueven el cuadrado
-sobre la superficie (hasta 3 m del punto fijado), la rueda cambia su tamaño (de 0,5 × 0,5 a
+sobre la superficie (hasta 3 m del punto fijado), **+ / −** cambian su tamaño (teclado principal o numérico; de 0,5 × 0,5 a
 4 × 4 m), Ctrl hace el ajuste fino, E registra la zona y Retroceso vuelve a apuntar. Esc cancela. El instalador por defecto eres tú. El servidor exige
 el ACE, valida los datos y que el centro esté a menos de `AnchorAimDistance` (10 m) de tu posición
 real, y usa tu bucket. `osg6 anchor` con coordenadas sigue disponible en la consola.

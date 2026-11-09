@@ -3,7 +3,15 @@ dofile('/repo/client/tablet.lua')
 dofile('/repo/client/view.lua')
 dofile('/repo/client/props.lua')
 dofile('/repo/client/placement.lua')
-dofile('/repo/client/anchor.lua')
+do -- anchor.lua registra al cargarse las teclas + y - del tamano de zona
+    local registered = {}
+    local previousCommand, previousMapping = RegisterCommand, RegisterKeyMapping
+    RegisterCommand = function(name, callback) registered[name] = callback end
+    RegisterKeyMapping = function(name, _, kind, key) registered[name .. ':key'] = kind .. ':' .. key end
+    dofile('/repo/client/anchor.lua')
+    assert(registered['g6zona_mas:key'] == 'keyboard:PLUS' and registered['g6zona_menos:key'] == 'keyboard:MINUS')
+    RegisterCommand, RegisterKeyMapping = previousCommand, previousMapping
+end
 dofile('/repo/client/minigame.lua')
 dofile('/repo/client/minigame_fx.lua')
 

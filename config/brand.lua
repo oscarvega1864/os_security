@@ -31,8 +31,8 @@ OSSecurity.Brand = {
         pending = 'Pendiente de implementacion', failed = 'No se pudo completar la solicitud.',
         placementHelp = 'Flechas: mover  Mayus+flechas: girar  Q/Z: separar/acercar  R: invertir',
         placementHelp2 = '~n~Ctrl: fino  Tab: montaje  E: colocar  Retroceso: salir',
-        anchorAimHelp = 'Apunta a pared o techo  Rueda: tamano  E: fijar superficie  Retroceso o Esc: salir',
-        anchorHelp = 'Flechas: mover  Rueda: tamano  Ctrl: fino  E: registrar  Retroceso: volver a apuntar',
+        anchorAimHelp = 'Apunta a pared o techo  + / -: tamano  E: fijar superficie  Retroceso o Esc: salir',
+        anchorHelp = 'Flechas: mover  + / -: tamano  Ctrl: fino  E: registrar  Retroceso: volver a apuntar',
         anchorZone = 'Zona',
         installFailed = 'Instalacion fallida: no se ha consumido material.',
         minigame = {
