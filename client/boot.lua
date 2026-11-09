@@ -3,6 +3,8 @@ local alarms = OSSecurity.ClientAlarms.new()
 local locks = OSSecurity.ClientLocks.new({ detectRadius = 15.0, scanRange = 25.0,
     report = function(report) TriggerServerEvent('os_security:locks:report', report) end })
 local cylinderOpen = false
+local cars = OSSecurity.ClientCars.new({ notify = OSSecurity.Notify })
+local carwireOpen = false
 local lastUiAlive = GetGameTimer()
 local minigameFx = OSSecurity.MinigameFx.new()
 local minigame = OSSecurity.ClientMinigame.new({
@@ -199,6 +201,39 @@ RegisterNUICallback('cylinderFx', function(body, callback)
     if type(body.phase) == 'string' then minigameFx.phase(body.phase) end
     if type(body.cue) == 'string' then minigameFx.cue(body.cue) end
 end)
+-- Vehiculos: mando (L por defecto, configurable en Ajustes > Teclas > FiveM), efectos e instalacion.
+RegisterCommand('g6mando', function() if not carwireOpen and not cylinderOpen then cars.key() end end, false)
+RegisterKeyMapping('g6mando', 'Mando del vehiculo: abrir / cerrar (Gruppe Sechs)', 'keyboard', 'L')
+RegisterNetEvent('os_security:car:fx', function(netId, locked) if source == 65535 and type(netId) == 'number' then cars.fx(netId, locked == true) end end)
+RegisterNetEvent('os_security:car:alarm', function(netId, seconds)
+    if source == 65535 and type(netId) == 'number' and type(seconds) == 'number' then cars.alarm(netId, seconds) end
+end)
+RegisterNetEvent('os_security:car:result', function(ok, message)
+    if source ~= 65535 or type(message) ~= 'string' then return end
+    OSSecurity.Notify(message, ok and 'success' or 'error')
+end)
+local function carwireClose(success)
+    if not carwireOpen then return end
+    carwireOpen = false
+    SetNuiFocus(false, false)
+    SendNUIMessage({ type = 'carwireClose' })
+    TriggerServerEvent('os_security:car:installFinish', success == true)
+end
+RegisterNetEvent('os_security:car:install', function(data)
+    if source ~= 65535 then return end
+    if type(data) ~= 'table' or carwireOpen or cylinderOpen or minigame.active() or controller.visible then
+        TriggerServerEvent('os_security:car:installFinish', false); return
+    end
+    carwireOpen = true
+    SetNuiFocus(true, true)
+    SendNUIMessage({ type = 'carwire', data = { kind = data.kind, plate = data.plate }, text = OSSecurity.Brand.Text.cars.minigame })
+    SetTimeout(170000, function() if carwireOpen then carwireClose(false) end end)
+end)
+RegisterNUICallback('carwire', function(body, callback)
+    callback({ ok = true })
+    carwireClose(type(body) == 'table' and body.ok == true)
+end)
+
 -- Puerta apuntada desde el panel F10: E sobre la puerta la registra; Retroceso o Esc sale.
 local aimingDoor = 0
 RegisterNetEvent('os_security:locks:aimDoor', function(site)
@@ -239,5 +274,6 @@ end, false)
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
     if cylinderOpen then cylinderOpen = false; SetNuiFocus(false, false); minigameFx.stop() end
+    if carwireOpen then carwireOpen = false; SetNuiFocus(false, false) end
     locks.clear()
 end)

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0 — Vehículos: cierre centralizado y alarma
+
+- Kits `os_car_lock_kit` y `os_car_alarm_kit` para vehículos de os_devtools, instalados al volante con el
+  motor apagado por el dueño, un técnico G6 de servicio o un admin, con minijuego propio (grapas del
+  embellecedor, multímetro y empalmes, prueba del mando). Cobro idempotente al terminar.
+- Mando (tecla L): abrir y cerrar con destellos y pitido; estado persistente reaplicado a las entidades.
+- Alarma armada al cerrar: un intento de entrar de otra persona la hace sonar y avisa al dueño.
+- `osg6 cars` y entrada en el panel F10.
+
 ## 0.5.1 — Montajes y puertas desde el panel F10
 
 - F10 → Gruppe Sechs: crear zona de montaje (abre el editor de apuntar, nombre automático y propiedad

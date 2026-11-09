@@ -1,0 +1,163 @@
+-- Seguridad de vehiculos de os_devtools: cierre centralizado (mando) y alarma.
+-- Se instalan sentado al volante con el motor parado, con un minijuego propio (embellecedor bajo el
+-- volante, cables con multimetro y prueba del mando). El dueno (personaje activo), un tecnico G6 de
+-- servicio o un administrador instalan; el dueno o un administrador abren y cierran. Con la alarma y el
+-- vehiculo cerrado, intentar entrar la hace sonar y avisa al dueno. Logica pura: los natives (bloqueo de
+-- puertas, efectos, avisos) los aplica server/main.lua a traves de options.effects.
+OSSecurity.CarService = {}
+
+local function distance(a, b) return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2) end
+
+-- Matricula de os_devtools: OS + ID con seis cifras (OS000012). Devuelve el ID o nil.
+function OSSecurity.CarService.plateId(plate)
+    if type(plate) ~= 'string' then return nil end
+    local digits = plate:gsub('%s+', ''):match('^OS(%d+)$')
+    local id = digits and tonumber(digits)
+    return id and id >= 1 and id <= 2147483646 and math.tointeger(id) or nil
+end
+
+function OSSecurity.CarService.new(options)
+    local config = OSSecurity.GameplayConfig.Cars
+    local util = OSSecurity.Util
+    local cars = {}
+    local installs, sounding, lastAlarm = {}, {}, {}
+    local LABELS = { lock = 'cierre centralizado', alarm = 'alarma' }
+
+    local function records() return options.inventory.cars() or {} end
+    local function trim(plate) return type(plate) == 'string' and (plate:gsub('%s+', '')) or nil end
+    -- Vehiculo de os_devtools por matricula, comprobado contra su registro.
+    local function asset(plate)
+        local id = OSSecurity.CarService.plateId(plate)
+        if not id then return nil end
+        local record = options.vehicles.asset(id)
+        if type(record) ~= 'table' or trim(record.plate) ~= trim(plate) then return nil end
+        return { id = id, plate = trim(plate), owner = type(record.owner) == 'string' and record.owner or nil }
+    end
+    local function owns(source, car)
+        if options.isAdmin(source) then return true end
+        local alias = options.vehicles.alias(source)
+        return car.owner ~= nil and alias ~= nil and alias == car.owner
+    end
+    local function save(record)
+        record.updatedAt = options.now()
+        return options.inventory.apply({ kind = 'car', carId = tostring(record.id), car = record })
+    end
+    local function blank(car) return { id = car.id, plate = car.plate, lock = false, alarm = false, locked = false, changes = 0, updatedAt = options.now() } end
+
+    -- Instalacion, paso 1: al volante, motor parado, permiso, kit y herramientas. Reserva hasta el minijuego.
+    function cars.installBegin(source, item)
+        local kind = config.Kits[item]
+        if not kind then return nil, 'Ese objeto no se instala en vehiculos.' end
+        if not options.holdings.external() then return nil, 'La instalacion en vehiculos requiere el inventario de personajes (os_inventory).' end
+        local holder = options.holdings.holder(source)
+        if not holder then return nil, 'Personaje activo no disponible.' end
+        local driving = options.vehicles.driving(source)
+        if not driving then return nil, 'Sientate al volante del vehiculo para instalarlo.' end
+        if driving.engine or driving.speed > 1.0 then return nil, 'Para el vehiculo y apaga el motor.' end
+        local car = asset(driving.plate)
+        if not car then return nil, 'Solo se instala en vehiculos registrados (matricula OS).' end
+        local staff = options.employment and options.employment(source, holder) == 'technician'
+        if not owns(source, car) and not staff then return nil, 'Solo el dueno o un tecnico G6 de servicio puede instalarlo.' end
+        local record = records()[tostring(car.id)] or blank(car)
+        if record[kind] then return nil, ('Este vehiculo ya tiene %s.'):format(LABELS[kind]) end
+        if kind == 'alarm' and not record.lock then return nil, 'Instala antes el cierre centralizado: la alarma se arma al cerrar.' end
+        local actor = { holder = holder }
+        if not options.holdings.has(actor, item, 1) then return nil, 'No tienes ese kit.' end
+        for _, tool in ipairs(config.Tools) do
+            if not options.holdings.has(actor, tool, 1) then return nil, 'Necesitas un destornillador.' end
+        end
+        installs[source] = { carId = car.id, plate = car.plate, item = item, kind = kind, holder = holder, changes = record.changes,
+            expires = options.now() + config.InstallSeconds }
+        return { kind = kind, label = LABELS[kind], plate = car.plate }
+    end
+    -- Paso 2: resultado del minijuego. Cobra el kit y guarda el equipo del vehiculo.
+    function cars.installFinish(source, success)
+        local context = installs[source]
+        installs[source] = nil
+        if not context then return nil, 'No hay ninguna instalacion en curso.' end
+        if success ~= true then return nil, 'Instalacion cancelada: no se ha gastado nada.' end
+        if options.now() > context.expires then return nil, 'La instalacion ha caducado.' end
+        local driving = options.vehicles.driving(source)
+        if not driving or trim(driving.plate) ~= context.plate then return nil, 'Has salido del vehiculo; no se ha gastado nada.' end
+        if options.holdings.holder(source) ~= context.holder then return nil, 'El personaje activo cambio; no se ha gastado nada.' end
+        local car = asset(driving.plate)
+        local record = car and (records()[tostring(car.id)] or blank(car))
+        if not record or record.changes ~= context.changes or record[context.kind] then return nil, 'El vehiculo ha cambiado; no se ha gastado nada.' end
+        local operation = { id = ('g6car:%d:%d'):format(record.id, record.changes + 1), holder = context.holder, materials = { [context.item] = 1 } }
+        local taken, takeError = options.holdings.take(operation)
+        if not taken then options.holdings.refund(operation); return nil, takeError or 'No tienes ese kit.' end
+        record[context.kind], record.changes = true, record.changes + 1
+        local saved, saveError = save(record)
+        if not saved then options.holdings.refund(operation); return nil, saveError end
+        options.audit('car_' .. context.kind, source, tostring(record.id))
+        return { kind = context.kind, plate = record.plate,
+            message = context.kind == 'lock' and 'Cierre centralizado instalado: abre y cierra con el mando (L).'
+                or 'Alarma instalada: se arma al cerrar con el mando.' }
+    end
+
+    -- Mando: abrir o cerrar un vehiculo con cierre centralizado, a KeyDistance como maximo.
+    function cars.toggle(source, vehicle)
+        if type(vehicle) ~= 'table' then return nil, 'Vehiculo no disponible.' end
+        local car = asset(vehicle.plate)
+        local record = car and records()[tostring(car.id)]
+        if not record or not record.lock then return nil, 'Ese vehiculo no tiene cierre centralizado.' end
+        local point = options.world(source)
+        if not point or distance(point, vehicle.position) > config.KeyDistance then return nil, 'Acercate al vehiculo.' end
+        if not owns(source, car) then return nil, 'No tienes el mando de este vehiculo.' end
+        record.locked = not record.locked
+        local saved, err = save(record)
+        if not saved then return nil, err end
+        if not record.locked and sounding[record.id] then
+            sounding[record.id] = nil
+            options.effects.alarm(vehicle, 0)
+        end
+        options.effects.locked(vehicle, record.locked, record.alarm)
+        return { locked = record.locked, alarm = record.alarm,
+            message = record.locked and (record.alarm and 'Vehiculo cerrado y alarma armada.' or 'Vehiculo cerrado.') or 'Vehiculo abierto.' }
+    end
+    -- Intento de entrar en un vehiculo cerrado (informado por el cliente de quien lo intenta).
+    function cars.tamper(source, vehicle)
+        if type(vehicle) ~= 'table' then return nil end
+        local car = asset(vehicle.plate)
+        local record = car and records()[tostring(car.id)]
+        if not record or not record.locked then return nil end
+        local point = options.world(source)
+        if not point or distance(point, vehicle.position) > config.TamperDistance then return nil end
+        if owns(source, car) then return nil, 'Esta cerrado: abrelo con el mando (L).' end
+        if not record.alarm then return nil, 'Esta cerrado.' end
+        local now = options.now()
+        if sounding[record.id] and sounding[record.id] > now then return true end
+        if lastAlarm[record.id] and now - lastAlarm[record.id] < config.AlarmCooldown then return nil end
+        lastAlarm[record.id], sounding[record.id] = now, now + config.AlarmSeconds
+        options.effects.alarm(vehicle, config.AlarmSeconds)
+        if car.owner then options.effects.notifyOwner(car.owner, ('Salta la alarma de tu vehiculo %s.'):format(record.plate), vehicle.position) end
+        options.audit('car_alarm', source, tostring(record.id))
+        return true
+    end
+    -- Estado que deben tener las entidades de ese vehiculo (sincronizacion periodica).
+    function cars.desired(plate)
+        local id = OSSecurity.CarService.plateId(plate)
+        local record = id and records()[tostring(id)]
+        if not record or not record.lock then return nil end
+        return { locked = record.locked, alarm = record.alarm }
+    end
+    function cars.describe()
+        local lines, ids = {}, {}
+        local list = records()
+        for id in pairs(list) do ids[#ids + 1] = tonumber(id) end
+        table.sort(ids)
+        for _, id in ipairs(ids) do
+            local record = list[tostring(id)]
+            lines[#lines + 1] = ('%s | cierre: %s | alarma: %s | %s'):format(record.plate, record.lock and 'si' or 'no', record.alarm and 'si' or 'no',
+                record.locked and 'cerrado' or 'abierto')
+        end
+        return lines
+    end
+    function cars.tick()
+        local now = options.now()
+        for id, untilAt in pairs(sounding) do if untilAt <= now then sounding[id] = nil end end
+    end
+    function cars.drop(source) installs[source] = nil end
+    function cars.clear() installs, sounding, lastAlarm = {}, {}, {} end
+    return cars
+end

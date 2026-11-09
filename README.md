@@ -1,4 +1,4 @@
-# Gruppe Sechs — OS Security 0.5.1
+# Gruppe Sechs — OS Security 0.6.0
 
 Recurso standalone para FiveM y GTA V Legacy. La experiencia comercial pertenece
 a Gruppe Sechs; el nombre técnico sigue siendo `os_security`. Incluye Device Core,
@@ -185,6 +185,23 @@ Administración: `osg6 doors` lista las puertas y `osg6 door remove <puerta>` da
 error (queda libre y no se vuelve a detectar). `/g6puerta <propiedad|negocio> <id>` apuntando a una puerta
 la añade a mano si no se detecta sola (o la recupera), y `/g6puerta borrar` da de baja la más cercana.
 Las dos primeras también están en el panel F10. Necesita el export `ListAssets` de os_devtools.
+
+## Vehículos: cierre centralizado y alarma
+
+Para vehículos de os_devtools (matrícula `OS` + ID). Se instalan **sentado al volante, con el motor
+apagado**, usando el kit desde el inventario con destornillador. Pueden instalar el dueño (personaje
+activo), un técnico G6 de servicio o un administrador. El minijuego es propio del vehículo: soltar las
+grapas del embellecedor bajo el volante con la tensión justa, medir el mazo con el multímetro y empalmar
+cada hilo del módulo en su cable, y probar el mando. Requiere `ossecurity_items=os_inventory`.
+
+| Kit | Función |
+| --- | --- |
+| `os_car_lock_kit` | Cierre centralizado: el dueño (o un admin) abre y cierra con el mando, tecla **L** (configurable en Ajustes → Teclas → FiveM). Destellos y pitido. |
+| `os_car_alarm_kit` | Alarma (necesita el cierre): se arma al cerrar; si otra persona intenta entrar, suena 30 s y avisa al dueño con un marcador. Abrir con el mando la apaga. |
+
+El estado se guarda en el inventario G6 y el servidor lo reaplica cada 3 s a las entidades con esa
+matrícula (puertas bloqueadas y state bag `g6car`), también tras reaparecer el vehículo. `osg6 cars` y
+F10 → *Vehículos con cierre o alarma* lo listan.
 
 ## Panel de administración (os_admin)
 

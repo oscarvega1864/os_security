@@ -120,7 +120,15 @@ function OSSecurity.Gameplay.new(options)
         isAdmin = function(source) return options.permissions ~= nil and options.permissions.isAdmin(source) == true end,
         employment = options.employment, holdings = holdings, log = options.log, changed = options.locksChanged,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
-    local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks }
+    local noop = function() end
+    local carEffects = options.carEffects or {}
+    local cars = OSSecurity.CarService.new({ inventory = inventory, now = options.now, world = options.world, holdings = holdings,
+        employment = options.employment, log = options.log,
+        isAdmin = function(source) return options.permissions ~= nil and options.permissions.isAdmin(source) == true end,
+        vehicles = options.vehicles or { asset = noop, alias = noop, driving = noop },
+        effects = { locked = carEffects.locked or noop, alarm = carEffects.alarm or noop, notifyOwner = carEffects.notifyOwner or noop },
+        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks, cars = cars }
     function gameplay.status() return ready and inventory.status() and options.registry.status() end
     function gameplay.load()
         ready = false
@@ -136,11 +144,11 @@ function OSSecurity.Gameplay.new(options)
         if not gameplay.status() then return { ok = false, error = 'Flujo Gruppe Sechs no disponible; revisar servidor.', close = true } end
         return controller.handle(source, request)
     end
-    function gameplay.drop(source) controller.drop(source); locks.drop(source) end
-    function gameplay.clear() ready = false; controller.clear(); alarms.clear(); locks.clear() end
+    function gameplay.drop(source) controller.drop(source); locks.drop(source); cars.drop(source) end
+    function gameplay.clear() ready = false; controller.clear(); alarms.clear(); locks.clear(); cars.clear() end
     local commands = OSSecurity.GameplayCommands.register({ sites = options.sites, register = options.register, reply = options.reply, permissions = options.permissions,
         identity = identity, inventory = inventory, holdings = holdings, registry = options.registry, world = options.world, ready = gameplay.status,
-        locks = locks })
+        locks = locks, cars = cars })
     function gameplay.anchorAt(source, payload)
         if not gameplay.status() then return nil, 'Flujo Gruppe Sechs no disponible; revisar servidor.' end
         return commands.aimed(source, payload)

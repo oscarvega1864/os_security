@@ -190,6 +190,73 @@ local alarmEffects = {
     notify = function(player, text, kind, position) TriggerClientEvent('os_security:alarm:alert', player, text, kind, position) end
 }
 
+-- Vehiculos de os_devtools (cierre centralizado y alarma): datos de la entidad y efectos en el juego.
+local function activeAlias(player)
+    if GetResourceState(identityResource) ~= 'started' then return nil end
+    local ok, dto = pcall(function() return exports[identityResource]:GetActiveCharacter(player) end)
+    return ok and type(dto) == 'table' and type(dto.alias) == 'string' and dto.alias or nil
+end
+local function vehicleOf(netId)
+    if type(netId) ~= 'number' or netId % 1 ~= 0 then return nil end
+    local entity = NetworkGetEntityFromNetworkId(netId)
+    if not entity or entity == 0 or not DoesEntityExist(entity) or GetEntityType(entity) ~= 2 then return nil end
+    local p = GetEntityCoords(entity)
+    return { entity = entity, netId = netId, plate = GetVehicleNumberPlateText(entity), position = { x = p.x, y = p.y, z = p.z } }
+end
+local function playersNear(position, radius)
+    local list = {}
+    for _, value in ipairs(GetPlayers()) do
+        local player = tonumber(value)
+        local ped = GetPlayerPed(player)
+        if ped and ped ~= 0 then
+            local p = GetEntityCoords(ped)
+            if math.sqrt((p.x - position.x) ^ 2 + (p.y - position.y) ^ 2 + (p.z - position.z) ^ 2) <= radius then list[#list + 1] = player end
+        end
+    end
+    return list
+end
+local function carState(entity, want)
+    local current = Entity(entity).state.g6car
+    if type(current) ~= 'table' or current.locked ~= want.locked or current.alarm ~= want.alarm then
+        Entity(entity).state:set('g6car', { locked = want.locked, alarm = want.alarm }, true)
+    end
+    local target = want.locked and 2 or 1
+    if GetVehicleDoorLockStatus(entity) ~= target then SetVehicleDoorsLocked(entity, target) end
+end
+local carVehicles = {
+    asset = function(id)
+        if GetResourceState(sitesResource) ~= 'started' then return nil end
+        return exports[sitesResource]:GetAsset('vehicles', id)
+    end,
+    alias = activeAlias,
+    driving = function(player)
+        local ped = GetPlayerPed(player)
+        if not ped or ped == 0 then return nil end
+        local vehicle = GetVehiclePedIsIn(ped, false)
+        if not vehicle or vehicle == 0 or GetPedInVehicleSeat(vehicle, -1) ~= ped then return nil end
+        local v = GetEntityVelocity(vehicle)
+        return { plate = GetVehicleNumberPlateText(vehicle), engine = GetIsVehicleEngineRunning(vehicle) == true or GetIsVehicleEngineRunning(vehicle) == 1,
+            speed = math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z) }
+    end
+}
+local carEffects = {
+    locked = function(vehicle, locked, alarm)
+        carState(vehicle.entity, { locked = locked, alarm = alarm == true })
+        for _, player in ipairs(playersNear(vehicle.position, 60.0)) do TriggerClientEvent('os_security:car:fx', player, vehicle.netId, locked) end
+    end,
+    alarm = function(vehicle, seconds)
+        for _, player in ipairs(playersNear(vehicle.position, OSSecurity.GameplayConfig.Cars.AlarmHearing)) do
+            TriggerClientEvent('os_security:car:alarm', player, vehicle.netId, seconds)
+        end
+    end,
+    notifyOwner = function(alias, text, position)
+        for _, value in ipairs(GetPlayers()) do
+            local player = tonumber(value)
+            if activeAlias(player) == alias then TriggerClientEvent('os_security:alarm:alert', player, text, 'warning', position) end
+        end
+    end
+}
+
 -- El salt nativo se obtiene una sola vez: bcrypt no debe bloquear cada apertura.
 -- El nonce siempre se valida junto al source, secuencia, identidad, item y ACE.
 local sessionSalt
@@ -216,6 +283,7 @@ local gameplay = OSSecurity.Gameplay.new({
     alarmEffects = alarmEffects,
     sites = sites,
     locksChanged = function(list) TriggerClientEvent('os_security:locks:doors', -1, list) end,
+    vehicles = carVehicles, carEffects = carEffects,
     audit = function(action, source, deviceId)
         local safeId = OSSecurity.DeviceValidation.id(deviceId) and deviceId or '-'
         print(('%s [G6 AUDIT] action=%s source=%d device=%s'):format(constants.LOG_PREFIX, action, source, safeId))
@@ -340,6 +408,42 @@ RegisterNetEvent('os_security:locks:register', function(payload)
     end
     TriggerClientEvent('os_security:locks:result', player, message ~= nil, message or err)
 end)
+-- Vehiculos: mando (abrir/cerrar), intentos de entrar con el vehiculo cerrado e instalacion.
+RegisterNetEvent('os_security:car:toggle', function(netId)
+    local player = source
+    if not lockAllowed(player) then return end
+    local result, err = lockCall(function() return gameplay.cars.toggle(player, vehicleOf(netId)) end)
+    TriggerClientEvent('os_security:car:result', player, result ~= nil, result and result.message or err, result and result.locked)
+end)
+RegisterNetEvent('os_security:car:tamper', function(netId)
+    local player = source
+    if not lockAllowed(player) then return end
+    local result, err = lockCall(function() return gameplay.cars.tamper(player, vehicleOf(netId)) end)
+    if not result and err then TriggerClientEvent('os_security:car:result', player, false, err) end
+end)
+RegisterNetEvent('os_security:car:installFinish', function(success)
+    local player = source
+    if not lockAllowed(player) then return end
+    local result, err = lockCall(function() return gameplay.cars.installFinish(player, success == true) end)
+    TriggerClientEvent('os_security:car:result', player, result ~= nil, result and result.message or err)
+end)
+-- Las entidades nacen abiertas: cada pocos segundos se les aplica el estado guardado (puertas y state bag).
+CreateThread(function()
+    while true do
+        Wait(OSSecurity.GameplayConfig.Cars.SyncSeconds * 1000)
+        if gameplay.status() then
+            local ok = pcall(function()
+                gameplay.cars.tick()
+                for _, entity in ipairs(GetAllVehicles()) do
+                    local want = gameplay.cars.desired(GetVehicleNumberPlateText(entity))
+                    if want then carState(entity, want) end
+                end
+            end)
+            if not ok then storageLog('Fallo en la sincronizacion de vehiculos; se reintentara.') end
+        end
+    end
+end)
+
 -- Nivel del bombin (1 serie, 2 seguridad, 3 alta seguridad) de una puerta, para robos o ganzuas.
 exports('GetDoorSecurity', function(doorId)
     local ok, tier = pcall(gameplay.locks.security, doorId)
@@ -366,11 +470,15 @@ end)
 local function registerUsableTablets()
     if not externalItems or GetResourceState(inventoryResource) ~= 'started' then return end
     for item, definition in pairs(OSSecurity.ItemCatalog) do
-        if definition.tablet or definition.usable == 'placement' or definition.usable == 'tag' or definition.usable == 'cylinder' then
+        if definition.tablet or definition.usable == 'placement' or definition.usable == 'tag' or definition.usable == 'cylinder' or definition.usable == 'car' then
             local ok, registered = pcall(function()
                 return exports[inventoryResource]:RegisterUsableItem(item, function(player)
                     TriggerClientEvent('osinventory:forceClose', player)
                     if definition.tablet then TriggerClientEvent('os_security:g6:openTablet', player, definition.tablet)
+                    elseif definition.usable == 'car' then
+                        local data, err = lockCall(function() return gameplay.cars.installBegin(player, item) end)
+                        if data then TriggerClientEvent('os_security:car:install', player, data)
+                        else TriggerClientEvent('os_security:car:result', player, false, err) end
                     elseif definition.usable == 'cylinder' then
                         local data, err = lockCall(function() return gameplay.locks.changeBegin(player, item) end)
                         if data then TriggerClientEvent('os_security:locks:change', player, data)

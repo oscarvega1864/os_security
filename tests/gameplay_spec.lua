@@ -761,7 +761,7 @@ test('Native server wiring keeps replies private, normalizes ACE and creates uni
     local handlers, commands, files, replies, hashes = {}, {}, {}, {}, 0
     local ok, err = pcall(function()
         stub('RegisterNetEvent', function(name, callback)
-            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name:match('^os_security:alarm:') or name:match('^os_security:locks:'))
+            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name:match('^os_security:alarm:') or name:match('^os_security:locks:') or name:match('^os_security:car:'))
             if name == 'os_security:g6:request' then handlers.request = callback else handlers.anchorAim = callback end
         end)
         stub('RegisterCommand', function(name, callback) commands[name] = callback end)
@@ -1082,4 +1082,93 @@ test('A mount created for a property links the installed device to it without an
     local result = call(c, 1, session, 'place_confirm', proposal('prop7_zona')); assert(result.ok, result.error)
     local site = c.game.inventory.site(result.data.id)
     assert(site and site.kind == 'property' and site.id == 7)
+end)
+
+
+-- Vehiculos: cierre centralizado y alarma -------------------------------------------------------
+local function carFixture()
+    local e = externalItems(); local c = fixture(nil, e); assert(c.loaded, c.loadError)
+    local v = { assets = { [12] = { id = 12, plate = 'OS000012', owner = 'ana' } }, aliases = { [2] = 'ana', [5] = 'luis' }, driving = {},
+        log = {}, admins = { [4] = true } }
+    v.cars = OSSecurity.CarService.new({ inventory = c.game.inventory, now = function() return c.core.time end, world = function(source)
+            local player = c.players[source]; return player and util.copy(player.point), 0 end,
+        holdings = c.game.holdings, log = function() end, audit = function() end,
+        employment = OSSecurity.Employment.new({ settings = config.Employment, read = function(source) return c.jobs[source] end }),
+        isAdmin = function(source) return v.admins[source] == true end,
+        vehicles = { asset = function(id) return v.assets[id] end, alias = function(source) return v.aliases[source] end,
+            driving = function(source) return v.driving[source] end },
+        effects = { locked = function(vehicle, locked, alarm) v.log[#v.log + 1] = { 'locked', vehicle.plate, locked, alarm } end,
+            alarm = function(vehicle, seconds) v.log[#v.log + 1] = { 'alarm', vehicle.plate, seconds } end,
+            notifyOwner = function(alias, text) v.log[#v.log + 1] = { 'notify', alias, text } end } })
+    return c, e, v
+end
+local function carAt(x) return { plate = 'OS000012  ', position = { x = x or 0, y = 0, z = 1 } } end
+local function logged(v, kind) local n = 0; for _, entry in ipairs(v.log) do if entry[1] == kind then n = n + 1 end end; return n end
+
+test('Plates map to os_devtools vehicle IDs only in the OS + digits format', function()
+    assert(OSSecurity.CarService.plateId('OS000012') == 12 and OSSecurity.CarService.plateId(' OS000012 ') == 12)
+    assert(not OSSecurity.CarService.plateId('ABC123') and not OSSecurity.CarService.plateId('OS') and not OSSecurity.CarService.plateId(nil))
+end)
+
+test('Installing in a vehicle needs the driver seat, engine off, ownership or a technician, the kit and a screwdriver; lock before alarm', function()
+    local c, e, v = carFixture()
+    local _, why = v.cars.installBegin(2, 'os_car_lock_kit'); assert(why:find('volante'))
+    v.driving[2] = { plate = 'OS000012', engine = true, speed = 0 }
+    _, why = v.cars.installBegin(2, 'os_car_lock_kit'); assert(why:find('motor'))
+    v.driving[2].engine = false
+    _, why = v.cars.installBegin(2, 'os_car_alarm_kit'); assert(why:find('cierre centralizado'))
+    _, why = v.cars.installBegin(2, 'os_car_lock_kit'); assert(why == 'No tienes ese kit.')
+    e.give(2, 'os_car_lock_kit'); e.give(2, 'os_car_alarm_kit')
+    _, why = v.cars.installBegin(2, 'os_car_lock_kit'); assert(why:find('destornillador'))
+    e.give(2, 'os_screwdriver')
+    v.driving[5] = { plate = 'OS000012', engine = false, speed = 0 }; e.give(5, 'os_car_lock_kit'); e.give(5, 'os_screwdriver')
+    _, why = v.cars.installBegin(5, 'os_car_lock_kit'); assert(why:find('dueno o un tecnico'))
+    v.driving[2].plate = 'XX12345'; _, why = v.cars.installBegin(2, 'os_car_lock_kit'); assert(why:find('matricula OS'))
+    v.driving[2].plate = 'OS000012'
+    assert(v.cars.installBegin(2, 'os_car_lock_kit'))
+    assert(not v.cars.installFinish(2, false) and e.count(2, 'os_car_lock_kit') == 1) -- cancelado: no gasta
+    assert(v.cars.installBegin(2, 'os_car_lock_kit'))
+    v.driving[2] = nil; assert(not v.cars.installFinish(2, true) and e.count(2, 'os_car_lock_kit') == 1) -- salio del coche
+    v.driving[2] = { plate = 'OS000012', engine = false, speed = 0 }
+    assert(v.cars.installBegin(2, 'os_car_lock_kit'))
+    assert(v.cars.installFinish(2, true).kind == 'lock' and e.count(2, 'os_car_lock_kit') == 0 and e.count(2, 'os_screwdriver') == 1)
+    _, why = v.cars.installBegin(2, 'os_car_lock_kit'); assert(why:find('ya tiene'))
+    c.jobs[5] = { job = 'gruppe6', rank = 'tecnico', duty = true, characterId = e.holders[5] }
+    e.give(5, 'os_car_alarm_kit')
+    assert(v.cars.installBegin(5, 'os_car_alarm_kit')); assert(v.cars.installFinish(5, true).kind == 'alarm')
+    local record = c.game.inventory.cars()['12']
+    assert(record.lock and record.alarm and not record.locked and record.changes == 2 and record.plate == 'OS000012')
+end)
+
+test('Only the owner (or an admin) locks with the key fob; a stranger trying to enter a locked car sets the alarm off once and alerts the owner', function()
+    local c, e, v = carFixture()
+    v.driving[2] = { plate = 'OS000012', engine = false, speed = 0 }
+    e.give(2, 'os_car_lock_kit'); e.give(2, 'os_screwdriver')
+    assert(v.cars.installBegin(2, 'os_car_lock_kit')); assert(v.cars.installFinish(2, true))
+    c.players[2].point = { x = 5, y = 0, z = 1 }; c.players[5].point = { x = 1, y = 0, z = 1 }
+    local _, why = v.cars.toggle(5, carAt()); assert(why:find('mando'))
+    c.players[2].point = { x = 40, y = 0, z = 1 }; assert(not v.cars.toggle(2, carAt())) -- lejos
+    c.players[2].point = { x = 5, y = 0, z = 1 }
+    local locked = assert(v.cars.toggle(2, carAt())); assert(locked.locked and v.log[#v.log][1] == 'locked' and v.log[#v.log][3] == true)
+    assert(v.cars.desired('OS000012').locked == true and v.cars.desired('OS999999') == nil)
+    _, why = v.cars.tamper(5, carAt()); assert(why == 'Esta cerrado.' and logged(v, 'alarm') == 0) -- sin alarma no suena
+    _, why = v.cars.tamper(2, carAt()); assert(why:find('mando'))
+    assert(v.cars.toggle(2, carAt())) -- abrir para instalar la alarma
+    e.give(2, 'os_car_alarm_kit'); assert(v.cars.installBegin(2, 'os_car_alarm_kit')); assert(v.cars.installFinish(2, true))
+    assert(v.cars.toggle(2, carAt()).message:find('alarma armada'))
+    c.players[5].point = { x = 30, y = 0, z = 1 }; assert(not v.cars.tamper(5, carAt()) and logged(v, 'alarm') == 0) -- lejos
+    c.players[5].point = { x = 1, y = 0, z = 1 }
+    assert(v.cars.tamper(5, carAt()) and logged(v, 'alarm') == 1 and logged(v, 'notify') == 1)
+    assert(v.cars.tamper(5, carAt()) and logged(v, 'alarm') == 1) -- ya esta sonando
+    local opened = assert(v.cars.toggle(2, carAt())); assert(not opened.locked and v.log[#v.log - 1][1] == 'alarm' and v.log[#v.log - 1][3] == 0)
+    assert(not v.cars.tamper(5, carAt())) -- abierto: nada
+    assert(v.cars.toggle(4, carAt())) -- administrador
+    assert(#v.cars.describe() == 1 and v.cars.describe()[1]:find('cerrado'))
+end)
+
+test('Inventory state rejects malformed vehicle security records', function()
+    local base = { id = 12, plate = 'OS000012', lock = true, alarm = true, locked = false, changes = 2, updatedAt = 1 }
+    assert(OSSecurity.InventoryState.car(base))
+    local function bad(field, value) local r = util.copy(base); r[field] = value; return not OSSecurity.InventoryState.car(r) end
+    assert(bad('lock', false) and bad('plate', 'OS 12') and bad('id', 0) and bad('locked', 'si') and bad('extra', 1))
 end)

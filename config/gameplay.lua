@@ -40,6 +40,14 @@ OSSecurity.GameplayConfig = {
         -- Kit -> nivel. El bombin retirado vuelve al inventario (el de serie se desecha).
         Cylinders = { os_lock_kit = 2, os_lock_kit_high = 3 }
     },
+    -- Vehiculos de os_devtools (matricula OS + ID): cierre centralizado (tecla del mando) y alarma, que se
+    -- instalan sentado al volante con el motor parado. La alarma necesita el cierre; salta si alguien intenta
+    -- entrar con el vehiculo cerrado y avisa al dueno.
+    Cars = {
+        Kits = { os_car_lock_kit = 'lock', os_car_alarm_kit = 'alarm' }, Tools = { 'os_screwdriver' },
+        InstallSeconds = 180, KeyDistance = 15.0, TamperDistance = 8.0, AlarmSeconds = 30, AlarmCooldown = 45,
+        AlarmHearing = 150.0, SyncSeconds = 3
+    },
     Ace = {
         client = 'ossecurity.g6.client', operations = 'ossecurity.g6.operations',
         technician = 'ossecurity.g6.technician', supervisor = 'ossecurity.g6.supervisor', admin = 'ossecurity.admin'

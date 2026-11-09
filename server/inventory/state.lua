@@ -86,6 +86,21 @@ function state.door(value)
     return limits.Cylinders[value.cylinder] == value.tier
 end
 
+-- Equipo de seguridad de un vehiculo de os_devtools (por su ID): cierre centralizado y alarma.
+-- locked: cerrado con el mando (solo con cierre); changes: instalaciones hechas (operaciones idempotentes).
+function state.carId(id)
+    return type(id) == 'string' and id:match('^%d+$') ~= nil and #id <= 10 and tonumber(id) >= 1
+end
+function state.car(value)
+    if not util.object(value, { id = true, plate = true, lock = true, alarm = true, locked = true, changes = true, updatedAt = true })
+        or not util.integer(value.id, 1, 2147483646) or not util.text(value.plate, 8) or not value.plate:match('^[%w]+$')
+        or type(value.lock) ~= 'boolean' or type(value.alarm) ~= 'boolean' or type(value.locked) ~= 'boolean'
+        or not util.integer(value.changes, 0, 2147483647) or not util.integer(value.updatedAt, 0, 253402300799) then return false end
+    if value.alarm and not value.lock then return false end -- la alarma va sobre el cierre
+    if value.locked and not value.lock then return false end
+    return true
+end
+
 local function placement(value)
     return util.object(value, { id = true, anchorId = true, owner = true, installer = true, position = true,
         rotation = true, bucket = true, model = true, status = true, createdAt = true, updatedAt = true, deviceId = true, reason = true,
@@ -127,7 +142,7 @@ end
 local function operation(op, limits)
     if not util.object(op, { kind = true, at = true, principal = true, item = true, amount = true,
         deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true, site = true, alarm = true,
-        doorId = true, door = true })
+        doorId = true, door = true, carId = true, car = true })
         or not util.integer(op.at, 0, 253402300799) then return false end
     local fields = { kind = true, at = true }
     if op.kind == 'grant' or op.kind == 'migrate' then
@@ -145,6 +160,9 @@ local function operation(op, limits)
     elseif op.kind == 'alarm' then
         fields.deviceId, fields.alarm = true, true
         if not OSSecurity.DeviceValidation.id(op.deviceId) or not state.alarm(op.alarm) then return false end
+    elseif op.kind == 'car' then
+        fields.carId, fields.car = true, true
+        if not state.carId(op.carId) or not state.car(op.car) or tostring(op.car.id) ~= op.carId then return false end
     elseif op.kind == 'door' then
         -- Sin 'door' se da de baja la puerta.
         fields.doorId, fields.door = true, true
@@ -186,12 +204,12 @@ end
 
 function state.snapshot(snapshot, limits)
     if not util.object(snapshot, { schemaVersion = true, revision = true, nextInstallation = true,
-        accounts = true, anchors = true, installations = true, lastOperation = true, sites = true, alarms = true, doors = true })
+        accounts = true, anchors = true, installations = true, lastOperation = true, sites = true, alarms = true, doors = true, cars = true })
         or snapshot.schemaVersion ~= 1 or not util.integer(snapshot.revision, 0, 9007199254740000)
         or not util.integer(snapshot.nextInstallation, 1, limits.MaxInstallations + 1)
         or not util.object(snapshot.accounts) or not util.object(snapshot.anchors) or not util.object(snapshot.installations)
         or (snapshot.sites ~= nil and not util.object(snapshot.sites)) or (snapshot.alarms ~= nil and not util.object(snapshot.alarms))
-        or (snapshot.doors ~= nil and not util.object(snapshot.doors))
+        or (snapshot.doors ~= nil and not util.object(snapshot.doors)) or (snapshot.cars ~= nil and not util.object(snapshot.cars))
         or (snapshot.revision == 0 and snapshot.lastOperation ~= nil)
         or (snapshot.revision > 0 and not operation(snapshot.lastOperation, limits)) then return nil, 'Formato de inventario incompatible.' end
     local count, deviceIds = 0, {}
@@ -257,6 +275,9 @@ function state.snapshot(snapshot, limits)
         if not OSSecurity.DeviceValidation.id(deviceId) or not state.alarm(alarm) then return nil, 'Alarma invalida.' end
     end
     count = 0
+    for carId, car in pairs(snapshot.cars or {}) do
+        if not state.carId(carId) or not state.car(car) or tostring(car.id) ~= carId then return nil, 'Vehiculo con equipo de seguridad invalido.' end
+    end
     for doorId, door in pairs(snapshot.doors or {}) do
         count = count + 1
         if count > OSSecurity.GameplayConfig.Locks.MaxDoors or not state.door(door) or door.id ~= doorId then return nil, 'Puerta con cerradura invalida.' end
@@ -294,6 +315,9 @@ function state.apply(snapshot, op, limits)
     elseif op.kind == 'alarm' then
         nextState.alarms = nextState.alarms or {}
         nextState.alarms[op.deviceId] = util.copy(op.alarm)
+    elseif op.kind == 'car' then
+        nextState.cars = nextState.cars or {}
+        nextState.cars[op.carId] = util.copy(op.car)
     elseif op.kind == 'door' then
         nextState.doors = nextState.doors or {}
         nextState.doors[op.doorId] = op.door and util.copy(op.door) or nil

@@ -11,6 +11,8 @@ OSSecurity.ItemCatalog = {
     g6_alarm_tag = { name = prefix .. 'Chapa de alarma', category = 'access', weight = 0, usable = 'tag' },
     os_lock_kit = { name = prefix .. 'Bombin de seguridad', category = 'kit', weight = 1, usable = 'cylinder' },
     os_lock_kit_high = { name = prefix .. 'Bombin de alta seguridad', category = 'kit', weight = 1, usable = 'cylinder' },
+    os_car_lock_kit = { name = prefix .. 'Cierre centralizado (vehiculo)', category = 'kit', weight = 2, usable = 'car' },
+    os_car_alarm_kit = { name = prefix .. 'Alarma de vehiculo', category = 'kit', weight = 2, usable = 'car' },
     os_tracker_kit = { name = prefix .. 'Kit localizador', category = 'kit', weight = 1 },
     os_drill = { name = prefix .. 'Taladro', category = 'tool', weight = 2 },
     os_screwdriver = { name = prefix .. 'Destornillador', category = 'tool', weight = 1 },

@@ -82,6 +82,18 @@ OSSecurity.Brand = {
                 cylinderOut = 'Bombin viejo fuera', cylinderIn = 'Bombin nuevo dentro', done = 'Bombin cambiado'
             }
         },
+        cars = {
+            minigame = {
+                title = 'Instalacion en vehiculo', cancel = 'Cancelar (Esc)', kinds = { lock = 'Cierre centralizado', alarm = 'Alarma' },
+                trimTitle = 'Quitar el embellecedor bajo el volante', trimHelp = 'Manten pulsado sobre cada grapa y suelta cuando la tension este en la franja verde. Si te pasas, la grapa se rompe.',
+                tension = 'Tension', broken = 'Grapas rotas', pulling = 'Tirando...', clipOut = 'Grapa fuera', notEnough = 'Poca fuerza: vuelve a tirar',
+                clipBroken = 'Grapa rota',
+                wireTitle = 'Medir y empalmar', wireHelp = 'Pulsa un cable para medirlo con el multimetro. Arrastra cada hilo del modulo hasta el cable que le corresponde.',
+                leads = { ['12v'] = '+12V perm.', gnd = 'Masa', can = 'Cierre CAN', door = 'Puerta' },
+                probe = 'Lectura', spliced = 'Empalmado', wrongWire = 'Cable equivocado: el modulo no responde', shorts = 'Fallos',
+                testTitle = 'Probar el mando', testHelp = 'Pulsa el boton del mando: el LED del modulo debe responder.', works = 'Funciona'
+            }
+        },
         hello = 'Gruppe Sechs: servicio de seguridad disponible.',
         profileAbilities = 'Funciones de su perfil',
         abilities = { view = 'Consultar', inspect = 'Inspeccionar', repair = 'Reparar', replace = 'Sustituir piezas',

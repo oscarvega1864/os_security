@@ -215,6 +215,41 @@ async function main() {
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
     await until(`document.getElementById('cylinder').hidden && window.__calls.some(x=>x.endpoint==='cylinder' && x.body.ok===false && x.body.reason==='cancelled')`);
     console.log('PASS Escape cancels the cylinder change');
+    // Vehiculo: grapas del embellecedor con la tension justa, medir y empalmar, y probar el mando.
+    await evaluate(`window.__calls.length = 0; window.postMessage({type:'carwire',text:window.__brand.Text.cars.minigame,data:{kind:'lock',plate:'OS000012'}},'*')`);
+    await until(`!document.getElementById('carwire').hidden && document.querySelectorAll('.cw-clip').length === 4`);
+    fs.writeFileSync(path.join(output, 'car-trim.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    const clips = await centers('.cw-clip');
+    await mouse('mouseMoved', clips[0].x, clips[0].y); await mouse('mousePressed', clips[0].x, clips[0].y, 1); await pause(1500);
+    await mouse('mouseReleased', clips[0].x, clips[0].y); await pause(100);
+    assert(await evaluate(`document.querySelectorAll('#carwire .mg-strike.on').length === 1 && document.querySelector('.cw-clip.broken')`), 'Pulling too long breaks the clip');
+    for (const clip of clips.slice(1)) {
+      await mouse('mouseMoved', clip.x, clip.y); await mouse('mousePressed', clip.x, clip.y, 1); await pause(990);
+      await mouse('mouseReleased', clip.x, clip.y); await pause(120);
+    }
+    await until(`document.querySelectorAll('.cw-wire').length === 6`);
+    const expected = { '12.6 V': 0, '0.0 V · continuidad': 1, '2.5 V · datos': 2 };
+    const wiresAt = await centers('.cw-wire');
+    const byLead = [];
+    for (const wire of wiresAt) {
+      await mouse('mouseMoved', wire.x, wire.y); await mouse('mousePressed', wire.x, wire.y, 1); await mouse('mouseReleased', wire.x, wire.y); await pause(60);
+      const reading = await evaluate(`document.querySelector('#carwire .mg-status').textContent.split(': ').slice(1).join(': ')`);
+      if (reading in expected) byLead[expected[reading]] = wire; else byLead.decoy = wire;
+    }
+    assert(byLead[0] && byLead[1] && byLead[2] && byLead.decoy, 'Probing reveals every reading');
+    fs.writeFileSync(path.join(output, 'car-wiring.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    const leadsAt = await centers('.cw-lead');
+    await mouse('mouseMoved', leadsAt[0].x, leadsAt[0].y); await mouse('mousePressed', leadsAt[0].x, leadsAt[0].y, 1);
+    await mouse('mouseMoved', byLead.decoy.x, byLead.decoy.y, 1); await mouse('mouseReleased', byLead.decoy.x, byLead.decoy.y); await pause(60);
+    assert(await evaluate(`document.querySelectorAll('#carwire .mg-strike.on').length === 1`), 'A wrong wire counts a fault');
+    for (let i = 0; i < 3; i++) {
+      await mouse('mouseMoved', leadsAt[i].x, leadsAt[i].y); await mouse('mousePressed', leadsAt[i].x, leadsAt[i].y, 1);
+      await mouse('mouseMoved', byLead[i].x, byLead[i].y + 20, 1); await mouse('mouseReleased', byLead[i].x, byLead[i].y + 20); await pause(60);
+    }
+    await until(`document.querySelector('.cw-button')`);
+    await evaluate(`document.querySelector('.cw-button').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
+    await until(`document.getElementById('carwire').hidden && window.__calls.some(x => x.endpoint === 'carwire' && x.body.ok === true)`);
+    console.log('PASS vehicle install: trim clips with the right tension, probe and splice the module, test the key fob');
     // Teclado de alarma (pinpad) y bloque de alarma de la tablet.
     await evaluate(`window.__calls.length = 0; window.postMessage({ type: 'pinpad', data: { deviceId: 'osd_0000000009', label: 'Propiedad 200', mode: 'armed', hasPin: true, tags: true, locked: 0, entry: 22, triggered: false }, text: { pad: window.__brand.Text.alarm.pad, pinFormat: 'formato' } }, '*')`);
     await until(`!document.getElementById('pinpad').hidden && document.querySelector('.pp-status').textContent.includes('22')`);

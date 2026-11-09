@@ -135,6 +135,7 @@ function OSSecurity.AdminPanel.build(run)
                   local message, err = hook(source)
                   return { ok = message ~= nil, message = message or err }
               end },
+            { id = 'vehiculos', label = 'Vehiculos con cierre o alarma', ace = ace, handler = cmd('osg6', function() return { 'cars' } end) },
             { id = 'puertas', label = 'Puertas con cerradura', ace = ace, description = 'Puertas detectadas en propiedades y negocios, bombin y estado.',
               handler = cmd('osg6', function() return { 'doors' } end) },
             { id = 'borrarpuerta', label = 'Dar de baja una puerta', ace = ace, confirm = true,
