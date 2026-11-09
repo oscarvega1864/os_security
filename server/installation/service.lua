@@ -141,10 +141,12 @@ function OSSecurity.InstallationService.new(options)
             or not OSSecurity.Geometry.inside(anchor, proposal.position) then return nil, 'Montaje, proximidad o coordenadas no autorizados.' end
         local delta = { x = proposal.position.x - anchor.position.x, y = proposal.position.y - anchor.position.y, z = proposal.position.z - anchor.position.z }
         local planeDistance = delta.x * anchor.normal.x + delta.y * anchor.normal.y + delta.z * anchor.normal.z
-        if math.abs(planeDistance) > 0.08 then return nil, 'La posicion no pertenece al plano de montaje autorizado.' end
-        local position = canonical({ x = proposal.position.x - planeDistance * anchor.normal.x + 0.02 * anchor.normal.x,
-            y = proposal.position.y - planeDistance * anchor.normal.y + 0.02 * anchor.normal.y,
-            z = proposal.position.z - planeDistance * anchor.normal.z + 0.02 * anchor.normal.z })
+        -- Profundidad elegida en el editor (Q/Z): el origen del modelo puede quedar algo dentro o separado
+        -- de la superficie, dentro de MinDepth..MaxDepth. Se guarda tal cual, sin proyectar.
+        if planeDistance < config.MinDepth or planeDistance > config.MaxDepth then
+            return nil, 'La posicion no pertenece al plano de montaje autorizado.'
+        end
+        local position = canonical(proposal.position)
         local holder
         if options.holdings.external() then
             -- El personaje debe seguir siendo el de la sesion: nunca cobrar a otro personaje de la cuenta.
@@ -216,9 +218,7 @@ function OSSecurity.InstallationService.new(options)
                 local device = options.registry.get(0, installation.deviceId)
                 if device and device.state ~= 'retired' and device.metadata.installationId == installation.id
                     and util.equal(device.position, installation.position) then
-                    local anchor = snapshot.anchors[installation.anchorId]
-                    result[#result + 1] = { id = device.id, model = installation.model, position = util.copy(installation.position),
-                        rotation = util.copy(installation.rotation), normal = anchor and util.copy(anchor.normal) or nil }
+                    result[#result + 1] = { id = device.id, model = installation.model, position = util.copy(installation.position), rotation = util.copy(installation.rotation) }
                 end
             end
         end

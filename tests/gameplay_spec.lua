@@ -321,7 +321,7 @@ test('Valid placement reserves once, creates real core state/components and cons
     assert(count(c, 1, 'g6_operations_tablet') == 1)
     local device = assert(c.core.registry.get(0, response.data.id))
     assert(device.type == 'cctv_camera' and device.state == 'active' and device.schemaVersion == 2)
-    assert(device.owner == c.players[2].principal and device.position.x == .98 and device.metadata.installationId == response.data.installationId)
+    assert(device.owner == c.players[2].principal and device.position.x == 1 and device.metadata.installationId == response.data.installationId)
     assert(device.condition.components.power and device.condition.components.optics)
     assert(call(c, 1, session, 'devices', {}).data.total == 1)
     assert(not call(c, 1, session, 'place_confirm', proposal()).ok)
@@ -342,6 +342,21 @@ test('Square mount zones accept corners and inverted ceiling orientation, and re
     local response = call(c, 1, session, 'place_confirm', corner); assert(response.ok, response.error)
     local device = c.core.registry.get(0, response.data.id)
     assert(device.rotation.x == -60 and device.rotation.y == 180 and device.position.y == 0.7)
+end)
+
+test('Placement keeps the chosen depth off the surface within the configured limits', function()
+    local c = fixture(); kit(c); grant(c, 1, 'os_cctv_kit'); grant(c, 1, 'os_battery'); anchor(c)
+    local session = open(c, 1, 'operations')
+    assert(call(c, 1, session, 'place_begin').ok)
+    local deep = proposal(); deep.position.x = 1 - (config.MaxDepth + 0.05) -- normal (-1, 0, 0): separar resta en X
+    assert(not call(c, 1, session, 'place_confirm', deep).ok)
+    assert(call(c, 1, session, 'place_begin').ok)
+    local inside = proposal(); inside.position.x = 1 - (config.MinDepth - 0.05)
+    assert(not call(c, 1, session, 'place_confirm', inside).ok)
+    assert(call(c, 1, session, 'place_begin').ok)
+    local chosen = proposal(); chosen.position.x = 0.85
+    local response = call(c, 1, session, 'place_confirm', chosen); assert(response.ok, response.error)
+    assert(c.core.registry.get(0, response.data.id).position.x == 0.85)
 end)
 
 test('Placement rejects missing tools, foreign mounts, out-of-plane coordinates, distance and bucket changes', function()

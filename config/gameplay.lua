@@ -3,7 +3,7 @@ OSSecurity.GameplayConfig = {
     StorageBase = 'data/inventory', MaxAccounts = 256, MaxItemQuantity = 100, MaxTotalItems = 500,
     MaxInstallations = 1000, MaxAnchors = 128, MaxGrantsPerAccount = 1000, MaxFileBytes = 8 * 1024 * 1024,
     SessionSeconds = 90, PlacementSeconds = 180, PageSize = 12, RequestWindow = 10, RequestsPerWindow = 25,
-    OpenRequestsPerWindow = 3, PlacementDistance = 4.0, AnchorAimDistance = 10.0, MaxPlacementMove = 6.0,
+    OpenRequestsPerWindow = 3, PlacementDistance = 4.0, AnchorAimDistance = 10.0, MaxPlacementMove = 6.0, MinDepth = -0.15, MaxDepth = 0.3,
     StreamDistance = 80.0, MaxStreamedProps = 40, CameraModel = 'prop_cctv_cam_01a', Models = { prop_cctv_cam_01a = true },
     Materials = { os_cctv_kit = 1, os_battery = 1 }, Tools = { 'os_drill', 'os_screwdriver' },
     Ace = {

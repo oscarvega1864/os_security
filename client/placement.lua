@@ -4,12 +4,14 @@ OSSecurity.ClientPlacement = {}
 -- ajusta con el teclado sobre los ejes de la superficie (pared, techo o suelo):
 --   Flechas: mover X / Y dentro del cuadrado del montaje.
 --   Mayus + flechas o rueda: girar (izquierda/derecha) e inclinar (arriba/abajo).
---   R: dar la vuelta a la camara (montaje invertido, para techos). Ctrl: ajuste fino.
+--   R: dar la vuelta a la camara (montaje invertido, para techos). Q/Z: separar o acercar a la
+--   superficie (profundidad). Ctrl: ajuste fino.
 --   Tab: siguiente montaje. E o Intro: confirmar. Retroceso o Esc: cancelar.
 -- Todo es local y visual: el servidor revalida montaje, cuadrado, plano, giro, distancia y objetos.
-local CONTROLS = { left = 174, right = 175, up = 172, down = 173, fine = 36, rotate = 21, next = 37, flip = 45,
+local CONTROLS = { left = 174, right = 175, up = 172, down = 173, fine = 36, rotate = 21, next = 37, flip = 45, out = 44, into = 20,
     wheelUp = 14, wheelDown = 15, confirm = 38, enter = 191, cancel = 177, escape = 200 }
-local MOVE_SPEED, TURN_SPEED = 0.30, 60.0 -- m/s y grados/s
+local MOVE_SPEED, TURN_SPEED, DEPTH_SPEED = 0.30, 60.0, 0.15 -- m/s, grados/s, m/s
+OSSecurity.ClientPlacement.Depth = { min = -0.15, max = 0.3 } -- igual que MinDepth/MaxDepth del servidor
 OSSecurity.ClientPlacement.TiltLimit = 90.0 -- igual que el servidor
 
 -- Rumbo inicial: mirando hacia fuera de la pared (vector frontal de GTA: -sin(h), cos(h)).
@@ -42,21 +44,6 @@ function OSSecurity.ClientPlacement.drawZone(mount)
     DrawPoly(c[4].x, c[4].y, c[4].z, c[3].x, c[3].y, c[3].z, c[1].x, c[1].y, c[1].z, 120, 200, 110, 40)
 end
 
--- Asienta el modelo sobre la superficie: su cara trasera (Y minima del modelo, donde va el soporte)
--- queda en el plano que pasa por 'point' con normal 'normal', sea cual sea el giro. Sin normal
--- (datos antiguos) se usa el origen del modelo como antes.
-function OSSecurity.ClientPlacement.seat(object, model, point, normal, rotation)
-    SetEntityRotation(object, rotation.x + 0.0, rotation.y + 0.0, rotation.z + 0.0, 2, true)
-    SetEntityCoordsNoOffset(object, point.x + 0.0, point.y + 0.0, point.z + 0.0, false, false, false)
-    local n = normal and OSSecurity.Geometry.frame(normal).normal
-    if not n then return end
-    local minimum = GetModelDimensions(model)
-    if not minimum then return end
-    local back = GetOffsetFromEntityInWorldCoords(object, 0.0, minimum.y, 0.0)
-    local d = (point.x - back.x) * n.x + (point.y - back.y) * n.y + (point.z - back.z) * n.z
-    SetEntityCoordsNoOffset(object, point.x + n.x * d, point.y + n.y * d, point.z + n.z * d, false, false, false)
-end
-
 function OSSecurity.ClientPlacement.new()
     local manager, generation, prop = {}, 0, nil
     function manager.cancel()
@@ -87,9 +74,10 @@ function OSSecurity.ClientPlacement.new()
                 local d = (p.x - origin.x) ^ 2 + (p.y - origin.y) ^ 2 + (p.z - origin.z) ^ 2
                 if d < best then index, best = i, d end
             end
-            local x, y, yaw, tilt, roll = 0.0, 0.0, 0.0, 0.0, 0.0
+            local x, y, yaw, tilt, roll, depth = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+            local depthLimit = OSSecurity.ClientPlacement.Depth
             local function reset()
-                x, y = 0.0, 0.0
+                x, y, depth = 0.0, 0.0, 0.0
                 yaw, tilt, roll = OSSecurity.ClientPlacement.initial(mounts[index], GetEntityHeading(ped))
             end
             if mounts[1] then reset() end
@@ -123,11 +111,14 @@ function OSSecurity.ClientPlacement.new()
                 if IsDisabledControlJustPressed(0, CONTROLS.wheelUp) then yaw = (yaw + 5 * scale) % 360 end
                 if IsDisabledControlJustPressed(0, CONTROLS.wheelDown) then yaw = (yaw - 5 * scale) % 360 end
                 if IsDisabledControlJustPressed(0, CONTROLS.flip) then roll = roll == 0.0 and 180.0 or 0.0 end
+                local d = (IsDisabledControlPressed(0, CONTROLS.out) and 1 or 0) - (IsDisabledControlPressed(0, CONTROLS.into) and 1 or 0)
+                depth = math.max(depthLimit.min, math.min(depthLimit.max, depth + d * DEPTH_SPEED * scale * dt))
                 local target
                 target, x, y = OSSecurity.Geometry.point(mount, x, y, 0.95)
                 local n = OSSecurity.Geometry.frame(mount.normal).normal
-                OSSecurity.ClientPlacement.seat(prop, model, { x = target.x + n.x * 0.005, y = target.y + n.y * 0.005, z = target.z + n.z * 0.005 },
-                    n, { x = tilt, y = roll, z = yaw })
+                target = { x = target.x + n.x * depth, y = target.y + n.y * depth, z = target.z + n.z * depth }
+                SetEntityCoordsNoOffset(prop, target.x, target.y, target.z, false, false, false)
+                SetEntityRotation(prop, tilt, roll, yaw, 2, true)
                 OSSecurity.ClientPlacement.drawZone(mount)
                 if IsDisabledControlJustPressed(0, CONTROLS.confirm) or IsDisabledControlJustPressed(0, CONTROLS.enter) then
                     local proposal = { anchorId = mount.id, position = target, rotation = { x = tilt, y = roll, z = yaw } }
@@ -135,8 +126,9 @@ function OSSecurity.ClientPlacement.new()
                 end
                 BeginTextCommandDisplayHelp('STRING')
                 AddTextComponentSubstringPlayerName(OSSecurity.Brand.Text.placementHelp)
-                AddTextComponentSubstringPlayerName(('~n~%s ~b~%s~s~ (%d/%d)  X %+.2f  Y %+.2f  Giro %d  Incl. %+d%s'):format(
-                    OSSecurity.Brand.Text.placementMount, mount.id, index, #mounts, x, y, math.floor(yaw + 0.5) % 360,
+                AddTextComponentSubstringPlayerName(OSSecurity.Brand.Text.placementHelp2)
+                AddTextComponentSubstringPlayerName(('~n~%s ~b~%s~s~ (%d/%d)  X %+.2f  Y %+.2f  Prof. %+.2f  Giro %d  Incl. %+d%s'):format(
+                    OSSecurity.Brand.Text.placementMount, mount.id, index, #mounts, x, y, depth, math.floor(yaw + 0.5) % 360,
                     math.floor(tilt + 0.5), roll ~= 0.0 and '  Invertida' or ''))
                 EndTextCommandDisplayHelp(0, false, false, -1)
             end

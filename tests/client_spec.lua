@@ -212,9 +212,6 @@ local function natives(run)
         'SetEntityRotation', 'SetEntityAsMissionEntity', 'SetEntityAlpha' }) do stub(name, function() end) end
     stub('GetPedBoneIndex', function() return 28422 end)
     stub('SetEntityCoordsNoOffset', function(object, x, y, z) calls.coords = { object = object, x = x, y = y, z = z } end)
-    stub('GetModelDimensions', function() return { x = -0.1, y = -0.25, z = -0.1 }, { x = 0.1, y = 0.2, z = 0.1 } end)
-    -- Entidad sin giro: el desplazamiento local Y es el eje Y del mundo.
-    stub('GetOffsetFromEntityInWorldCoords', function(_, x, y, z) local c = calls.coords; return { x = c.x + x, y = c.y + y, z = c.z + z } end)
     stub('GetEntityHeading', function() return 0 end)
     stub('Wait', function() end)
     stub('IsEntityDead', function() return false end)
@@ -224,16 +221,6 @@ local function natives(run)
     for name, value in pairs(originals) do _G[name] = value[1] end
     assert(ok, err)
 end
-
-test('Seating puts the back of the camera model on the mount surface', function()
-    natives(function(_, _, calls)
-        -- Pared con normal +Y: la cara trasera (Y minima = -0,25) debe quedar en el plano y = 5.
-        OSSecurity.ClientPlacement.seat(7, 1, { x = 1, y = 5, z = 2 }, { x = 0, y = 1, z = 0 }, { x = 0, y = 0, z = 0 })
-        assert(calls.coords.object == 7 and math.abs(calls.coords.y - 5.25) < 1e-9 and calls.coords.x == 1 and calls.coords.z == 2)
-        OSSecurity.ClientPlacement.seat(7, 1, { x = 1, y = 5, z = 2 }, nil, { x = 0, y = 0, z = 0 }) -- datos antiguos sin normal
-        assert(calls.coords.y == 5)
-    end)
-end)
 
 test('Rapid tablet switching cancels stale animation work and deletes its hand prop', function()
     natives(function(queue, objects, calls)

@@ -26,11 +26,11 @@ function OSSecurity.ClientProps.new()
                         while generation == current and not HasModelLoaded(model) and GetGameTimer() < deadline do Wait(10) end
                         if generation ~= current then SetModelAsNoLongerNeeded(model); return end
                         if HasModelLoaded(model) then
-                            local p = entry.position
+                            local p, r = entry.position, entry.rotation
                             local object = CreateObjectNoOffset(model, p.x, p.y, p.z, false, false, false)
                             if object and object ~= 0 then
-                                -- Misma colocacion que la vista previa: soporte apoyado en la superficie del montaje.
-                                OSSecurity.ClientPlacement.seat(object, model, p, entry.normal, entry.rotation); FreezeEntityPosition(object, true)
+                                -- Misma colocacion que la vista previa: origen del modelo en la posicion guardada.
+                                SetEntityRotation(object, r.x, r.y, r.z, 2, true); FreezeEntityPosition(object, true)
                                 SetEntityAsMissionEntity(object, true, true); objects[entry.id] = object
                             end
                         end

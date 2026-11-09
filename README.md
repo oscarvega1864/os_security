@@ -88,6 +88,7 @@ Al usar el kit CCTV, la cámara aparece en la zona libre más cercana y no sigue
 | Flechas | Mover sobre la superficie (X, Y), dentro del cuadrado de la zona |
 | Mayús + flechas, o rueda | Girar (izquierda/derecha) e inclinar (arriba/abajo, máx. 90°) |
 | R | Dar la vuelta a la cámara (montaje invertido, para techos) |
+| Q / Z | Separar o acercar la cámara a la superficie (de −0,15 a +0,30 m) |
 | Ctrl (mantener) | Ajuste fino |
 | Tab | Siguiente zona cercana |
 | E o Intro | Colocar |
