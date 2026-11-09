@@ -10,6 +10,8 @@
 - Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
   (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
   petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
+- La cámara se asienta con la parte trasera del modelo sobre la superficie (vista previa y props), en
+  vez de flotar; `/g6anchor` fija la superficie y permite mover la zona con las flechas.
 - Zonas de montaje cuadradas con editor `/g6anchor` (vista en vivo, tamaño con la rueda) en paredes,
   techos o suelos; colocación con inclinación de hasta 90° y montaje invertido (R). Minijuego de
   instalación en tres fases (taladrar, atornillar y cablear); fallar o salir cancela sin consumir.

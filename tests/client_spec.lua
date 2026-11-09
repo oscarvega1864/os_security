@@ -137,6 +137,9 @@ test('Mount geometry keeps the camera inside the square zone on walls and ceilin
     assert(#G.corners(ceiling) == 4 and math.abs(G.corners(ceiling, 0.01)[1].z - 2.99) < 1e-9)
     assert(OSSecurity.ClientAnchor.size(0.75, 1) == 0.8 and OSSecurity.ClientAnchor.size(2, 1) == 2 and OSSecurity.ClientAnchor.size(0.25, -1) == 0.25)
     assert(OSSecurity.ClientAnchor.size(0.75, 1, true) == 0.76)
+    -- Mover la zona fijada sobre la pared, con limite de 3 m desde el punto apuntado
+    local moved, mx, my = OSSecurity.ClientAnchor.move({ x = 10, y = 5, z = 2 }, { x = 0, y = -1, z = 0 }, 0.5, 9)
+    assert(math.abs(moved.x - 10.5) < 1e-9 and math.abs(moved.z - 5) < 1e-9 and moved.y == 5 and mx == 0.5 and my == 3)
 end)
 
 test('Placement asks for the installation minigame and only confirms when it is passed', function()
@@ -208,6 +211,10 @@ local function natives(run)
     for _, name in ipairs({ 'SetEntityCollision', 'AttachEntityToEntity', 'SetModelAsNoLongerNeeded', 'FreezeEntityPosition',
         'SetEntityRotation', 'SetEntityAsMissionEntity', 'SetEntityAlpha' }) do stub(name, function() end) end
     stub('GetPedBoneIndex', function() return 28422 end)
+    stub('SetEntityCoordsNoOffset', function(object, x, y, z) calls.coords = { object = object, x = x, y = y, z = z } end)
+    stub('GetModelDimensions', function() return { x = -0.1, y = -0.25, z = -0.1 }, { x = 0.1, y = 0.2, z = 0.1 } end)
+    -- Entidad sin giro: el desplazamiento local Y es el eje Y del mundo.
+    stub('GetOffsetFromEntityInWorldCoords', function(_, x, y, z) local c = calls.coords; return { x = c.x + x, y = c.y + y, z = c.z + z } end)
     stub('GetEntityHeading', function() return 0 end)
     stub('Wait', function() end)
     stub('IsEntityDead', function() return false end)
@@ -217,6 +224,16 @@ local function natives(run)
     for name, value in pairs(originals) do _G[name] = value[1] end
     assert(ok, err)
 end
+
+test('Seating puts the back of the camera model on the mount surface', function()
+    natives(function(_, _, calls)
+        -- Pared con normal +Y: la cara trasera (Y minima = -0,25) debe quedar en el plano y = 5.
+        OSSecurity.ClientPlacement.seat(7, 1, { x = 1, y = 5, z = 2 }, { x = 0, y = 1, z = 0 }, { x = 0, y = 0, z = 0 })
+        assert(calls.coords.object == 7 and math.abs(calls.coords.y - 5.25) < 1e-9 and calls.coords.x == 1 and calls.coords.z == 2)
+        OSSecurity.ClientPlacement.seat(7, 1, { x = 1, y = 5, z = 2 }, nil, { x = 0, y = 0, z = 0 }) -- datos antiguos sin normal
+        assert(calls.coords.y == 5)
+    end)
+end)
 
 test('Rapid tablet switching cancels stale animation work and deletes its hand prop', function()
     natives(function(queue, objects, calls)

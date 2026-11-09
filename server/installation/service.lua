@@ -216,7 +216,9 @@ function OSSecurity.InstallationService.new(options)
                 local device = options.registry.get(0, installation.deviceId)
                 if device and device.state ~= 'retired' and device.metadata.installationId == installation.id
                     and util.equal(device.position, installation.position) then
-                    result[#result + 1] = { id = device.id, model = installation.model, position = util.copy(installation.position), rotation = util.copy(installation.rotation) }
+                    local anchor = snapshot.anchors[installation.anchorId]
+                    result[#result + 1] = { id = device.id, model = installation.model, position = util.copy(installation.position),
+                        rotation = util.copy(installation.rotation), normal = anchor and util.copy(anchor.normal) or nil }
                 end
             end
         end

@@ -42,6 +42,21 @@ function OSSecurity.ClientPlacement.drawZone(mount)
     DrawPoly(c[4].x, c[4].y, c[4].z, c[3].x, c[3].y, c[3].z, c[1].x, c[1].y, c[1].z, 120, 200, 110, 40)
 end
 
+-- Asienta el modelo sobre la superficie: su cara trasera (Y minima del modelo, donde va el soporte)
+-- queda en el plano que pasa por 'point' con normal 'normal', sea cual sea el giro. Sin normal
+-- (datos antiguos) se usa el origen del modelo como antes.
+function OSSecurity.ClientPlacement.seat(object, model, point, normal, rotation)
+    SetEntityRotation(object, rotation.x + 0.0, rotation.y + 0.0, rotation.z + 0.0, 2, true)
+    SetEntityCoordsNoOffset(object, point.x + 0.0, point.y + 0.0, point.z + 0.0, false, false, false)
+    local n = normal and OSSecurity.Geometry.frame(normal).normal
+    if not n then return end
+    local minimum = GetModelDimensions(model)
+    if not minimum then return end
+    local back = GetOffsetFromEntityInWorldCoords(object, 0.0, minimum.y, 0.0)
+    local d = (point.x - back.x) * n.x + (point.y - back.y) * n.y + (point.z - back.z) * n.z
+    SetEntityCoordsNoOffset(object, point.x + n.x * d, point.y + n.y * d, point.z + n.z * d, false, false, false)
+end
+
 function OSSecurity.ClientPlacement.new()
     local manager, generation, prop = {}, 0, nil
     function manager.cancel()
@@ -111,8 +126,8 @@ function OSSecurity.ClientPlacement.new()
                 local target
                 target, x, y = OSSecurity.Geometry.point(mount, x, y, 0.95)
                 local n = OSSecurity.Geometry.frame(mount.normal).normal
-                SetEntityCoordsNoOffset(prop, target.x + n.x * 0.02, target.y + n.y * 0.02, target.z + n.z * 0.02, false, false, false)
-                SetEntityRotation(prop, tilt, roll, yaw, 2, true)
+                OSSecurity.ClientPlacement.seat(prop, model, { x = target.x + n.x * 0.005, y = target.y + n.y * 0.005, z = target.z + n.z * 0.005 },
+                    n, { x = tilt, y = roll, z = yaw })
                 OSSecurity.ClientPlacement.drawZone(mount)
                 if IsDisabledControlJustPressed(0, CONTROLS.confirm) or IsDisabledControlJustPressed(0, CONTROLS.enter) then
                     local proposal = { anchorId = mount.id, position = target, rotation = { x = tilt, y = roll, z = yaw } }
