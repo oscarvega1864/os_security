@@ -47,6 +47,19 @@ OSSecurity.Brand = {
             colors = { 'Rojo', 'Azul', 'Amarillo', 'Verde' }, shorts = 'Cortocircuitos', connected = 'Conectado', wrongWire = 'Borne incorrecto'
         },
         placementMount = 'Montaje',
+        alarmInstallAction = 'Preparar instalacion de alarma',
+        alarm = {
+            title = 'Alarma', triggered = 'SALTO DE ALARMA', arm = 'Armar total', partial = 'Armar parcial', disarm = 'Desarmar',
+            modes = { disarmed = 'Desarmada', armed = 'Armada (total)', partial = 'Armada (parcial)' },
+            createPin = 'Crear codigo (4-6 cifras)', newPin = 'Nuevo codigo', savePin = 'Guardar codigo', pinFormat = 'El codigo debe tener entre 4 y 6 cifras.',
+            tags = 'Chapas', programTag = 'Programar chapa', revokeTags = 'Revocar chapas',
+            events = { armed = 'Armada', partial = 'Armada parcial', disarmed = 'Desarmada', triggered = 'Salto de alarma', wrong_pin = 'Codigo o chapa incorrectos',
+                lockout = 'Teclado bloqueado', pin_set = 'Codigo cambiado', tag_added = 'Chapa programada', tags_revoked = 'Chapas revocadas', entry = 'Entrada detectada' },
+            keypadHint = 'E: teclado de alarma',
+            pad = { armed = 'ARMADA', partial = 'PARCIAL', disarmed = 'DESARMADA', locked = 'BLOQUEADO', entry = 'INTRODUZCA CODIGO', triggered = 'ALARMA',
+                arm = 'Total', partial = 'Parcial', disarm = 'Desarmar', tag = 'Acercar chapa', clear = 'Borrar', close = 'Salir (Esc)' },
+            entryWarning = 'Alarma armada: introduce el codigo en %d s o saltara.'
+        },
         hello = 'Gruppe Sechs: servicio de seguridad disponible.',
         profileAbilities = 'Funciones de su perfil',
         abilities = { view = 'Consultar', inspect = 'Inspeccionar', repair = 'Reparar', replace = 'Sustituir piezas',
@@ -57,7 +70,7 @@ OSSecurity.Brand = {
         client = {
             { id = 'overview', name = 'Mis dispositivos', implemented = true },
             { id = 'cctv', name = 'CCTV autorizado', implemented = true },
-            { id = 'alarms', name = 'Alarmas residenciales y comerciales', implemented = false },
+            { id = 'alarms', name = 'Alarmas residenciales y comerciales', implemented = true },
             { id = 'locks', name = 'Cerraduras electronicas', implemented = false },
             { id = 'trackers', name = 'Localizadores de vehiculos', implemented = false },
             { id = 'emergencies', name = 'Emergencias', implemented = false },
@@ -73,7 +86,7 @@ OSSecurity.Brand = {
             { id = 'cctv', name = 'Registro CCTV', implemented = true },
             { id = 'work_orders', name = 'Ordenes de trabajo', implemented = false },
             { id = 'bodycams', name = 'Bodycams', implemented = false },
-            { id = 'alarms', name = 'Alarmas', implemented = false },
+            { id = 'alarms', name = 'Alarmas', implemented = true },
             { id = 'access', name = 'Control de accesos', implemented = false },
             { id = 'trackers', name = 'Localizadores', implemented = false },
             { id = 'patrols', name = 'Rondas', implemented = false },

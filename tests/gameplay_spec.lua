@@ -5,7 +5,7 @@ local bootNumber = 0
 local function fixture(files, external)
     bootNumber = bootNumber + 1
     local core = coreFixture(files)
-    local c = { core = core, players = {}, aces = {}, jobs = {}, assets = { properties = {}, businesses = {} }, active = {}, commands = {}, audit = {}, replies = {}, invWrites = 0, timers = {} }
+    local c = { core = core, players = {}, aces = {}, jobs = {}, alarmLog = {}, assets = { properties = {}, businesses = {} }, active = {}, commands = {}, audit = {}, replies = {}, invWrites = 0, timers = {} }
     local prefix = 'boot-' .. bootNumber
     for id = 1, 5 do
         c.players[id] = { principal = 'license:' .. string.rep(string.char(96 + id), 40), alive = true, connected = true,
@@ -48,6 +48,18 @@ local function fixture(files, external)
         log = function(message) c.replies[#c.replies + 1] = { 0, message } end,
         schedule = function(callback) c.timers[#c.timers + 1] = callback end,
         items = external and external.items or nil,
+        alarmEffects = {
+            players = function()
+                local list = {}
+                for id, player in pairs(c.players) do
+                    if player.connected then list[#list + 1] = { source = id, position = util.copy(player.point), bucket = player.bucket } end
+                end
+                return list
+            end,
+            entry = function(source, device, seconds) c.alarmLog[#c.alarmLog + 1] = { 'entry', source, device.id, seconds } end,
+            siren = function(deviceId, device) c.alarmLog[#c.alarmLog + 1] = { device and 'siren_on' or 'siren_off', deviceId } end,
+            notify = function(source, text) c.alarmLog[#c.alarmLog + 1] = { 'alert', source, text } end
+        },
         employment = OSSecurity.Employment.new({ settings = config.Employment, read = function(source)
             if c.jobsFail then error('proveedor caido') end
             return c.jobs[source]
@@ -273,6 +285,73 @@ test('Aimed anchors and placements persist only runtime-safe numbers (no residua
     assert(anchor.position.x == 1170.2263 and anchor.position.y == 2712 and anchor.position.z == 39.0934)
     assert(OSSecurity.Util.round(359.99999999999994, 2) == 360 and OSSecurity.Util.round(5.6843418860808e-14, 2) == 0)
     assert(math.type(OSSecurity.Util.round(-1.0000000001, 6)) == 'integer')
+end)
+
+local function alarmPanel(c, owner)
+    for id = 1, 5 do c.players[id].point = { x = 1000 + id * 50, y = 0, z = 1 } end -- nadie en la zona salvo que la prueba lo diga
+    local device = create(c.core, 'alarm_panel', { owner = c.players[owner].principal, model = 'prop_ld_keypad_01',
+        position = { x = 0, y = 0, z = 1 }, rotation = { x = 0, y = 0, z = 0 } })
+    for _, state in ipairs({ 'installing', 'installed', 'active' }) do StorageTest.transition(c.core, device.id, state) end
+    return device
+end
+local function logged(c, kind)
+    local found = {}
+    for _, entry in ipairs(c.alarmLog) do if entry[1] == kind then found[#found + 1] = entry end end
+    return found
+end
+
+test('Alarm keypad: code from the tablet, arm with exit delay, wrong codes lock the keypad and alert the owner', function()
+    local c = fixture(); grant(c, 2, 'g6_client_tablet')
+    local panel = alarmPanel(c, 2)
+    c.players[2].point = { x = 1, y = 0, z = 1 }
+    assert(not c.game.alarms.keypad(2, panel.id, 'arm', '1234')) -- sin codigo configurado
+    local session = open(c, 2, 'client')
+    local set = call(c, 2, session, 'alarm', { deviceId = panel.id, action = 'pin', pin = '12' }); assert(not set.ok) -- demasiado corto
+    set = call(c, 2, session, 'alarm', { deviceId = panel.id, action = 'pin', pin = '1234' }); assert(set.ok and set.data.alarm.hasPin)
+    c.players[5].point = { x = 30, y = 0, z = 1 }
+    assert(not c.game.alarms.keypad(5, panel.id, 'arm', '1234')) -- lejos del teclado
+    local armed = assert(c.game.alarms.keypad(2, panel.id, 'arm', '1234')); assert(armed.mode == 'armed')
+    assert(c.game.inventory.alarm(panel.id).mode == 'armed' and c.game.inventory.alarm(panel.id).pin ~= '1234')
+    c.players[5].point = { x = 1, y = 1, z = 1 }
+    for attempt = 1, 3 do assert(not c.game.alarms.keypad(5, panel.id, 'disarm', '0000')) end
+    assert(not c.game.alarms.keypad(5, panel.id, 'disarm', '1234')) -- bloqueado aunque ahora acierte
+    assert(#logged(c, 'alert') >= 1 and logged(c, 'alert')[1][2] == 2) -- aviso de manipulacion al titular
+    local restarted = fixture(c.core.files); assert(restarted.game.inventory.alarm(panel.id).mode == 'armed')
+end)
+
+test('Armed alarm: entry delay for anyone inside, triggers siren and alerts owner and on-duty G6; disarming stops it', function()
+    local c = fixture(); local panel = alarmPanel(c, 2)
+    c.players[2].point = { x = 1, y = 0, z = 1 }; c.players[5].point = { x = 500, y = 0, z = 1 }; c.players[3].point = { x = 900, y = 0, z = 1 }
+    grant(c, 2, 'g6_client_tablet'); local session = open(c, 2, 'client')
+    assert(call(c, 2, session, 'alarm', { deviceId = panel.id, action = 'pin', pin = '4321' }).ok)
+    assert(c.game.alarms.keypad(2, panel.id, 'arm', '4321'))
+    c.players[2].point = { x = 400, y = 0, z = 1 } -- el titular sale
+    c.game.alarms.tick(); assert(#logged(c, 'entry') == 0)
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Alarm.ExitDelay + 1
+    c.players[5].point = { x = 3, y = 0, z = 1 } -- entra alguien
+    c.jobs[3] = { job = 'gruppe6', rank = 'tecnico', duty = true }
+    c.game.alarms.tick(); assert(#logged(c, 'entry') == 1 and logged(c, 'entry')[1][2] == 5)
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Alarm.EntryDelay + 1
+    c.game.alarms.tick(); assert(#logged(c, 'siren_on') == 1)
+    local alerted = {}; for _, entry in ipairs(logged(c, 'alert')) do alerted[entry[2]] = true end
+    assert(alerted[2] and alerted[3] and not alerted[5]) -- titular y G6 de servicio, no el intruso
+    assert(call(c, 2, session, 'device', { deviceId = panel.id }).data.alarm.triggered)
+    local disarmed = call(c, 2, session, 'alarm', { deviceId = panel.id, action = 'disarm' }); assert(disarmed.ok and disarmed.data.alarm.mode == 'disarmed')
+    assert(#logged(c, 'siren_off') == 1)
+    local events = disarmed.data.alarm.events; assert(events[1].kind == 'disarmed' and events[2].kind == 'triggered')
+end)
+
+test('Partial mode ignores authorized people inside but not strangers', function()
+    local c = fixture(); local panel = alarmPanel(c, 2)
+    grant(c, 2, 'g6_client_tablet'); local session = open(c, 2, 'client')
+    assert(call(c, 2, session, 'alarm', { deviceId = panel.id, action = 'pin', pin = '5555' }).ok)
+    c.players[2].point = { x = 1, y = 0, z = 1 }; c.players[5].point = { x = 800, y = 0, z = 1 }
+    assert(c.game.alarms.keypad(2, panel.id, 'partial', '5555').mode == 'partial')
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Alarm.ExitDelay + 1
+    c.game.alarms.tick(); assert(#logged(c, 'entry') == 0) -- el titular sigue dentro: no salta
+    c.players[5].point = { x = 2, y = 0, z = 1 }
+    c.game.alarms.tick(); assert(#logged(c, 'entry') == 1 and logged(c, 'entry')[1][2] == 5)
+    assert(not call(c, 5, open(c, 5, 'inventory'), 'alarm', { deviceId = panel.id, action = 'disarm' }).ok) -- sin acceso
 end)
 
 test('Inventory state rejects malformed site links', function()
@@ -559,10 +638,11 @@ test('Native server wiring keeps replies private, normalizes ACE and creates uni
     local handlers, commands, files, replies, hashes = {}, {}, {}, {}, 0
     local ok, err = pcall(function()
         stub('RegisterNetEvent', function(name, callback)
-            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim')
+            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name:match('^os_security:alarm:'))
             if name == 'os_security:g6:request' then handlers.request = callback else handlers.anchorAim = callback end
         end)
         stub('RegisterCommand', function(name, callback) commands[name] = callback end)
+        stub('CreateThread', function() end)
         stub('AddEventHandler', function(name, callback) handlers[name] = callback end)
         stub('GetCurrentResourceName', function() return 'os_security' end)
         stub('GetConvar', function(_, default) return default end) -- sin convars: proveedor standalone

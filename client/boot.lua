@@ -1,4 +1,5 @@
 local view, placement, props = OSSecurity.ClientView.new(), OSSecurity.ClientPlacement.new(), OSSecurity.ClientProps.new()
+local alarms = OSSecurity.ClientAlarms.new()
 local lastUiAlive = GetGameTimer()
 local minigameFx = OSSecurity.MinigameFx.new()
 local minigame = OSSecurity.ClientMinigame.new({
@@ -10,7 +11,7 @@ local minigame = OSSecurity.ClientMinigame.new({
 local controller = OSSecurity.ClientTablet.new({
     minigame = minigame.run,
     show = function(session) lastUiAlive = GetGameTimer(); view.show(session) end,
-    hide = view.hide, cancelPlacement = placement.cancel, beginPlacement = placement.begin, props = props.sync,
+    hide = view.hide, cancelPlacement = placement.cancel, beginPlacement = placement.begin, props = function(list) props.sync(list); alarms.sync(list) end,
     send = function(packet) TriggerServerEvent('os_security:g6:request', packet) end,
     timeout = function(callback) SetTimeout(8000, callback) end,
     expiry = function(expires) SendNUIMessage({ type = 'expiry', expires = expires }) end,
@@ -30,7 +31,8 @@ end)
 
 -- "Usar" el kit CCTV en el inventario externo: inicia la colocacion si el servidor la autoriza.
 RegisterNetEvent('os_security:g6:useItem', function(item)
-    if source ~= 65535 or item ~= 'os_cctv_kit' then return end
+    local definition = OSSecurity.ItemCatalog[item]
+    if source ~= 65535 or not definition or definition.usable ~= 'placement' then return end
     controller.useItem(item)
 end)
 
@@ -92,3 +94,34 @@ AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
     minigame.cancel(); controller.stop(); placement.cancel(); props.clear(); view.hide()
 end)
+
+-- Alarmas: teclado junto al dispositivo, aviso de entrada, sirena y avisos.
+RegisterNetEvent('os_security:alarm:panelData', function(data, err) if source == 65535 then alarms.show(data, err) end end)
+RegisterNetEvent('os_security:alarm:result', function(result, err, panel) if source == 65535 then alarms.result(result, err, panel) end end)
+RegisterNetEvent('os_security:alarm:entry', function(_, seconds) if source == 65535 and type(seconds) == 'number' then alarms.entry(seconds) end end)
+RegisterNetEvent('os_security:alarm:siren', function(deviceId, position, name, set) if source == 65535 then alarms.siren(deviceId, position, name, set) end end)
+RegisterNetEvent('os_security:alarm:alert', function(text, kind, position) if source == 65535 and type(text) == 'string' then alarms.alert(text, kind, position) end end)
+RegisterNUICallback('pinpad', function(body, callback)
+    callback({ ok = true })
+    if not alarms.open or type(body) ~= 'table' then return end
+    if body.action == 'tag' then TriggerServerEvent('os_security:alarm:tag', alarms.open)
+    elseif ({ arm = true, partial = true, disarm = true })[body.action] then TriggerServerEvent('os_security:alarm:keypad', alarms.open, body.action, type(body.pin) == 'string' and body.pin or '') end
+end)
+RegisterNUICallback('pinpadKey', function(_, callback) callback({ ok = true }); PlaySoundFrontend(-1, 'NAV_UP_DOWN', 'HUD_FRONTEND_DEFAULT_SOUNDSET', true) end)
+RegisterNUICallback('pinpadClose', function(_, callback) callback({ ok = true }); alarms.close() end)
+CreateThread(function()
+    while true do
+        local sleep = 500
+        if not alarms.open and not controller.visible and not controller.placing then
+            local ped = PlayerPedId()
+            local keypad = not IsPedInAnyVehicle(ped, false) and alarms.nearest(GetEntityCoords(ped), 1.6)
+            if keypad then
+                sleep = 0
+                BeginTextCommandDisplayHelp('STRING'); AddTextComponentSubstringPlayerName(OSSecurity.Brand.Text.alarm.keypadHint); EndTextCommandDisplayHelp(0, false, false, -1)
+                if IsControlJustPressed(0, 38) then TriggerServerEvent('os_security:alarm:panel', keypad.id) end
+            end
+        end
+        Wait(sleep)
+    end
+end)
+AddEventHandler('onResourceStop', function(resource) if resource == GetCurrentResourceName() then alarms.clear() end end)

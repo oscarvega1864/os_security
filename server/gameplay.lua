@@ -54,11 +54,58 @@ function OSSecurity.Gameplay.new(options)
     local placement = OSSecurity.InstallationService.new({ inventory = inventory, holdings = holdings, registry = options.registry,
         now = options.now, world = options.world, audit = options.audit, schedule = options.schedule,
         alive = options.alive, invalidate = sessions.close, log = options.log })
+    local function actorOf(source)
+        local principal = identity.resolve(source)
+        if not principal then return nil end
+        return { principal = principal, holder = holdings.external() and holdings.holder(source) or nil, role = 'client', kind = 'client', source = source }
+    end
+    local effects = options.alarmEffects or {}
+    local alarms = OSSecurity.AlarmService.new({
+        inventory = inventory, registry = options.registry, now = options.now, world = options.world,
+        site = function(deviceId)
+            local site = inventory.site(deviceId)
+            if not site then return nil end
+            return options.sites and options.sites.label(site) or (OSSecurity.Sites.Labels[site.kind] .. ' ' .. site.id)
+        end,
+        authorized = function(actor, device) return actor ~= nil and auth.access(actor, device, 'view') == true end,
+        actorOf = actorOf,
+        players = effects.players or function() return {} end,
+        hash = effects.hash or function(pin) return 'plain:' .. pin end,
+        verify = effects.verify or function(pin, hash) return hash == 'plain:' .. pin end,
+        serial = effects.serial or function() return tostring(options.now()) end,
+        who = effects.who or function(source) return 'jugador ' .. source end,
+        whoPrincipal = function() return 'tablet' end,
+        tagsSupported = function() return holdings.external() end,
+        heldTags = function(source, deviceId)
+            if not items then return {} end
+            local holder = holdings.holder(source)
+            return holder and items.tagSerials(holder, deviceId) or {}
+        end,
+        makeTag = function(actor, device, serial)
+            if not items or not actor.holder then return nil, 'Personaje activo no disponible.' end
+            return items.makeTag(actor.holder, device.id, serial)
+        end,
+        entry = effects.entry or function() end,
+        siren = effects.siren or function() end,
+        alert = function(device, text, kind)
+            if not effects.notify then return end
+            local notified = {}
+            for _, player in ipairs((effects.players or function() return {} end)()) do
+                local actor = actorOf(player.source)
+                local owner = actor and auth.access(actor, device, 'view')
+                local staff = options.employment and options.employment(player.source) ~= nil
+                if (owner or staff) and not notified[player.source] then
+                    notified[player.source] = true
+                    effects.notify(player.source, text, kind, device.position)
+                end
+            end
+        end
+    })
     local service = OSSecurity.TabletService.new({ inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, employeeId = options.employeeId,
-        sites = options.sites })
+        sites = options.sites, alarms = alarms })
     local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
         sessions = sessions, service = service, placement = placement, audit = options.audit })
-    local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings }
+    local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms }
     function gameplay.status() return ready and inventory.status() and options.registry.status() end
     function gameplay.load()
         ready = false
@@ -75,7 +122,7 @@ function OSSecurity.Gameplay.new(options)
         return controller.handle(source, request)
     end
     function gameplay.drop(source) controller.drop(source) end
-    function gameplay.clear() ready = false; controller.clear() end
+    function gameplay.clear() ready = false; controller.clear(); alarms.clear() end
     local commands = OSSecurity.GameplayCommands.register({ sites = options.sites, register = options.register, reply = options.reply, permissions = options.permissions,
         identity = identity, inventory = inventory, holdings = holdings, registry = options.registry, world = options.world, ready = gameplay.status })
     function gameplay.anchorAt(source, payload)

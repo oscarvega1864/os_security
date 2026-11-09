@@ -52,14 +52,22 @@ function OSSecurity.InstallationService.new(options)
         end
         return result
     end
+    -- Producto instalable a partir del kit usado (camara por defecto) o del modelo de una instalacion.
+    local function product(kit) return config.Products[kit or 'os_cctv_kit'] end
+    local function productOfModel(model)
+        for _, definition in pairs(config.Products) do if definition.model == model then return definition end end
+    end
+    service.productOfModel = productOfModel
     -- Herramientas (no se consumen) y materiales del actor, en el registro local o en el proveedor externo.
-    function holdingsCheck(actor)
-        if not options.holdings.has(actor, 'os_cctv_kit', 1) then return 'No posee un kit CCTV.' end
+    function holdingsCheck(actor, definition)
+        definition = definition or product()
+        for item, amount in pairs(definition.materials) do
+            if not options.holdings.has(actor, item, amount) then
+                return OSSecurity.ItemCatalog[item].category == 'kit' and ('No posee: ' .. OSSecurity.ItemCatalog[item].name .. '.') or 'Faltan materiales de instalacion.'
+            end
+        end
         for _, item in ipairs(config.Tools) do
             if not options.holdings.has(actor, item, 1) then return 'Faltan herramientas de instalacion.' end
-        end
-        for item, amount in pairs(config.Materials) do
-            if not options.holdings.has(actor, item, amount) then return 'Faltan materiales de instalacion.' end
         end
         return nil
     end
@@ -82,13 +90,15 @@ function OSSecurity.InstallationService.new(options)
         end
         return found
     end
-    function service.begin(source, session)
+    function service.begin(source, session, kit)
+        local definition = product(kit)
+        if not definition then return nil, 'Producto no instalable.' end
         if session.actor.kind ~= 'operations' or not config.Profiles[session.actor.role].install then return nil, 'Perfil sin permiso de instalacion.' end
         local point, bucket = world(source)
         if not point then return nil, bucket end
         local snapshot, err = options.inventory.snapshot()
         if not snapshot then return nil, err end
-        local missing = holdingsCheck(session.actor)
+        local missing = holdingsCheck(session.actor, definition)
         if missing then return nil, missing end
         local mounts = {}
         for id, anchor in pairs(snapshot.anchors) do
@@ -102,12 +112,13 @@ function OSSecurity.InstallationService.new(options)
         end
         table.sort(mounts, function(a, b) return a.id < b.id end)
         if #mounts == 0 then return nil, 'No hay un montaje libre asignado y cercano.' end
-        contexts[source] = { token = session.token, origin = point, bucket = bucket, expires = options.now() + config.PlacementSeconds }
+        contexts[source] = { token = session.token, origin = point, bucket = bucket, expires = options.now() + config.PlacementSeconds, kit = kit or 'os_cctv_kit' }
         watch()
-        return { model = config.CameraModel, mounts = mounts, maxDistance = config.PlacementDistance, seconds = config.PlacementSeconds }
+        return { model = definition.model, mounts = mounts, maxDistance = config.PlacementDistance, seconds = config.PlacementSeconds }
     end
     local function finalize(installation, device)
-        if device.type ~= 'cctv_camera' or device.model ~= installation.model or device.owner ~= installation.owner
+        local definition = productOfModel(installation.model)
+        if not definition or device.type ~= definition.deviceType or device.model ~= installation.model or device.owner ~= installation.owner
             or not util.equal(device.position, installation.position) or not util.equal(device.rotation, installation.rotation) then
             return nil, 'El dispositivo no coincide con la reserva; requiere revision.'
         end
@@ -152,14 +163,15 @@ function OSSecurity.InstallationService.new(options)
             -- El personaje debe seguir siendo el de la sesion: nunca cobrar a otro personaje de la cuenta.
             holder = options.holdings.holder(source)
             if not holder or holder ~= session.actor.holder then return nil, 'El personaje activo cambio; vuelve a abrir la tablet.' end
-            local missing = holdingsCheck(session.actor)
+            local missing = holdingsCheck(session.actor, product(context.kit))
             if missing then return nil, missing end
         end
+        local definition = product(context.kit)
         local installation = {
             id = ('g6i_%010d'):format(snapshot.nextInstallation), anchorId = anchor.id, owner = anchor.owner,
             installer = session.actor.principal, position = position, rotation = canonical(proposal.rotation, 2), bucket = bucket,
-            model = config.CameraModel, status = 'pending', createdAt = options.now(), updatedAt = options.now(),
-            materials = util.copy(config.Materials), tools = util.copy(config.Tools), holder = holder
+            model = definition.model, status = 'pending', createdAt = options.now(), updatedAt = options.now(),
+            materials = util.copy(definition.materials), tools = util.copy(config.Tools), holder = holder
         }
         local reserved, reserveError = options.inventory.apply({ kind = 'reserve', installation = installation })
         if not reserved then return nil, reserveError end
@@ -170,7 +182,7 @@ function OSSecurity.InstallationService.new(options)
             if not cancel(installation, 'creation_rejected') then return nil, 'Cobro fallido y devolucion pendiente; revisar servidor.' end
             return nil, takeError or 'Faltan materiales de instalacion.'
         end
-        local device, createError = options.registry.create(0, { type = 'cctv_camera', model = installation.model,
+        local device, createError = options.registry.create(0, { type = definition.deviceType, model = installation.model,
             owner = installation.owner, position = position, rotation = installation.rotation, metadata = { installationId = installation.id } })
         if not device then
             if options.registry.status() then
@@ -218,7 +230,8 @@ function OSSecurity.InstallationService.new(options)
                 local device = options.registry.get(0, installation.deviceId)
                 if device and device.state ~= 'retired' and device.metadata.installationId == installation.id
                     and util.equal(device.position, installation.position) then
-                    result[#result + 1] = { id = device.id, model = installation.model, position = util.copy(installation.position), rotation = util.copy(installation.rotation) }
+                    result[#result + 1] = { id = device.id, model = installation.model, position = util.copy(installation.position),
+                        rotation = util.copy(installation.rotation), kind = device.type }
                 end
             end
         end

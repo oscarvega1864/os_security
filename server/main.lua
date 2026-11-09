@@ -102,7 +102,10 @@ if itemProvider == 'os_inventory' then
         end,
         count = function(holder, item) return exports[inventoryResource]:GetItemCount(holder, item) end,
         add = function(holder, item, amount, operationId) return exports[inventoryResource]:AddItem(holder, item, amount, nil, operationId) end,
-        remove = function(holder, item, amount, operationId) return exports[inventoryResource]:RemoveItem(holder, item, amount, nil, operationId) end
+        remove = function(holder, item, amount, operationId) return exports[inventoryResource]:RemoveItem(holder, item, amount, nil, operationId) end,
+        inventory = function(holder) return exports[inventoryResource]:GetInventory(holder) end,
+        addMeta = function(holder, item, amount, meta, operationId) return exports[inventoryResource]:AddItem(holder, item, amount, meta, operationId) end,
+        removeMeta = function(holder, item, amount, meta, operationId) return exports[inventoryResource]:RemoveItem(holder, item, amount, meta, operationId) end
     })
 elseif itemProvider ~= 'standalone' then
     storageLog(('ossecurity_items=%s no reconocido; se usa standalone.'):format(itemProvider))
@@ -134,6 +137,38 @@ local sites = sitesResource ~= 'none' and OSSecurity.Sites.new({
     end
 }) or nil
 
+-- Efectos de las alarmas en el juego: jugadores conectados, hash del codigo, sirena y avisos.
+local alarmEffects = {
+    players = function()
+        local list = {}
+        for _, value in ipairs(GetPlayers()) do
+            local player = tonumber(value)
+            local ped = GetPlayerPed(player)
+            if ped and ped ~= 0 then
+                local point = GetEntityCoords(ped)
+                list[#list + 1] = { source = player, position = { x = point.x, y = point.y, z = point.z }, bucket = GetPlayerRoutingBucket(player) }
+            end
+        end
+        return list
+    end,
+    hash = function(pin) return GetPasswordHash(pin) end,
+    verify = function(pin, hash) return VerifyPasswordHash(pin, hash) == true end,
+    serial = function() return ('%08X'):format(math.random(0, 0x7fffffff)) end,
+    who = function(player)
+        if GetResourceState(identityResource) == 'started' then
+            local ok, dto = pcall(function() return exports[identityResource]:GetActiveCharacter(player) end)
+            if ok and type(dto) == 'table' and type(dto.alias) == 'string' then return dto.alias:sub(1, 64) end
+        end
+        return ('jugador %d'):format(player)
+    end,
+    entry = function(player, device, seconds) TriggerClientEvent('os_security:alarm:entry', player, device.id, seconds, device.position) end,
+    siren = function(deviceId, device)
+        local sound = OSSecurity.GameplayConfig.Alarm.Siren
+        TriggerClientEvent('os_security:alarm:siren', -1, deviceId, device and device.position or nil, sound.name, sound.set)
+    end,
+    notify = function(player, text, kind, position) TriggerClientEvent('os_security:alarm:alert', player, text, kind, position) end
+}
+
 -- El salt nativo se obtiene una sola vez: bcrypt no debe bloquear cada apertura.
 -- El nonce siempre se valida junto al source, secuencia, identidad, item y ACE.
 local sessionSalt
@@ -157,6 +192,7 @@ local gameplay = OSSecurity.Gameplay.new({
     log = storageLog,
     items = externalItems,
     employment = employment,
+    alarmEffects = alarmEffects,
     sites = sites,
     audit = function(action, source, deviceId)
         local safeId = OSSecurity.DeviceValidation.id(deviceId) and deviceId or '-'
@@ -190,7 +226,53 @@ RegisterNetEvent('os_security:g6:anchorAim', function(payload)
     TriggerClientEvent('os_security:g6:anchorResult', player, message ~= nil, message or err)
 end)
 
+-- Teclado y lector de chapa de las alarmas (junto al dispositivo; el servidor comprueba la distancia).
+local alarmRate = {}
+local function alarmAllowed(player)
+    local now = GetGameTimer()
+    local entry = alarmRate[player]
+    if not entry or now - entry.start > 2000 then entry = { start = now, count = 0 }; alarmRate[player] = entry end
+    entry.count = entry.count + 1
+    return entry.count <= 5 and gameplay.status()
+end
+local function alarmCall(player, callback)
+    local ok, result, err = pcall(callback)
+    if not ok then storageLog('Fallo en la alarma; no se registra la excepcion.'); return nil, OSSecurity.Brand.Text.failed end
+    return result, err
+end
+RegisterNetEvent('os_security:alarm:panel', function(deviceId)
+    local player = source
+    if not alarmAllowed(player) then return end
+    local data, err = alarmCall(player, function() return gameplay.alarms.panel(player, deviceId) end)
+    TriggerClientEvent('os_security:alarm:panelData', player, data, err)
+end)
+RegisterNetEvent('os_security:alarm:keypad', function(deviceId, action, pin)
+    local player = source
+    if not alarmAllowed(player) then return end
+    local result, err = alarmCall(player, function() return gameplay.alarms.keypad(player, deviceId, action, pin) end)
+    local panel = gameplay.alarms.panel(player, deviceId)
+    TriggerClientEvent('os_security:alarm:result', player, result, err, panel)
+end)
+RegisterNetEvent('os_security:alarm:tag', function(deviceId)
+    local player = source
+    if not alarmAllowed(player) then return end
+    local result, err = alarmCall(player, function() return gameplay.alarms.tag(player, deviceId) end)
+    local panel = gameplay.alarms.panel(player, deviceId)
+    TriggerClientEvent('os_security:alarm:result', player, result, err, panel)
+end)
+CreateThread(function()
+    while true do
+        Wait(1000)
+        if gameplay.status() then
+            local ok = pcall(gameplay.alarms.tick)
+            if not ok then storageLog('Fallo en la vigilancia de alarmas; se reintentara.') end
+        end
+    end
+end)
+
 AddEventHandler('playerDropped', function()
+    alarmRate[tonumber(source)] = nil
+    gameplay.alarms.forget(tonumber(source))
     lastAnchorAim[tonumber(source)] = nil
     permissions.forget(tonumber(source))
     gameplay.drop(tonumber(source))

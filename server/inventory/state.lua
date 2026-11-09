@@ -44,6 +44,28 @@ function state.site(value)
         and util.integer(value.id, 1, 2147483646)
 end
 
+-- Alarma de una central: modo, codigo (hash), chapas autorizadas y ultimos eventos.
+state.AlarmModes = { disarmed = true, armed = true, partial = true }
+state.AlarmEvents = { armed = true, partial = true, disarmed = true, triggered = true, wrong_pin = true, lockout = true, pin_set = true, tag_added = true, tags_revoked = true, entry = true }
+function state.alarm(value)
+    local limits = OSSecurity.GameplayConfig.Alarm
+    if not util.object(value, { mode = true, pin = true, tags = true, events = true, updatedAt = true }) or not state.AlarmModes[value.mode]
+        or (value.pin ~= nil and not util.text(value.pin, 200)) or not util.integer(value.updatedAt, 0, 253402300799)
+        or (value.tags ~= nil and not util.object(value.tags)) or (value.events ~= nil and not util.array(value.events, limits.MaxEvents)) then
+        return false
+    end
+    local tags = 0
+    for serial, enabled in pairs(value.tags or {}) do
+        tags = tags + 1
+        if tags > limits.MaxTags or type(serial) ~= 'string' or not serial:match('^[%w%-]+$') or #serial > 32 or enabled ~= true then return false end
+    end
+    for _, event in ipairs(value.events or {}) do
+        if not util.object(event, { kind = true, at = true, by = true }) or not state.AlarmEvents[event.kind]
+            or not util.integer(event.at, 0, 253402300799) or (event.by ~= nil and not util.text(event.by, 64)) then return false end
+    end
+    return true
+end
+
 local function placement(value)
     return util.object(value, { id = true, anchorId = true, owner = true, installer = true, position = true,
         rotation = true, bucket = true, model = true, status = true, createdAt = true, updatedAt = true, deviceId = true, reason = true,
@@ -61,8 +83,13 @@ local function placement(value)
 end
 
 local function materials(value, limits)
-    if not util.object(value.materials) or not util.array(value.tools, 8)
-        or not util.integer(value.materials.os_cctv_kit, 1, limits.MaxItemQuantity) then return false end
+    if not util.object(value.materials) or not util.array(value.tools, 8) then return false end
+    -- Al menos un kit (el que define el producto instalado).
+    local kits = 0
+    for item, amount in pairs(value.materials) do
+        if OSSecurity.ItemCatalog[item] and OSSecurity.ItemCatalog[item].category == 'kit' and util.integer(amount, 1, limits.MaxItemQuantity) then kits = kits + 1 end
+    end
+    if kits == 0 then return false end
     local count = 0
     for item, amount in pairs(value.materials) do
         count = count + 1
@@ -78,7 +105,7 @@ end
 
 local function operation(op, limits)
     if not util.object(op, { kind = true, at = true, principal = true, item = true, amount = true,
-        deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true, site = true })
+        deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true, site = true, alarm = true })
         or not util.integer(op.at, 0, 253402300799) then return false end
     local fields = { kind = true, at = true }
     if op.kind == 'grant' or op.kind == 'migrate' then
@@ -93,6 +120,9 @@ local function operation(op, limits)
         -- Sin 'site' se retira el vinculo.
         fields.deviceId, fields.site = true, true
         if not OSSecurity.DeviceValidation.id(op.deviceId) or (op.site ~= nil and not state.site(op.site)) then return false end
+    elseif op.kind == 'alarm' then
+        fields.deviceId, fields.alarm = true, true
+        if not OSSecurity.DeviceValidation.id(op.deviceId) or not state.alarm(op.alarm) then return false end
     elseif op.kind == 'anchor' then
         fields.anchor = true
         if not state.anchor(op.anchor) then return false end
@@ -123,11 +153,11 @@ end
 
 function state.snapshot(snapshot, limits)
     if not util.object(snapshot, { schemaVersion = true, revision = true, nextInstallation = true,
-        accounts = true, anchors = true, installations = true, lastOperation = true, sites = true })
+        accounts = true, anchors = true, installations = true, lastOperation = true, sites = true, alarms = true })
         or snapshot.schemaVersion ~= 1 or not util.integer(snapshot.revision, 0, 9007199254740000)
         or not util.integer(snapshot.nextInstallation, 1, limits.MaxInstallations + 1)
         or not util.object(snapshot.accounts) or not util.object(snapshot.anchors) or not util.object(snapshot.installations)
-        or (snapshot.sites ~= nil and not util.object(snapshot.sites))
+        or (snapshot.sites ~= nil and not util.object(snapshot.sites)) or (snapshot.alarms ~= nil and not util.object(snapshot.alarms))
         or (snapshot.revision == 0 and snapshot.lastOperation ~= nil)
         or (snapshot.revision > 0 and not operation(snapshot.lastOperation, limits)) then return nil, 'Formato de inventario incompatible.' end
     local count, deviceIds = 0, {}
@@ -189,6 +219,9 @@ function state.snapshot(snapshot, limits)
             return nil, 'Vinculo de propiedad o negocio invalido.'
         end
     end
+    for deviceId, alarm in pairs(snapshot.alarms or {}) do
+        if not OSSecurity.DeviceValidation.id(deviceId) or not state.alarm(alarm) then return nil, 'Alarma invalida.' end
+    end
     if snapshot.revision == 0 and (next(snapshot.accounts) or next(snapshot.anchors) or next(snapshot.installations)) then
         return nil, 'Inventario inicial no vacio.'
     end
@@ -219,6 +252,9 @@ function state.apply(snapshot, op, limits)
         target.migrated[op.item] = (target.migrated[op.item] or 0) + op.amount
     elseif op.kind == 'access' then
         account(op.principal).grants[op.deviceId] = op.role ~= 'none' and op.role or nil
+    elseif op.kind == 'alarm' then
+        nextState.alarms = nextState.alarms or {}
+        nextState.alarms[op.deviceId] = util.copy(op.alarm)
     elseif op.kind == 'site' then
         nextState.sites = nextState.sites or {}
         nextState.sites[op.deviceId] = op.site and util.copy(op.site) or nil

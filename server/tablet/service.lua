@@ -33,6 +33,7 @@ function OSSecurity.TabletService.new(options)
             health = diagnosis.health, components = components, lastIntervention = latest, actions = actions,
             physical = installation ~= nil and installation.status == 'committed' and installation.deviceId == device.id,
             site = site and (options.sites and options.sites.label(site) or OSSecurity.Sites.Labels[site.kind] .. ' ' .. site.id) or nil,
+            alarm = device.type == 'alarm_panel' and options.alarms and options.alarms.summary(device) or nil,
             remoteVideo = false }
     end
     function service.inventory(actor)
@@ -82,7 +83,7 @@ function OSSecurity.TabletService.new(options)
             if not current then return nil, 'Registro no disponible.' end
             for _, entry in ipairs(current.items) do
                 local device = options.registry.get(0, entry.id)
-                if device and options.auth.access(actor, device, 'view') and (module ~= 'cctv' or device.type == 'cctv_camera') then
+                if device and options.auth.access(actor, device, 'view') and (module ~= 'cctv' or device.type == 'cctv_camera') and (module ~= 'alarms' or device.type == 'alarm_panel') then
                     accessible[#accessible + 1] = device
                 end
             end
@@ -102,6 +103,21 @@ function OSSecurity.TabletService.new(options)
         local device, err = service.device(actor, args.deviceId)
         if not device then return nil, err end
         return summary(actor, device)
+    end
+    -- Alarma desde la tablet: armar, armar parcial, desarmar, codigo, chapa y revocar chapas.
+    function service.alarm(actor, args)
+        if not util.object(args, { deviceId = true, action = true, pin = true }) or not options.alarms then return nil, 'Operacion no valida.' end
+        local device, err = service.device(actor, args.deviceId)
+        if not device then return nil, err end
+        local result, reason
+        if args.action == 'pin' then result, reason = options.alarms.setPin(actor, device, args.pin)
+        elseif args.action == 'tag' then result, reason = options.alarms.programTag(actor, device)
+        elseif args.action == 'revoke' then result, reason = options.alarms.revokeTags(actor, device)
+        else result, reason = options.alarms.remote(actor, device, args.action) end
+        if not result then return nil, reason end
+        local updated = summary(actor, device)
+        updated.notice = result.message
+        return updated
     end
     function service.maintain(actor, args)
         if not util.object(args, { deviceId = true, action = true, slot = true }) then return nil, 'Operacion no valida.' end

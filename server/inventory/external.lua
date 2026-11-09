@@ -74,5 +74,33 @@ function OSSecurity.ExternalItems.new(api)
         end
         return true
     end
+    -- Chapas de alarma: objeto g6_alarm_tag con metadatos { reference = dispositivo, serial }.
+    function items.tagSerials(holder, deviceId)
+        local list = {}
+        if not OSSecurity.InventoryState.holder(holder) or not api.inventory then return list end
+        local inventory = safe(api.inventory, holder)
+        if type(inventory) ~= 'table' or type(inventory.slots) ~= 'table' then return list end
+        for _, entry in pairs(inventory.slots) do
+            local meta = type(entry) == 'table' and entry.metadata
+            if entry.name == 'g6_alarm_tag' and type(meta) == 'table' and meta.reference == deviceId and type(meta.serial) == 'string' then
+                list[#list + 1] = meta.serial
+            end
+        end
+        return list
+    end
+    -- Gasta una chapa en blanco y entrega la programada; si la entrega falla, devuelve la de blanco.
+    function items.makeTag(holder, deviceId, serial)
+        if not OSSecurity.InventoryState.holder(holder) or not api.addMeta or not api.removeMeta then return nil, 'Proveedor sin soporte de metadatos.' end
+        local base = 'g6tag:' .. serial
+        if safe(api.removeMeta, holder, 'g6_alarm_tag', 1, {}, base .. ':blank') ~= true then
+            return nil, 'Necesitas una chapa en blanco (' .. OSSecurity.ItemCatalog.g6_alarm_tag.name .. ').'
+        end
+        local ok, err = safe(api.addMeta, holder, 'g6_alarm_tag', 1, { label = 'Chapa ' .. deviceId, reference = deviceId, serial = serial }, base .. ':programmed')
+        if ok ~= true then
+            safe(api.addMeta, holder, 'g6_alarm_tag', 1, {}, base .. ':refund')
+            return nil, err or 'No se pudo programar la chapa.'
+        end
+        return true
+    end
     return items
 end

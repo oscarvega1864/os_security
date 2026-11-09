@@ -484,9 +484,10 @@ test('FiveM wiring: startup, commands, restart persistence and safe file errors'
     local originalPrint, originalOpen = print, io.open
     local function boot(nativeReturn)
         handlers, commands = {}, {}
-        RegisterNetEvent = function(name) assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim', 'Unexpected network event') end
+        RegisterNetEvent = function(name) assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name:match('^os_security:alarm:'), 'Unexpected network event') end
         RegisterCommand = function(name, callback) commands[name] = callback end
         AddEventHandler = function(name, callback) handlers[name] = callback end
+        CreateThread = function() end -- bucles periodicos (alarmas) fuera de la prueba
         GetCurrentResourceName = function() return 'os_security' end
         GetResourceState = function() return 'started' end
         GetConvar = function(_, default) return default end -- sin convars: proveedor standalone

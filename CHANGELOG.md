@@ -10,6 +10,10 @@
 - Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
   (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
   petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
+- Alarmas de propiedades y negocios: kit de alarma instalable (productos genéricos de instalación), teclado
+  en la pared con pinpad y lector de chapa, modos total y parcial, retardos de salida y entrada, bloqueo
+  por códigos incorrectos, sirena, avisos al titular y a G6 de servicio, historial y control desde la
+  tablet Client (código con hash, chapas programables y revocables). Sección Alarmas habilitada.
 - Minijuegos de instalación interactivos con ratón: taladrar cuatro anclajes (mantener sobre la marca,
   temperatura de la broca y resbalones), atornillar girando el ratón en sentido horario (fuerza y roscas
   pasadas) y enlazar los cables arrastrándolos hasta su borne. Prueba de navegador que los completa.

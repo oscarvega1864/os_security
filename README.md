@@ -101,6 +101,27 @@ y **conectar los cables** a su borne del mismo color (tres errores como máximo)
 cancelas, la colocación se anula y no se consume material. El minijuego es solo de interfaz; el
 servidor revalida zona, plano, giro, distancia y objetos al confirmar.
 
+## Alarmas (central con teclado)
+
+El **kit de alarma** (`os_alarm_kit`) se instala igual que una cámara (zona con `/g6anchor`, *Usar*
+el kit, colocación y minijuego) y crea una central `alarm_panel` con un teclado en la pared
+(`prop_ld_keypad_01`, configurable en `Products`). Vincúlala a la propiedad o negocio con
+`osg6 site` para que el titular la gestione.
+
+- **Teclado (E junto a él):** pinpad con código de 4-6 cifras y botones **Total**, **Parcial** y
+  **Desarmar**; **Acercar chapa** usa una chapa programada (si está armada, desarma; si no, arma).
+  Tres códigos incorrectos bloquean el teclado 60 s y avisan al titular.
+- **Modos:** *total* salta con cualquiera dentro de la zona (10 m); *parcial* solo con personas
+  sin acceso al dispositivo. Retardo de salida al armar (30 s) y de entrada al detectar a alguien
+  (30 s, con pitidos) para desarmar.
+- **Salto:** sirena en la zona durante 90 s (sonido configurable en `Alarm.Siren`; si el sonido no
+  existe en el juego, la alarma funciona igual sin él), aviso y marcador en el mapa al titular y a
+  los empleados de Gruppe Sechs de servicio, y registro en el historial.
+- **Tablet Client** (sección Alarmas o detalle del dispositivo): armar, armar parcial y desarmar
+  a distancia sin código, crear o cambiar el código, programar chapas (gasta una chapa en blanco
+  `g6_alarm_tag` y entrega la programada) y revocarlas, e historial de eventos.
+- El código se guarda con hash (bcrypt). Las chapas requieren `ossecurity_items=os_inventory`.
+
 ## Propiedades y negocios
 
 Un dispositivo se puede vincular a una propiedad o negocio de os_devtools. El titular, con

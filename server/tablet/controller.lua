@@ -45,7 +45,7 @@ function OSSecurity.TabletController.new(options)
             elseif definition.usable == 'placement' then
                 local opened, openError = options.sessions.open(source, 'operations')
                 if not opened then return failure(openError, true) end
-                local placement, placementError = options.placement.begin(source, opened)
+                local placement, placementError = options.placement.begin(source, opened, request.args.item)
                 if not placement then options.sessions.close(source); return failure(placementError, true) end
                 return { ok = true, session = options.service.session(opened), placement = placement }
             else return failure('Este articulo no tiene una funcion implementada.') end
@@ -53,6 +53,8 @@ function OSSecurity.TabletController.new(options)
             result, reason = options.service.list(actor, request.args)
         elseif actor.kind ~= 'inventory' and request.action == 'device' then
             result, reason = options.service.get(actor, request.args)
+        elseif actor.kind ~= 'inventory' and request.action == 'alarm' then
+            result, reason = options.service.alarm(actor, request.args)
         elseif actor.kind == 'operations' and request.action == 'maintain' then
             result, reason = options.service.maintain(actor, request.args)
         elseif actor.kind == 'operations' and request.action == 'place_begin' and next(request.args) == nil then

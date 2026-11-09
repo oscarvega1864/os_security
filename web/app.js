@@ -59,6 +59,35 @@
       strip.append(list); content.append(strip);
     }
   }
+  // Alarma: estado, armar/desarmar sin codigo (como la app del fabricante), codigo, chapas e historial.
+  function alarmBlock(id, alarm) {
+    const A = state.session.brand.Text.alarm || {};
+    const block = el('section', null, `alarm-block mode-${alarm.mode}${alarm.triggered ? ' triggered' : ''}`);
+    const head = el('div', null, 'alarm-head');
+    head.append(el('span', A.title || 'Alarma', 'overline'), el('strong', alarm.triggered ? (A.triggered || 'SALTO DE ALARMA') : (A.modes?.[alarm.mode] || alarm.mode), 'alarm-mode'));
+    block.append(head);
+    const send = async (action, extra = {}) => {
+      const result = await request('alarm', { deviceId: id, action, ...extra });
+      if (result) { await showDevice(id); if (result.notice) message(result.notice); }
+    };
+    const modes = el('div', null, 'actions');
+    modes.append(button(A.arm || 'Armar total', () => send('arm'), alarm.mode === 'armed'), button(A.partial || 'Armar parcial', () => send('partial'), alarm.mode === 'partial'),
+      button(A.disarm || 'Desarmar', () => send('disarm'), alarm.mode === 'disarmed' && !alarm.triggered));
+    block.append(modes);
+    const pinRow = el('div', null, 'alarm-row');
+    const pin = el('input'); pin.type = 'password'; pin.inputMode = 'numeric'; pin.maxLength = 6; pin.placeholder = alarm.hasPin ? (A.newPin || 'Nuevo codigo') : (A.createPin || 'Crear codigo (4-6 cifras)');
+    pinRow.append(pin, button(A.savePin || 'Guardar codigo', () => { if (/^\d{4,6}$/.test(pin.value)) send('pin', { pin: pin.value }); else message(A.pinFormat || 'El codigo debe tener entre 4 y 6 cifras.'); }));
+    block.append(pinRow);
+    const tags = el('div', null, 'alarm-row');
+    tags.append(el('span', `${A.tags || 'Chapas'}: ${alarm.tags}`, 'subtle'), button(A.programTag || 'Programar chapa', () => send('tag')), button(A.revokeTags || 'Revocar chapas', () => send('revoke'), alarm.tags === 0));
+    block.append(tags);
+    if (Array.isArray(alarm.events) && alarm.events.length) {
+      const list = el('div', null, 'alarm-events');
+      for (const event of alarm.events) list.append(el('div', `${date(event.at)} · ${A.events?.[event.kind] || event.kind}${event.by ? ' · ' + event.by : ''}`, 'subtle'));
+      block.append(list);
+    }
+    return block;
+  }
   async function showDevice(id) {
     const device = await request('device', { deviceId: id }); if (!device) return;
     state.selected = id;
@@ -71,6 +100,7 @@
     }
     content.append(meta);
     if (device.type === 'cctv_camera') content.append(el('div', text('noSignal'), 'notice'));
+    if (device.alarm) content.append(alarmBlock(id, device.alarm));
     const actions = el('div', null, 'actions');
     const act = async (action, slot) => { const result = await request('maintain', { deviceId: id, action, ...(slot ? { slot } : {}) }); if (result) await showDevice(id); };
     if (device.actions?.inspect && device.schemaVersion === 2) actions.append(button(text('inspect'), () => act('inspect')));
@@ -93,6 +123,7 @@
     hero(content, null, text('inventoryHero'));
     if (state.module === 'installations' && state.session.canInstall) {
       content.append(button(text('installationAction'), () => request('use', { item: 'os_cctv_kit' }), !data.items.some(item => item.id === 'os_cctv_kit' && item.count > 0)));
+      content.append(button(text('alarmInstallAction'), () => request('use', { item: 'os_alarm_kit' }), !data.items.some(item => item.id === 'os_alarm_kit' && item.count > 0)));
       content.append(el('p', text('placementHelp'), 'subtle'));
     }
     const grid = el('div', null, 'grid');

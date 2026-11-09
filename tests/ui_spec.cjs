@@ -73,7 +73,7 @@ async function main() {
     await evaluate(`window.__open('client')`);
     await until(`document.querySelectorAll('.card').length===1`);
     assert(await evaluate(`document.getElementById('edition').textContent==='G6 Client' && !document.querySelector('.tablet.operations')`));
-    assert(await evaluate(`Array.from(document.querySelectorAll('nav button')).some(b=>b.disabled && b.textContent.includes('Alarmas'))`));
+    assert(await evaluate(`Array.from(document.querySelectorAll('nav button')).some(b=>b.disabled && b.textContent.includes('Cerraduras'))`));
     assert(await evaluate(`document.getElementById('app').textContent.indexOf('Reparar')===-1 && document.querySelector('video')===null`));
     fs.writeFileSync(path.join(output, 'client.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
     console.log('PASS Client identity, disabled future modules and absence of repair/video controls');
@@ -148,6 +148,30 @@ async function main() {
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
     await until(`document.getElementById('minigame').hidden && window.__calls.some(x=>x.endpoint==='minigame' && x.body.ok===false && x.body.reason==='cancelled')`);
     console.log('PASS Escape cancels the minigame and reports it once');
+    // Teclado de alarma (pinpad) y bloque de alarma de la tablet.
+    await evaluate(`window.__calls.length = 0; window.postMessage({ type: 'pinpad', data: { deviceId: 'osd_0000000009', label: 'Propiedad 200', mode: 'armed', hasPin: true, tags: true, locked: 0, entry: 22, triggered: false }, text: { pad: window.__brand.Text.alarm.pad, pinFormat: 'formato' } }, '*')`);
+    await until(`!document.getElementById('pinpad').hidden && document.querySelector('.pp-status').textContent.includes('22')`);
+    for (const key of ['1', '2', '3', '4']) await evaluate(`Array.from(document.querySelectorAll('.pp-key')).find(b => b.textContent === '${key}').click()`);
+    assert(await evaluate(`document.querySelector('.pp-screen').textContent === '••••'`));
+    fs.writeFileSync(path.join(output, 'pinpad.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await evaluate(`document.querySelector('.pp-mode.disarm').click()`);
+    await until(`window.__calls.some(x => x.endpoint === 'pinpad' && x.body.action === 'disarm' && x.body.pin === '1234')`);
+    await evaluate(`window.postMessage({ type: 'pinpadResult', ok: false, text: 'Codigo incorrecto (1/3).', data: null }, '*')`);
+    await until(`document.querySelector('.pp-message.error')?.textContent === 'Codigo incorrecto (1/3).'`);
+    await evaluate(`document.querySelector('.pp-tag').click()`);
+    await until(`window.__calls.some(x => x.endpoint === 'pinpad' && x.body.action === 'tag')`);
+    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
+    await until(`document.getElementById('pinpad').hidden && window.__calls.some(x => x.endpoint === 'pinpadClose')`);
+    console.log('PASS alarm pinpad: masked code, disarm and tag requests, errors and Escape');
+    await evaluate(`window.__fail = false; window.__device.type = 'alarm_panel'; window.__device.alarm = { mode: 'armed', hasPin: true, tags: 2, triggered: true, events: [{ kind: 'triggered', at: 1794100000 }, { kind: 'armed', at: 1794099000, by: '<b>x</b>' }] }; window.__open('client')`);
+    await until(`document.querySelectorAll('.card').length === 1`);
+    await evaluate(`Array.from(document.querySelectorAll('.card button')).find(b => b.textContent === window.__brand.Text.details).click()`);
+    await until(`document.querySelector('.alarm-block.triggered') && document.querySelectorAll('.alarm-events div').length === 2`);
+    assert(await evaluate(`document.querySelector('.alarm-mode').textContent === window.__brand.Text.alarm.triggered && !document.querySelector('.alarm-events b')`));
+    fs.writeFileSync(path.join(output, 'alarm-tablet.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await evaluate(`window.__calls.length = 0; Array.from(document.querySelectorAll('.alarm-block button')).find(b => b.textContent === window.__brand.Text.alarm.disarm).click()`);
+    await until(`window.__calls.some(x => x.endpoint === 'request' && x.body.action === 'alarm' && x.body.args.action === 'disarm')`);
+    console.log('PASS tablet alarm block shows mode, alert, history as text and sends remote disarm');
     console.log(`UI screenshots: ${path.relative(root, output)}`);
   } finally { socket?.close(); child.kill(); }
 }
