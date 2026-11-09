@@ -59,7 +59,7 @@ function OSSecurity.ClientTablet.new(options)
                 controller.request(proposal and 'place_confirm' or 'place_cancel', proposal or {}, function(result)
                     controller.placing = false; options.cancelPlacement()
                     if failure and result.ok then options.notify(failure, 'error'); return end
-                    options.notify(result.ok and (result.data and result.data.id and ('CCTV registrado: ' .. result.data.id) or 'Colocacion cancelada.') or result.error,
+                    options.notify(result.ok and (result.data and result.data.id and ('Dispositivo instalado: ' .. result.data.id) or 'Colocacion cancelada.') or result.error,
                         result.ok and (result.data and result.data.id and 'success' or 'info') or 'error')
                     if result.ok then controller.stream() end
                 end)

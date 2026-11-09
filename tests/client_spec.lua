@@ -252,6 +252,12 @@ test('Minigame effects attach the phase tool, play the drill sound only while he
     end)
 end)
 
+test('The tablet NUI bridge forwards alarm requests to the server like other device actions', function()
+    local source = io.open('/repo/client/boot.lua', 'rb'):read('a')
+    local allowed = source:match('elseif %(%{ ([^}]+) %}%)%[body%.action%] then controller%.request')
+    assert(allowed and allowed:find('alarm = true', 1, true) and allowed:find('maintain = true', 1, true))
+end)
+
 test('Rapid tablet switching cancels stale animation work and deletes its hand prop', function()
     natives(function(queue, objects, calls)
         local view = OSSecurity.ClientView.new()
