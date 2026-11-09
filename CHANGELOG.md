@@ -10,6 +10,10 @@
 - Perfiles Técnico/Supervisor de la tablet Operations por empleo `gruppe6` de servicio
   (`GetActiveEmployment` de os_devtools), además de los ACE; revocación en la siguiente
   petición al salir de servicio y desactivable con `ossecurity_employment_resource none`.
+- Minijuego de instalación con herramienta en la mano y animación por fase: taladro
+  (`hei_prop_heist_drill`, `anim@heists@fleeca_bank@drilling`) con sonido mientras se mantiene pulsado,
+  destornillador y cableado, más sonidos de acierto y error. Cada modelo, animación y banco de sonido se
+  comprueba en el juego y, si falta, esa parte se omite.
 - Sección **Gruppe Sechs** en el panel y la consola de `os_admin` (opcional): dispositivos, mantenimiento,
   equipo, accesos, vínculos e instalaciones mediante los comandos existentes y su mismo ACE.
 - `osmaint fault <id> <slot> <salud>`: avería controlada de una pieza para pruebas y demostraciones;

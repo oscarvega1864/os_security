@@ -1,13 +1,11 @@
 local view, placement, props = OSSecurity.ClientView.new(), OSSecurity.ClientPlacement.new(), OSSecurity.ClientProps.new()
 local lastUiAlive = GetGameTimer()
+local minigameFx = OSSecurity.MinigameFx.new()
 local minigame = OSSecurity.ClientMinigame.new({
     send = SendNUIMessage,
     focus = function(value) SetNuiFocus(value, value) end,
     timeout = function(callback) SetTimeout(120000, callback) end,
-    animate = function(value)
-        local ped = PlayerPedId()
-        if value then TaskStartScenarioInPlace(ped, 'WORLD_HUMAN_HAMMERING', 0, true) else ClearPedTasks(ped) end
-    end
+    animate = function(value) if value then minigameFx.start() else minigameFx.stop() end end
 })
 local controller = OSSecurity.ClientTablet.new({
     minigame = minigame.run,
@@ -52,6 +50,14 @@ RegisterCommand('g6client', function() controller.open('client') end, false)
 RegisterCommand('g6operations', function() controller.open('operations') end, false)
 
 RegisterNUICallback('minigame', function(body, callback) minigame.finish(body); callback({ ok = true }) end)
+-- Efectos por fase (herramienta, animacion y sonidos); solo visuales y solo durante el minijuego.
+RegisterNUICallback('minigameFx', function(body, callback)
+    callback({ ok = true })
+    if not minigame.active() or type(body) ~= 'table' then return end
+    if type(body.phase) == 'string' then minigameFx.phase(body.phase) end
+    if type(body.drilling) == 'boolean' then minigameFx.drilling(body.drilling) end
+    if type(body.cue) == 'string' then minigameFx.cue(body.cue) end
+end)
 RegisterNUICallback('close', function(_, callback) controller.close(); callback({ ok = true }) end)
 RegisterNUICallback('alive', function(body, callback)
     lastUiAlive = GetGameTimer()

@@ -22,6 +22,7 @@ client_scripts {
     'client/notify.lua',
     'client/anchor.lua',
     'client/minigame.lua',
+    'client/minigame_fx.lua',
     'client/boot.lua'
 }
 

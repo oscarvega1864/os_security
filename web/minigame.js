@@ -10,6 +10,9 @@
   function report(result) {
     fetch(`https://${resource()}/minigame`, { method: 'POST', headers: { 'Content-Type': 'application/json; charset=UTF-8' }, body: JSON.stringify(result) }).catch(() => {});
   }
+  function fx(data) {
+    fetch(`https://${resource()}/minigameFx`, { method: 'POST', headers: { 'Content-Type': 'application/json; charset=UTF-8' }, body: JSON.stringify(data) }).catch(() => {});
+  }
   function stop() { if (run?.frame) cancelAnimationFrame(run.frame); run = null; root.hidden = true; root.replaceChildren(); }
   function finish(ok, reason) { if (!run) return; stop(); report({ ok, reason }); }
   function shell(title, help, step) {
@@ -33,7 +36,7 @@
 
   // Fase 1: mantener ESPACIO (o el boton) con la temperatura en la franja verde hasta perforar.
   function drill() {
-    run.phase = 'drill'; const t = run.text;
+    run.phase = 'drill'; const t = run.text; fx({ phase: 'drill' });
     const { body, status } = shell(t.drillTitle, t.drillHelp, 1);
     const heatBar = el('div', null, 'mg-meter'); const band = el('span', null, 'mg-band'); const heat = el('span', null, 'mg-fill heat'); heatBar.append(band, heat);
     const progressBar = el('div', null, 'mg-meter'); const progress = el('span', null, 'mg-fill progress'); progressBar.append(progress);
@@ -41,7 +44,7 @@
     body.append(el('small', t.heat, 'mg-label'), heatBar, el('small', t.progress, 'mg-label'), progressBar, hold);
     const low = 0.55, high = 0.8; band.style.left = `${low * 100}%`; band.style.width = `${(high - low) * 100}%`;
     const state = { heat: 0, done: 0, holding: false };
-    run.hold = value => { state.holding = value; hold.classList.toggle('active', value); };
+    run.hold = value => { if (state.holding !== value) fx({ drilling: value }); state.holding = value; hold.classList.toggle('active', value); };
     hold.addEventListener('pointerdown', () => run.hold(true)); hold.addEventListener('pointerup', () => run.hold(false)); hold.addEventListener('pointerleave', () => run.hold(false));
     loop(dt => {
       state.heat = Math.max(0, state.heat + (state.holding ? 0.42 : -0.32) * dt);
@@ -51,13 +54,13 @@
       progress.style.width = `${state.done * 100}%`;
       status.textContent = state.heat > high ? t.tooHot : inBand && state.holding ? t.drilling : '';
       if (state.heat >= 1) { finish(false, 'overheat'); return false; }
-      if (state.done >= 1) { run.hold = null; screw(); return false; }
+      if (state.done >= 1) { fx({ drilling: false }); run.hold = null; screw(); return false; }
     });
   }
 
   // Fase 2: pulsar ESPACIO (o el boton) con el cursor dentro de la zona verde. 3 aciertos; 3 fallos cancelan.
   function screw() {
-    run.phase = 'screw'; const t = run.text;
+    run.phase = 'screw'; const t = run.text; fx({ phase: 'screw' });
     const { body, status } = shell(t.screwTitle, t.screwHelp, 2);
     const track = el('div', null, 'mg-track'); const zone = el('span', null, 'mg-zone'); const cursor = el('span', null, 'mg-cursor'); track.append(zone, cursor);
     const screws = el('div', null, 'mg-screws');
@@ -69,10 +72,10 @@
     place(); draw();
     run.press = () => {
       if (state.pos >= state.start && state.pos <= state.start + state.width) {
-        state.hits++; state.speed += 0.2; state.width = Math.max(0.1, state.width - 0.02); status.textContent = t.hit; draw(); place();
+        fx({ cue: 'hit' }); state.hits++; state.speed += 0.2; state.width = Math.max(0.1, state.width - 0.02); status.textContent = t.hit; draw(); place();
         if (state.hits >= 3) { run.press = null; cables(); }
       } else {
-        state.misses++; status.textContent = `${t.miss} (${state.misses}/3)`;
+        fx({ cue: 'miss' }); state.misses++; status.textContent = `${t.miss} (${state.misses}/3)`;
         if (state.misses >= 3) finish(false, 'stripped');
       }
     };
@@ -87,7 +90,7 @@
 
   // Fase 3: unir cada cable con su borne del mismo color. 3 errores cancelan.
   function cables() {
-    run.phase = 'cables'; const t = run.text;
+    run.phase = 'cables'; const t = run.text; fx({ phase: 'cables' });
     const { body, status } = shell(t.cablesTitle, t.cablesHelp, 3);
     const colors = t.colors.map((name, i) => ({ name, key: ['red', 'blue', 'yellow', 'green'][i] }));
     const terminals = [...colors].sort(() => Math.random() - 0.5);
@@ -106,10 +109,10 @@
         if (selected.key === color.key) {
           b.disabled = true; b.classList.add('done', color.key);
           const source = leftButtons[colors.indexOf(selected)]; source.disabled = true; source.classList.remove('selected'); source.classList.add('done');
-          selected = null; connected++; status.textContent = t.connected;
+          fx({ cue: 'connected' }); selected = null; connected++; status.textContent = t.connected;
           if (connected === colors.length) finish(true);
         } else {
-          errors++; status.textContent = `${t.wrongWire} (${errors}/3)`;
+          fx({ cue: 'wrong' }); errors++; status.textContent = `${t.wrongWire} (${errors}/3)`;
           if (errors >= 3) finish(false, 'shorted');
         }
       });

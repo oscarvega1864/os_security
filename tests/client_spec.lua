@@ -5,6 +5,7 @@ dofile('/repo/client/props.lua')
 dofile('/repo/client/placement.lua')
 dofile('/repo/client/anchor.lua')
 dofile('/repo/client/minigame.lua')
+dofile('/repo/client/minigame_fx.lua')
 
 local function fixture()
     local c = { packets = {}, timers = {}, notifications = {}, shown = {}, hidden = 0, cancelled = 0, props = {} }
@@ -221,6 +222,35 @@ local function natives(run)
     for name, value in pairs(originals) do _G[name] = value[1] end
     assert(ok, err)
 end
+
+test('Minigame effects attach the phase tool, play the drill sound only while held and clean everything up', function()
+    natives(function(queue, objects, calls)
+        local sounds, frontend = {}, {}
+        local saved = {}
+        local function stub(name, value) saved[name] = { rawget(_G, name) }; _G[name] = value end
+        stub('CreateObject', function() calls.made = calls.made + 1; objects[calls.made] = true; return calls.made end)
+        stub('DoesAnimDictExist', function() return true end); stub('RemoveAnimDict', function() end)
+        stub('RequestScriptAudioBank', function() return true end); stub('ReleaseNamedScriptAudioBank', function() end)
+        stub('GetSoundId', function() return 77 end)
+        stub('PlaySoundFromEntity', function(id, name) sounds[#sounds + 1] = { id, name } end)
+        stub('StopSound', function(id) sounds.stopped = id end); stub('ReleaseSoundId', function() end)
+        stub('ClearPedTasks', function() calls.cleared = true end)
+        stub('PlaySoundFrontend', function(_, name) frontend[#frontend + 1] = name end)
+        local ok, err = pcall(function()
+            local fx = OSSecurity.MinigameFx.new()
+            fx.start(); queue[#queue]()
+            assert(calls.made == 1 and calls.anim == 1)
+            fx.drilling(true); queue[#queue](); assert(sounds[1][2] == 'Drill')
+            fx.drilling(false); assert(sounds.stopped == 77)
+            fx.phase('screw'); queue[#queue](); assert(calls.deleted == 1 and calls.made == 2) -- cambia la herramienta
+            fx.drilling(true); assert(#sounds == 1) -- sin taladro no suena
+            fx.cue('hit'); fx.cue('nada'); assert(#frontend == 1 and frontend[1] == 'Hack_Success')
+            fx.stop(); assert(next(objects) == nil and calls.cleared)
+        end)
+        for name, value in pairs(saved) do _G[name] = value[1] end
+        assert(ok, err)
+    end)
+end)
 
 test('Rapid tablet switching cancels stale animation work and deletes its hand prop', function()
     natives(function(queue, objects, calls)
