@@ -90,7 +90,8 @@ function OSSecurity.InstallationService.new(options)
         end
         return found
     end
-    function service.begin(source, session, kit)
+    -- anchorId: instalar en una zona concreta (desde la ficha de la tablet); sin el, cualquier zona libre cercana.
+    function service.begin(source, session, kit, anchorId)
         local definition = product(kit)
         if not definition then return nil, 'Producto no instalable.' end
         if session.actor.kind ~= 'operations' or not config.Profiles[session.actor.role].install then return nil, 'Perfil sin permiso de instalacion.' end
@@ -102,7 +103,8 @@ function OSSecurity.InstallationService.new(options)
         if missing then return nil, missing end
         local mounts = {}
         for id, anchor in pairs(snapshot.anchors) do
-            if anchor.installer == session.actor.principal and anchor.bucket == bucket and distance(point, anchor.position) <= config.PlacementDistance then
+            if (anchorId == nil or id == anchorId) and anchor.installer == session.actor.principal and anchor.bucket == bucket
+                and distance(point, anchor.position) <= config.PlacementDistance then
                 local occupied = false
                 for _, installation in pairs(snapshot.installations) do
                     if installation.anchorId == id and installation.status ~= 'cancelled' and installation.status ~= 'removed' then occupied = true end
@@ -111,7 +113,14 @@ function OSSecurity.InstallationService.new(options)
             end
         end
         table.sort(mounts, function(a, b) return a.id < b.id end)
-        if #mounts == 0 then return nil, 'No hay un montaje libre asignado y cercano.' end
+        if #mounts == 0 then
+            local wanted = anchorId and snapshot.anchors[anchorId]
+            if wanted and wanted.installer == session.actor.principal and (wanted.bucket ~= bucket or distance(point, wanted.position) > config.PlacementDistance) then
+                return nil, ('Acercate a la zona %s (a menos de %d m) para instalar.'):format(anchorId, math.floor(config.PlacementDistance))
+            end
+            if anchorId then return nil, 'Zona ocupada o no asignada a ti.' end
+            return nil, 'No hay un montaje libre asignado y cercano.'
+        end
         contexts[source] = { token = session.token, origin = point, bucket = bucket, expires = options.now() + config.PlacementSeconds, kit = kit or 'os_cctv_kit' }
         watch()
         return { model = definition.model, mounts = mounts, maxDistance = config.PlacementDistance, seconds = config.PlacementSeconds }

@@ -104,6 +104,30 @@ OSSecurity.Brand = {
             kinds = { door = 'Puerta', vehicle = 'Vehiculo' }, tiers = { 'Seguridad basica', 'Seguridad media', 'Alta seguridad' }
         },
         hello = 'Gruppe Sechs: servicio de seguridad disponible.',
+        -- Seccion Instalaciones (G6 Operations): zonas de montaje marcadas con el visor e instalacion.
+        zones = {
+            title = 'Zonas de montaje', hero = 'Marca la zona. Instala sin volver a la oficina.',
+            heroHelp = 'Elige el cliente, marca la zona con el visor y desde su ficha instala la camara o la alarma estando a menos de %d m.',
+            newZone = 'Nueva zona', client = 'Cliente', self = 'Yo mismo', mark = 'Marcar zona con el visor',
+            markHelp = 'La tablet se cierra: apunta, E fija la superficie, flechas mueven, + y - cambian el tamano y E hace la foto.',
+            noClients = 'No hay clientes cerca.', empty = 'Todavia no hay zonas. Marca la primera con el visor.',
+            surfaces = { wall = 'Pared', ceiling = 'Techo', floor = 'Suelo' },
+            states = { free = 'Libre', pending = 'Pendiente', installed = 'Instalada' },
+            install = 'Instalar', kit = 'Kit', noKits = 'Sin kits en el inventario', delete = 'Borrar zona',
+            distance = 'a %s m', unknownPlace = 'Lugar sin nombre', size = '%s x %s m', notMine = 'Zona de otro tecnico',
+            device = 'Dispositivo', viewDevice = 'Ver dispositivo', site = 'Sitio', materials = 'Material disponible'
+        },
+        viewfinder = {
+            rec = 'REC', aim = 'Apunta a la pared, techo o suelo y pulsa E', adjust = 'Flechas: mover · + / -: tamano · Ctrl: fino · E: foto · Retroceso: volver',
+            noSurface = 'Sin superficie', shot = 'Zona capturada', client = 'Cliente', zone = 'Zona'
+        },
+        doors = { title = 'Cerraduras de tus propiedades', help = 'Puertas con bombin G6 en tus propiedades y negocios. La llave la lleva tu personaje.',
+            empty = 'No hay puertas con cerradura en tus propiedades.', locked = 'Cerrada con llave', open = 'Abierta', level = 'Nivel %d' },
+        trackers = { title = 'Tus vehiculos protegidos', help = 'Vehiculos con cierre centralizado o alarma G6. Si estan en la calle, puedes marcarlos en el GPS.',
+            empty = 'No tienes vehiculos con equipo G6.', lock = 'Cierre centralizado', alarm = 'Alarma', locked = 'Cerrado', open = 'Abierto',
+            sounding = 'ALARMA SONANDO', gps = 'Marcar en el GPS', away = 'Guardado o fuera de alcance' },
+        incidents = { title = 'Historial de incidencias', help = 'Ultimos sucesos de todas tus alarmas, del mas reciente al mas antiguo.',
+            empty = 'Sin incidencias registradas.' },
         profileAbilities = 'Funciones de su perfil',
         abilities = { view = 'Consultar', inspect = 'Inspeccionar', repair = 'Reparar', replace = 'Sustituir piezas',
             provision = 'Equipar registros', beginMaintenance = 'Abrir mantenimiento', install = 'Instalar CCTV' },
@@ -114,12 +138,12 @@ OSSecurity.Brand = {
             { id = 'overview', name = 'Mis dispositivos', implemented = true },
             { id = 'cctv', name = 'CCTV autorizado', implemented = true },
             { id = 'alarms', name = 'Alarmas residenciales y comerciales', implemented = true },
-            { id = 'locks', name = 'Cerraduras electronicas', implemented = false },
-            { id = 'trackers', name = 'Localizadores de vehiculos', implemented = false },
+            { id = 'locks', name = 'Cerraduras', implemented = true },
+            { id = 'trackers', name = 'Localizadores de vehiculos', implemented = true },
             { id = 'emergencies', name = 'Emergencias', implemented = false },
             { id = 'contracts', name = 'Contratos', implemented = false },
             { id = 'requests', name = 'Solicitudes de mantenimiento', implemented = false },
-            { id = 'incidents', name = 'Historial de incidencias', implemented = false }
+            { id = 'incidents', name = 'Historial de incidencias', implemented = true }
         },
         operations = {
             { id = 'overview', name = 'Dispositivos asignados', implemented = true },

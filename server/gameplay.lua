@@ -112,10 +112,6 @@ function OSSecurity.Gameplay.new(options)
         end
     })
     alarmsRef = alarms
-    local service = OSSecurity.TabletService.new({ inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, employeeId = options.employeeId,
-        sites = options.sites, alarms = alarms })
-    local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
-        sessions = sessions, service = service, placement = placement, audit = options.audit })
     local locks = OSSecurity.LockService.new({ inventory = inventory, world = options.world, now = options.now, sites = options.sites,
         isAdmin = function(source) return options.permissions ~= nil and options.permissions.isAdmin(source) == true end,
         employment = options.employment, holdings = holdings, log = options.log, changed = options.locksChanged,
@@ -131,8 +127,17 @@ function OSSecurity.Gameplay.new(options)
     local lockpick = OSSecurity.LockpickService.new({ holdings = holdings, world = options.world, now = options.now, locks = locks, cars = cars,
         random = options.random or math.random, notifyOwner = carEffects.notifyOwner or noop,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    local zones = OSSecurity.ZoneService.new({ inventory = inventory, holdings = holdings, identity = identity, world = options.world, now = options.now,
+        sites = options.sites, players = options.players, playerName = options.playerName,
+        alias = (options.vehicles or {}).alias, productOfModel = placement.productOfModel,
+        profile = function(source) return auth.profile(source, 'operations') end,
+        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    local service = OSSecurity.TabletService.new({ inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, employeeId = options.employeeId,
+        sites = options.sites, alarms = alarms, locks = locks, cars = cars })
+    local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
+        sessions = sessions, service = service, placement = placement, zones = zones, audit = options.audit })
     local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks, cars = cars,
-        lockpick = lockpick }
+        lockpick = lockpick, zones = zones }
     function gameplay.status() return ready and inventory.status() and options.registry.status() end
     function gameplay.load()
         ready = false
@@ -150,6 +155,11 @@ function OSSecurity.Gameplay.new(options)
     end
     function gameplay.drop(source) controller.drop(source); locks.drop(source); cars.drop(source); lockpick.drop(source) end
     function gameplay.clear() ready = false; controller.clear(); alarms.clear(); locks.clear(); cars.clear(); lockpick.clear() end
+    -- Zona marcada con el visor (desde la tablet): el servidor revalida perfil, cercania y datos.
+    function gameplay.zoneAt(source, payload)
+        if not gameplay.status() then return nil, 'Flujo Gruppe Sechs no disponible; revisar servidor.' end
+        return zones.commit(source, payload)
+    end
     local commands = OSSecurity.GameplayCommands.register({ sites = options.sites, register = options.register, reply = options.reply, permissions = options.permissions,
         identity = identity, inventory = inventory, holdings = holdings, registry = options.registry, world = options.world, ready = gameplay.status,
         locks = locks, cars = cars })

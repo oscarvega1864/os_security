@@ -67,6 +67,23 @@ function OSSecurity.TabletService.new(options)
             employeeId = session.actor.kind == 'operations' and options.employeeId(session.actor.principal) or nil,
             brand = util.copy(OSSecurity.Brand), capabilities = util.copy(OSSecurity.IntegrationContracts.cctv) }
     end
+    -- Dispositivos que el perfil puede consultar y que cumplen 'accept'.
+    local function accessibleDevices(actor, accept)
+        local page, err = options.registry.list(0, 0, 100)
+        if not page then return nil, err end
+        local accessible = {}
+        for offset = 0, math.max(0, page.total - 1), 100 do
+            local current = offset == 0 and page or options.registry.list(0, offset, 100)
+            if not current then return nil, 'Registro no disponible.' end
+            for _, entry in ipairs(current.items) do
+                local device = options.registry.get(0, entry.id)
+                if device and options.auth.access(actor, device, 'view') and accept(device) then accessible[#accessible + 1] = device end
+            end
+        end
+        return accessible
+    end
+    -- Modulos que no son listas de dispositivos: tienen su propia accion.
+    local OWN_ACTION = { locks = true, trackers = true, incidents = true, installations = true, inventory = true }
     function service.list(actor, args)
         if not util.object(args, { offset = true, module = true })
             or (args.offset ~= nil and not util.integer(args.offset, 0, OSSecurity.ServerConfig.MaxDevices)) then
@@ -77,23 +94,42 @@ function OSSecurity.TabletService.new(options)
         for _, definition in ipairs(OSSecurity.Brand.Modules[actor.kind] or {}) do
             if definition.id == module and definition.implemented then enabled = true end
         end
-        if not enabled or module == 'inventory' then return nil, 'Modulo no disponible.' end
-        local page, err = options.registry.list(0, 0, 100)
-        if not page then return nil, err end
-        local accessible = {}
-        for offset = 0, math.max(0, page.total - 1), 100 do
-            local current = offset == 0 and page or options.registry.list(0, offset, 100)
-            if not current then return nil, 'Registro no disponible.' end
-            for _, entry in ipairs(current.items) do
-                local device = options.registry.get(0, entry.id)
-                if device and options.auth.access(actor, device, 'view') and (module ~= 'cctv' or device.type == 'cctv_camera') and (module ~= 'alarms' or device.type == 'alarm_panel') then
-                    accessible[#accessible + 1] = device
-                end
-            end
-        end
+        if not enabled or OWN_ACTION[module] then return nil, 'Modulo no disponible.' end
+        local accessible, err = accessibleDevices(actor, function(device)
+            return (module ~= 'cctv' or device.type == 'cctv_camera') and (module ~= 'alarms' or device.type == 'alarm_panel')
+        end)
+        if not accessible then return nil, err end
         local items, offset = {}, args.offset or 0
         for index = offset + 1, math.min(offset + config.PageSize, #accessible) do items[#items + 1] = summary(actor, accessible[index]) end
         return { items = items, total = #accessible, offset = offset, limit = config.PageSize }
+    end
+    -- Tablet Client: puertas con cerradura de las propiedades y negocios del personaje activo.
+    function service.doors(actor)
+        if not options.locks or not options.locks.owned then return { items = {} } end
+        return { items = options.locks.owned(actor.source) }
+    end
+    -- Tablet Client: vehiculos del personaje con cierre o alarma G6, y su posicion si estan en el mundo.
+    function service.trackers(actor)
+        if not options.cars or not options.cars.owned then return { items = {} } end
+        return { items = options.cars.owned(actor.source) }
+    end
+    -- Tablet Client: ultimos sucesos de todas sus alarmas, del mas reciente al mas antiguo.
+    function service.incidents(actor)
+        if not options.alarms then return { items = {} } end
+        local devices, err = accessibleDevices(actor, function(device) return device.type == 'alarm_panel' end)
+        if not devices then return nil, err end
+        local items = {}
+        for _, device in ipairs(devices) do
+            local site = options.inventory.site(device.id)
+            local siteLabel = site and (options.sites and options.sites.label(site) or OSSecurity.Sites.Labels[site.kind] .. ' ' .. site.id) or nil
+            for _, event in ipairs(options.alarms.summary(device).events or {}) do
+                items[#items + 1] = { at = event.at, kind = event.kind, by = event.by, deviceId = device.id,
+                    device = OSSecurity.Brand.DevicePrefix .. ' · ' .. device.id, site = siteLabel }
+            end
+        end
+        table.sort(items, function(a, b) if a.at ~= b.at then return a.at > b.at end; return a.deviceId < b.deviceId end)
+        while #items > 40 do items[#items] = nil end
+        return { items = items }
     end
     function service.device(actor, id)
         if not OSSecurity.DeviceValidation.id(id) then return nil, 'Dispositivo no accesible.' end

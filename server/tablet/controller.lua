@@ -60,6 +60,26 @@ function OSSecurity.TabletController.new(options)
         elseif actor.kind == 'operations' and request.action == 'place_begin' and next(request.args) == nil then
             result, reason = options.placement.begin(source, session)
             if result then return { ok = true, placement = result } end
+        elseif actor.kind == 'client' and request.action == 'doors' and next(request.args) == nil then
+            result, reason = options.service.doors(actor)
+        elseif actor.kind == 'client' and request.action == 'trackers' and next(request.args) == nil then
+            result, reason = options.service.trackers(actor)
+        elseif actor.kind == 'client' and request.action == 'incidents' and next(request.args) == nil then
+            result, reason = options.service.incidents(actor)
+        elseif actor.kind == 'operations' and request.action == 'zones' and next(request.args) == nil then
+            result, reason = options.zones.list(source, session)
+        elseif actor.kind == 'operations' and request.action == 'zone_begin' and util.object(request.args, { client = true }) then
+            result, reason = options.zones.begin(source, session, request.args.client)
+            -- La tablet se cierra para marcar con el visor; la sesion termina aqui.
+            if result then options.sessions.close(source); options.placement.cancel(source); return { ok = true, data = result } end
+        elseif actor.kind == 'operations' and request.action == 'zone_delete' and util.object(request.args, { anchorId = true }) then
+            result, reason = options.zones.delete(source, session, request.args.anchorId)
+        elseif actor.kind == 'operations' and request.action == 'zone_install' and util.object(request.args, { anchorId = true, kit = true }) then
+            local kit = request.args.kit
+            if type(kit) ~= 'string' or not OSSecurity.GameplayConfig.Products[kit] or type(request.args.anchorId) ~= 'string' then return failure('Kit o zona no validos.') end
+            if not options.holdings.has(actor, kit, 1) then return failure('No tienes ese kit.') end
+            result, reason = options.placement.begin(source, session, kit, request.args.anchorId)
+            if result then return { ok = true, placement = result } end
         elseif actor.kind == 'operations' and request.action == 'place_confirm' then
             result, reason = options.placement.confirm(source, session, request.args)
         elseif actor.kind ~= 'inventory' and request.action == 'remove_begin' and util.object(request.args, { deviceId = true }) then
@@ -76,7 +96,7 @@ function OSSecurity.TabletController.new(options)
         if not result then return failure(reason) end
         return { ok = true, data = result, expires = session.expires }
     end
-    function controller.drop(source) options.sessions.drop(source); options.placement.cancel(source) end
-    function controller.clear() options.sessions.clear(); options.placement.clear() end
+    function controller.drop(source) options.sessions.drop(source); options.placement.cancel(source); if options.zones then options.zones.cancel(source) end end
+    function controller.clear() options.sessions.clear(); options.placement.clear(); if options.zones then options.zones.clear() end end
     return controller
 end

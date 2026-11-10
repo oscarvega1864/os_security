@@ -42,6 +42,21 @@ function OSSecurity.LockService.new(options)
         table.sort(result, function(a, b) return a.id < b.id end)
         return result
     end
+    -- Tablet Client: puertas de los sitios cuyo titular es el personaje activo del jugador.
+    function locks.owned(source)
+        local result, mine = {}, {}
+        if not options.sites or not options.sites.owns then return result end
+        for _, door in pairs(active()) do
+            local k = key(door.site)
+            if mine[k] == nil then mine[k] = options.sites.owns(source, door.site) == true end
+            if mine[k] then
+                result[#result + 1] = { id = door.id, site = options.sites.label(door.site) or k, tier = tierLabel(door.tier), level = door.tier or 1,
+                    locked = door.locked == true }
+            end
+        end
+        table.sort(result, function(a, b) if a.site ~= b.site then return a.site < b.site end; return a.id < b.id end)
+        return result
+    end
     -- Sitios con titular donde buscar puertas (el cliente escanea al acercarse).
     function locks.targets()
         local result = {}

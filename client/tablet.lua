@@ -3,6 +3,7 @@ OSSecurity.ClientTablet = {}
 
 function OSSecurity.ClientTablet.new(options)
     local session, pending, requestId, epoch = nil, nil, 0, 0
+    local wantedModule -- seccion con la que abrir la tablet (p. ej. Instalaciones tras marcar una zona)
     local controller = { visible = false, placing = false }
     local function hide()
         controller.visible = false
@@ -12,6 +13,7 @@ function OSSecurity.ClientTablet.new(options)
         session = newSession
         local public = {}
         for key, value in pairs(session) do if key ~= 'token' and key ~= 'sequence' then public[key] = value end end
+        public.module, wantedModule = wantedModule, nil
         controller.visible = true
         options.show(public)
     end
@@ -74,8 +76,9 @@ function OSSecurity.ClientTablet.new(options)
             end)
         elseif session then showSession(session) end
     end
-    function controller.open(kind)
+    function controller.open(kind, module)
         if pending then options.notify(OSSecurity.Brand.Text.loading, 'warning'); return end
+        wantedModule = type(module) == 'string' and module or nil
         epoch = epoch + 1; hide(); controller.placing = false; options.cancelPlacement()
         controller.request('open', { kind = kind }, opened)
     end
@@ -120,6 +123,23 @@ function OSSecurity.ClientTablet.new(options)
                 end)
             end
             if options.minigame then options.minigame(function(ok) finish(ok) end, 'remove') else finish(true) end
+        end)
+    end
+    -- Marcar zona desde la tablet: el servidor reserva el marcado y cierra la sesion; la tablet se oculta
+    -- y empieza el visor ('start').
+    function controller.markZone(args, callback, start)
+        controller.request('zone_begin', args, function(response)
+            callback({ ok = response.ok, error = response.error, close = response.close })
+            if not response.ok or type(response.data) ~= 'table' then return end
+            session = nil; epoch = epoch + 1; hide()
+            start(response.data)
+        end)
+    end
+    -- Instalar en una zona concreta desde su ficha: misma colocacion y minijuego que con el kit.
+    function controller.installZone(args, callback)
+        controller.request('zone_install', args, function(response)
+            callback({ ok = response.ok, error = response.error, close = response.close })
+            if response.ok then opened(response) end
         end)
     end
     function controller.place(callback)

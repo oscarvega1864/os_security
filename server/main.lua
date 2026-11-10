@@ -248,6 +248,17 @@ local carVehicles = {
         return exports[sitesResource]:GetAsset('vehicles', id)
     end,
     alias = activeAlias,
+    -- Posicion de un vehiculo por matricula (Localizadores de la tablet Client), redondeada.
+    locate = function(plate)
+        for _, entity in ipairs(GetAllVehicles()) do
+            local text = GetVehicleNumberPlateText(entity)
+            if type(text) == 'string' and (text:gsub('%s+', '')) == plate then
+                local p = GetEntityCoords(entity)
+                return { x = math.floor(p.x * 10 + 0.5) / 10, y = math.floor(p.y * 10 + 0.5) / 10, z = math.floor(p.z * 10 + 0.5) / 10 }
+            end
+        end
+        return nil
+    end,
     -- Vehiculo que conduce el jugador, como descriptor (para efectos como la alarma).
     entity = function(player)
         local ped = GetPlayerPed(player)
@@ -308,6 +319,17 @@ local gameplay = OSSecurity.Gameplay.new({
     employment = employment,
     alarmEffects = alarmEffects,
     sites = sites,
+    -- Clientes de una zona de montaje: jugadores conectados y su nombre (personaje · cuenta).
+    players = function()
+        local list = {}
+        for _, value in ipairs(GetPlayers()) do list[#list + 1] = tonumber(value) end
+        return list
+    end,
+    playerName = function(player)
+        local name, alias = GetPlayerName(player), activeAlias(player)
+        if alias and name then return alias .. ' · ' .. name end
+        return alias or name
+    end,
     locksChanged = function(list) TriggerClientEvent('os_security:locks:doors', -1, list) end,
     vehicles = carVehicles, carEffects = carEffects,
     audit = function(action, source, deviceId)
@@ -340,6 +362,18 @@ RegisterNetEvent('os_security:g6:anchorAim', function(payload)
     local ok, message, err = pcall(gameplay.anchorAt, player, payload)
     if not ok then message, err = nil, OSSecurity.Brand.Text.failed end
     TriggerClientEvent('os_security:g6:anchorResult', player, message ~= nil, message or err)
+end)
+
+-- Zona de montaje marcada con el visor desde la tablet G6 Operations.
+RegisterNetEvent('os_security:g6:zoneAim', function(payload)
+    local player = source
+    if not OSSecurity.Util.integer(player, 1, 2147483647) then return end
+    local now = GetGameTimer()
+    if lastAnchorAim[player] and now - lastAnchorAim[player] < 1000 then return end
+    lastAnchorAim[player] = now
+    local ok, result, err = pcall(gameplay.zoneAt, player, payload)
+    if not ok then result, err = nil, OSSecurity.Brand.Text.failed end
+    TriggerClientEvent('os_security:g6:zoneResult', player, result ~= nil, result and result.message or err)
 end)
 
 -- Teclado y lector de chapa de las alarmas (junto al dispositivo; el servidor comprueba la distancia).

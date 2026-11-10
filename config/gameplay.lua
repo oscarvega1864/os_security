@@ -1,7 +1,7 @@
 -- Solo servidor. Los puntos de montaje se dan de alta expresamente mediante ACE.
 OSSecurity.GameplayConfig = {
     StorageBase = 'data/inventory', MaxAccounts = 256, MaxItemQuantity = 100, MaxTotalItems = 500,
-    MaxInstallations = 1000, MaxAnchors = 128, MaxGrantsPerAccount = 1000, MaxFileBytes = 8 * 1024 * 1024,
+    MaxInstallations = 1000, MaxAnchors = 512, MaxGrantsPerAccount = 1000, MaxFileBytes = 8 * 1024 * 1024,
     SessionSeconds = 90, PlacementSeconds = 180, PageSize = 12, RequestWindow = 10, RequestsPerWindow = 25,
     OpenRequestsPerWindow = 3, PlacementDistance = 4.0, AnchorAimDistance = 10.0, MaxPlacementMove = 6.0, MinDepth = -0.15, MaxDepth = 0.3, MaxPivotOffset = 0.75,
     StreamDistance = 80.0, MaxStreamedProps = 40, CameraModel = 'prop_cctv_cam_01a',
@@ -20,6 +20,9 @@ OSSecurity.GameplayConfig = {
         os_alarm_kit = { deviceType = 'alarm_panel', model = 'prop_ld_keypad_01', materials = { os_alarm_kit = 1, os_battery = 1 } },
         os_alarm_kit_panel = { deviceType = 'alarm_panel', model = 'hei_prop_hei_securitypanel', materials = { os_alarm_kit_panel = 1, os_battery = 1 } }
     },
+    -- Zonas de montaje desde la tablet: cliente a menos de ClientDistance del tecnico, propiedad del cliente
+    -- a menos de SiteDistance (se vincula sola) y MarkSeconds para marcar la zona con el visor.
+    Zones = { ClientDistance = 15.0, SiteDistance = 80.0, MarkSeconds = 300 },
     -- Alarmas (central con teclado). Zona: esfera alrededor del teclado.
     Alarm = {
         Radius = 10.0, InteractDistance = 2.0, ExitDelay = 30, EntryDelay = 30, SirenSeconds = 90,

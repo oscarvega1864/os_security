@@ -24,12 +24,8 @@ function OSSecurity.GameplayCommands.register(options)
             return nil, 'Identidades o coordenadas de montaje invalidas.'
         end
         local round = OSSecurity.Util.round
-        -- Componentes residuales del raycast (|v| < 1e-6) a cero antes de normalizar; despues, 9 decimales.
-        normal = { x = round(normal.x, 6), y = round(normal.y, 6), z = round(normal.z, 6) }
-        local length = math.sqrt(normal.x^2 + normal.y^2 + normal.z^2)
-        if length < 0.001 then return nil, 'La normal no puede ser cero.' end
-        position = { x = round(position.x, 4), y = round(position.y, 4), z = round(position.z, 4) }
-        for _, axis in ipairs({ 'x', 'y', 'z' }) do normal[axis] = round(normal[axis] / length, 9) end
+        position, normal = OSSecurity.ZoneService.normalize(position, normal)
+        if not position then return nil, normal end
         if bucket == nil then local _, installerBucket = options.world(tonumber(installerSource)); bucket = installerBucket end
         return options.inventory.apply({ kind = 'anchor', anchor = { id = id, owner = owner, installer = installer,
             position = position, normal = normal, radius = round(radius, 3), bucket = bucket, site = site } })

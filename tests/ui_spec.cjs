@@ -58,6 +58,13 @@ async function main() {
           else if(body.action==='device') result.data=window.__device;
           else if(body.action==='inventory') result.data={items:[{id:'g6_operations_tablet',name:'G6 Operations',category:'tablet',count:1,usable:true},{id:'os_cctv_kit',name:'Gruppe Sechs · Kit CCTV',category:'kit',count:2,usable:true}]};
           else if(body.action==='maintain') result.data=window.__device;
+          else if(body.action==='zones') result.data={installDistance:4,clients:[{id:1,name:'oscar_vega · oscar',self:true},{id:2,name:'segundo · amigo',self:false}],
+            kits:[{id:'os_cctv_kit',name:'Kit CCTV',deviceType:'cctv_camera',count:2},{id:'os_alarm_kit',name:'Kit alarma',deviceType:'alarm_panel',count:0}],
+            zones:[{id:'zona_2',place:'Low Power St, Pillbox Hill',client:'segundo · amigo',createdAt:1762700000,surface:'wall',size:1.5,site:'Propiedad 200',distance:2.5,mine:true,status:'free',deletable:true},
+              {id:'zona_1',place:'Vespucci Blvd',client:'oscar',createdAt:1762600000,surface:'ceiling',size:1,distance:40,mine:true,status:'installed',deviceId:'osd_0000000001',deletable:false}]};
+          else if(body.action==='doors') result.data={items:[{id:'p200_1',site:'Propiedad 200',tier:'Bombin de serie',level:1,locked:true}]};
+          else if(body.action==='trackers') result.data={items:[{plate:'OS000012',lock:true,alarm:true,locked:true,sounding:false,position:{x:10.4,y:-20.2,z:30}}]};
+          else if(body.action==='incidents') result.data={items:[{at:1762700000,kind:'triggered',device:'G6-D · osd_0000000009',deviceId:'osd_0000000009',site:'Propiedad 200'}]};
         }
         return new Response(JSON.stringify(result),{status:200,headers:{'Content-Type':'application/json'}});
       };
@@ -73,10 +80,21 @@ async function main() {
     await evaluate(`window.__open('client')`);
     await until(`document.querySelectorAll('.card').length===1`);
     assert(await evaluate(`document.getElementById('edition').textContent==='G6 Client' && !document.querySelector('.tablet.operations')`));
-    assert(await evaluate(`Array.from(document.querySelectorAll('nav button')).some(b=>b.disabled && b.textContent.includes('Cerraduras'))`));
+    assert(await evaluate(`!Array.from(document.querySelectorAll('nav button')).some(b=>b.disabled || b.textContent.includes('Contratos')) && Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent.includes('Cerraduras'))`));
     assert(await evaluate(`document.getElementById('app').textContent.indexOf('Reparar')===-1 && document.querySelector('video')===null`));
     fs.writeFileSync(path.join(output, 'client.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
-    console.log('PASS Client identity, disabled future modules and absence of repair/video controls');
+    console.log('PASS Client identity, unimplemented modules hidden and absence of repair/video controls');
+    for (const [nav, selector, expected] of [['Cerraduras', '.row', 'Propiedad 200'], ['Localizadores', '.tracker', 'OS000012'], ['Historial', '.incident', 'Salto de alarma']]) {
+      await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent.includes(${JSON.stringify(nav)})).click()`);
+      await until(`document.querySelector(${JSON.stringify(selector)}) && document.getElementById('content').textContent.includes(${JSON.stringify(expected)})`);
+    }
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent.includes('Localizadores')).click()`);
+    await until(`document.querySelector('.tracker button')`);
+    await evaluate(`document.querySelector('.tracker button').click()`);
+    await until(`window.__calls.some(x=>x.endpoint==='waypoint' && x.body.x===10.4)`);
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent.includes('Mis dispositivos')).click()`);
+    await until(`document.querySelectorAll('.card').length===1`);
+    console.log('PASS Client doors, vehicle trackers with GPS and alarm incident history');
     await evaluate(`window.__device.displayId='<img src=x onerror="window.__xss=true">'; document.getElementById('refresh').click()`);
     await until(`document.getElementById('content').textContent.includes('<img src=x')`);
     assert(await evaluate(`document.querySelector('img')===null && window.__xss!==true`));
@@ -93,6 +111,24 @@ async function main() {
     assert(await evaluate(`document.getElementById('content').textContent.includes(window.__brand.Text.noSignal)`));
     console.log('PASS Operations theme, professional controls and explicit unavailable signal');
     assert(await evaluate(`Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent==='Instalaciones') && document.querySelector('.profile.role-technician')`));
+    await evaluate(`document.querySelector('#content button').click()`); await until(`document.querySelectorAll('.card').length===1`);
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Instalaciones').click()`);
+    await until(`document.querySelectorAll('.zone-card').length===2 && document.querySelectorAll('.zone-card .photo').length===2`);
+    assert(await evaluate(`document.querySelector('.zone-card .photo-meta').textContent.includes('Pared') && document.querySelectorAll('.zone-new option').length===2`));
+    assert(await evaluate(`document.querySelectorAll('.zone-card')[1].textContent.includes('osd_0000000001') && document.querySelectorAll('.zone-card')[0].querySelector('select').options.length===1`));
+    fs.writeFileSync(path.join(output, 'zones.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('.zone-card button')).find(b=>b.textContent===window.__brand.Text.zones.install).click()`);
+    await until(`window.__calls.some(x=>x.body.action==='zone_install' && x.body.args.anchorId==='zona_2' && x.body.args.kit==='os_cctv_kit')`);
+    await evaluate(`document.querySelector('.zone-new select').value='2'; Array.from(document.querySelectorAll('.zone-new button')).find(b=>b.textContent===window.__brand.Text.zones.mark).click()`);
+    await until(`window.__calls.some(x=>x.body.action==='zone_begin' && x.body.args.client===2)`);
+    await evaluate(`window.postMessage({type:'viewfinder',action:'show',info:{id:'zona_3',client:'segundo · amigo',site:'Propiedad 200'}},'*')`);
+    await until(`!document.getElementById('viewfinder').hidden && document.getElementById('vf-title').textContent.includes('zona_3')`);
+    await evaluate(`window.postMessage({type:'viewfinder',action:'update',state:{mode:'adjust',size:1.5,x:0.25,y:-0.1,hit:true,surface:'wall'}},'*')`);
+    await until(`document.getElementById('vf-data').textContent.includes('1.50 x 1.50 m') && document.getElementById('viewfinder').classList.contains('locked')`);
+    fs.writeFileSync(path.join(output, 'viewfinder.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await evaluate(`window.postMessage({type:'viewfinder',action:'shot'},'*')`);
+    await until(`document.getElementById('viewfinder').hidden`);
+    console.log('PASS Installations: zone photo cards, install from a card, viewfinder marking flow');
     await evaluate(`window.__open('operations','supervisor')`);
     await until(`document.querySelector('.profile.role-supervisor') && document.querySelectorAll('.ability').length===3`);
     assert(await evaluate(`!Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent==='Instalaciones') && document.querySelector('.abilities').textContent.includes('Abrir mantenimiento')`));

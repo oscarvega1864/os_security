@@ -84,12 +84,43 @@ RegisterNUICallback('alive', function(body, callback)
     if controller.visible and type(body) == 'table' and body.visible == false then controller.close() end
     callback({ ok = true })
 end)
+-- Visor de camara para marcar una zona desde la tablet (seccion Instalaciones). E hace la "foto" y el
+-- servidor registra la zona; al terminar (o al cancelar) se vuelve a la tablet en Instalaciones.
+local function startViewfinder(data)
+    SendNUIMessage({ type = 'viewfinder', action = 'show', info = { id = data.id, client = data.client, site = data.site } })
+    OSSecurity.ClientAnchor.begin({ data.id }, function(payload)
+        TriggerServerEvent('os_security:g6:zoneAim', payload)
+    end, OSSecurity.Notify, {
+        update = function(state) SendNUIMessage({ type = 'viewfinder', action = 'update', state = state }) end,
+        finish = function(shot)
+            SendNUIMessage({ type = 'viewfinder', action = shot and 'shot' or 'hide' })
+            if not shot then SetTimeout(300, function() controller.open('operations', 'installations') end) end
+        end
+    })
+end
+RegisterNetEvent('os_security:g6:zoneResult', function(ok, message)
+    if source ~= 65535 or type(message) ~= 'string' then return end
+    OSSecurity.Notify(message, ok and 'success' or 'error')
+    SetTimeout(900, function() controller.open('operations', 'installations') end)
+end)
+-- Localizadores: marcar en el GPS la posicion que el servidor ha dado para un vehiculo propio.
+RegisterNUICallback('waypoint', function(body, callback)
+    callback({ ok = true })
+    if type(body) == 'table' and type(body.x) == 'number' and type(body.y) == 'number' then
+        SetNewWaypoint(body.x + 0.0, body.y + 0.0)
+        OSSecurity.Notify('Vehiculo marcado en el GPS.', 'info')
+    end
+end)
+
 RegisterNUICallback('request', function(body, callback)
     if type(body) ~= 'table' or type(body.action) ~= 'string' or type(body.args) ~= 'table' then callback({ ok = false }); return end
     if body.action == 'use' then controller.use(body.args.item, callback)
     elseif body.action == 'place_begin' then controller.place(callback)
     elseif body.action == 'remove' and type(body.args.deviceId) == 'string' then controller.remove(body.args.deviceId, callback)
-    elseif ({ inventory = true, devices = true, device = true, maintain = true, alarm = true })[body.action] then controller.request(body.action, body.args, callback)
+    elseif body.action == 'zone_begin' then controller.markZone(body.args, callback, startViewfinder)
+    elseif body.action == 'zone_install' then controller.installZone(body.args, callback)
+    elseif ({ inventory = true, devices = true, device = true, maintain = true, alarm = true, doors = true, trackers = true, incidents = true,
+        zones = true, zone_delete = true })[body.action] then controller.request(body.action, body.args, callback)
     else callback({ ok = false, error = OSSecurity.Brand.Text.unavailable }) end
 end)
 

@@ -64,6 +64,7 @@ server_scripts {
     'server/tablet/authorization.lua',
     'server/tablet/sessions.lua',
     'server/installation/service.lua',
+    'server/installation/zones.lua',
     'server/alarms/service.lua',
     'server/locks/service.lua',
     'server/vehicles/service.lua',

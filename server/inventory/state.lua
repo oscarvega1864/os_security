@@ -18,9 +18,15 @@ function state.vector(value, maximum)
     return true
 end
 
+-- Texto corto opcional de una zona (lugar o cliente), solo para mostrar en la tablet.
+local function note(value) return value == nil or (util.text(value, 64) and not value:find('[%c<>]')) end
+
 function state.anchor(anchor)
-    if not util.object(anchor, { id = true, owner = true, installer = true, position = true, normal = true, radius = true, bucket = true, site = true })
+    if not util.object(anchor, { id = true, owner = true, installer = true, position = true, normal = true, radius = true, bucket = true, site = true,
+        place = true, client = true, createdAt = true })
         or (anchor.site ~= nil and not state.site(anchor.site))
+        or not note(anchor.place) or not note(anchor.client)
+        or (anchor.createdAt ~= nil and not util.integer(anchor.createdAt, 0, 253402300799))
         or not label(anchor.id) or not identity.valid(anchor.owner) or not identity.valid(anchor.installer)
         or not state.vector(anchor.position, 1000000) or not state.vector(anchor.normal, 1)
         or not util.finite(anchor.radius) or anchor.radius < 0.25 or anchor.radius > 2
@@ -141,7 +147,7 @@ end
 local function operation(op, limits)
     if not util.object(op, { kind = true, at = true, principal = true, item = true, amount = true,
         deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true, site = true, alarm = true,
-        doorId = true, door = true, carId = true, car = true })
+        doorId = true, door = true, carId = true, car = true, anchorId = true })
         or not util.integer(op.at, 0, 253402300799) then return false end
     local fields = { kind = true, at = true }
     if op.kind == 'grant' or op.kind == 'migrate' then
@@ -169,6 +175,10 @@ local function operation(op, limits)
     elseif op.kind == 'anchor' then
         fields.anchor = true
         if not state.anchor(op.anchor) then return false end
+    elseif op.kind == 'unanchor' then
+        -- Borrar una zona que nunca se ha usado (sin instalaciones que la referencien).
+        fields.anchorId = true
+        if not label(op.anchorId) then return false end
     elseif op.kind == 'reserve' then
         fields.installation = true
         if not placement(op.installation) or not materials(op.installation, limits)
@@ -330,6 +340,12 @@ function state.apply(snapshot, op, limits)
             if installation.anchorId == op.anchor.id and installation.status == 'pending' then return nil, 'Montaje con operacion pendiente.' end
         end
         nextState.anchors[op.anchor.id] = util.copy(op.anchor)
+    elseif op.kind == 'unanchor' then
+        if not snapshot.anchors[op.anchorId] then return nil, 'Zona inexistente.' end
+        for _, installation in pairs(snapshot.installations) do
+            if installation.anchorId == op.anchorId then return nil, 'La zona tiene instalaciones registradas; no se puede borrar.' end
+        end
+        nextState.anchors[op.anchorId] = nil
     elseif op.kind == 'reserve' then
         local proposed = op.installation
         local anchor = snapshot.anchors[proposed.anchorId]

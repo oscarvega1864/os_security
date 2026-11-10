@@ -47,6 +47,15 @@ local function fixture(files, external)
         audit = function(action, source, device) c.audit[#c.audit + 1] = { action, source, device } end,
         log = function(message) c.replies[#c.replies + 1] = { 0, message } end,
         schedule = function(callback) c.timers[#c.timers + 1] = callback end,
+        players = function()
+            local list = {}
+            for id, player in pairs(c.players) do if player.connected then list[#list + 1] = id end end
+            table.sort(list); return list
+        end,
+        playerName = function(id) return 'Jugador' .. id end,
+        vehicles = { asset = function(id) return c.vehicleAssets and c.vehicleAssets[id] end,
+            alias = function(source) return c.active[source] and c.active[source].alias end,
+            driving = function() return nil end, locate = function(plate) return c.vehicleSpots and c.vehicleSpots[plate] end },
         items = external and external.items or nil,
         locksChanged = function(list) c.doorBroadcasts = (c.doorBroadcasts or 0) + 1; c.lastDoors = list end,
         alarmEffects = {
@@ -761,7 +770,7 @@ test('Native server wiring keeps replies private, normalizes ACE and creates uni
     local handlers, commands, files, replies, hashes = {}, {}, {}, {}, 0
     local ok, err = pcall(function()
         stub('RegisterNetEvent', function(name, callback)
-            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name:match('^os_security:alarm:') or name:match('^os_security:locks:') or name:match('^os_security:car:') or name:match('^os_security:lockpick:'))
+            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name == 'os_security:g6:zoneAim' or name:match('^os_security:alarm:') or name:match('^os_security:locks:') or name:match('^os_security:car:') or name:match('^os_security:lockpick:'))
             if name == 'os_security:g6:request' then handlers.request = callback else handlers.anchorAim = callback end
         end)
         stub('RegisterCommand', function(name, callback) commands[name] = callback end)
@@ -1278,4 +1287,100 @@ test('Vehicle key and tamper require the same routing bucket as the vehicle', fu
     assert(v.cars.toggle(2, carAt()).locked)
     assert(not v.cars.tamper(5, elsewhere))
     assert(c.game.inventory.car('12').locked == true and c.game.inventory.car('99') == nil)
+end)
+
+
+-- Zonas de montaje desde la tablet (Instalaciones) ----------------------------------------------
+test('Tablet zones: the installer picks a nearby client, marks the zone with the viewfinder and installs on it from its card', function()
+    local c = fixture(); kit(c); assert(c.loaded, c.loadError)
+    c.players[1].point = { x = 0, y = 0, z = 1 }; c.players[2].point = { x = 3, y = 0, z = 1 }
+    for _, id in ipairs({ 3, 4, 5 }) do c.players[id].point = { x = 300, y = 0, z = 1 } end
+    c.assets.properties[7] = { id = 7, owner = 'ana', position = { x = 10, y = 0, z = 1 } }; c.active[2] = { alias = 'ana' }
+    local function reopen() c.core.time = c.core.time + 11; return open(c, 1, 'operations') end
+    local session = open(c, 1, 'operations')
+    local listed = call(c, 1, session, 'zones'); assert(listed.ok, listed.error)
+    assert(#listed.data.zones == 0 and #listed.data.clients == 2 and listed.data.clients[1].self and listed.data.clients[2].id == 2)
+    local _, why = c.game.zoneAt(1, { radius = 0.5, position = { x = 1, y = 0, z = 1 }, normal = { x = -1, y = 0, z = 0 } })
+    assert(why:find('caducado')) -- sin reservar el marcado no se registra nada
+    assert(not call(c, 1, session, 'zone_begin', { client = 5 }).ok) -- el cliente debe estar al lado
+    local begun = call(c, 1, session, 'zone_begin', { client = 2 }); assert(begun.ok, begun.error)
+    assert(begun.data.id == 'zona_1' and begun.data.client == 'Jugador2' and begun.data.site:find('Propiedad 7', 1, true))
+    assert(not call(c, 1, session, 'zones').ok) -- la tablet se cierra para marcar
+    local bad = c.game.zoneAt(1, { radius = 0.5, position = { x = 40, y = 0, z = 1 }, normal = { x = -1, y = 0, z = 0 } })
+    assert(not bad) -- demasiado lejos (y el marcado se consume)
+    begun = call(c, 1, reopen(), 'zone_begin', { client = 2 }); assert(begun.ok)
+    local done = assert(c.game.zoneAt(1, { radius = 0.5, position = { x = 1, y = 0, z = 1 }, normal = { x = -1, y = 0, z = 0.0000001 }, place = 'Low Power St<b>' }))
+    assert(done.id == 'zona_1')
+    local zone = c.game.inventory.snapshot().anchors.zona_1
+    assert(zone.owner == c.players[2].principal and zone.installer == c.players[1].principal and zone.site.id == 7)
+    assert(zone.place == 'Low Power Stb' and zone.client == 'Jugador2' and zone.normal.z == 0 and zone.radius == 0.5)
+    session = reopen()
+    listed = call(c, 1, session, 'zones')
+    local card = listed.data.zones[1]
+    assert(card.id == 'zona_1' and card.status == 'free' and card.surface == 'wall' and card.size == 1 and card.mine and card.deletable)
+    assert(card.site:find('Propiedad 7', 1, true) and card.distance == 1)
+    assert(not call(c, 1, session, 'zone_install', { anchorId = 'zona_1', kit = 'os_alarm_kit' }).ok) -- no tiene ese kit
+    c.players[1].point = { x = 30, y = 0, z = 1 }
+    local far = call(c, 1, session, 'zone_install', { anchorId = 'zona_1', kit = 'os_cctv_kit' }); assert(not far.ok and far.error:find('Acercate'))
+    c.players[1].point = { x = 0, y = 0, z = 1 }
+    session = reopen()
+    local placement = call(c, 1, session, 'zone_install', { anchorId = 'zona_1', kit = 'os_cctv_kit' })
+    assert(placement.ok and #placement.placement.mounts == 1 and placement.placement.mounts[1].id == 'zona_1')
+    local installed = call(c, 1, session, 'place_confirm', proposal('zona_1')); assert(installed.ok, installed.error)
+    assert(c.game.inventory.site(installed.data.id).id == 7)
+    listed = call(c, 1, session, 'zones')
+    assert(listed.data.zones[1].status == 'installed' and listed.data.zones[1].deviceId == installed.data.id and not listed.data.zones[1].deletable)
+    assert(not call(c, 1, session, 'zone_delete', { anchorId = 'zona_1' }).ok) -- usada: no se borra
+end)
+
+test('Tablet zones: only installers see their zones, other profiles cannot mark, and unused zones can be deleted', function()
+    local c = fixture(); kit(c); grant(c, 3, 'g6_operations_tablet'); grant(c, 2, 'g6_client_tablet'); grant(c, 4, 'g6_operations_tablet')
+    for id = 1, 5 do c.players[id].point = { x = id, y = 0, z = 1 } end
+    anchor(c, 'otra', 4)
+    local supervisor = open(c, 3, 'operations')
+    assert(not call(c, 3, supervisor, 'zones').ok and not call(c, 3, supervisor, 'zone_begin', { client = 3 }).ok)
+    local client = open(c, 2, 'client'); assert(not call(c, 2, client, 'zones').ok)
+    local session = open(c, 1, 'operations')
+    assert(#call(c, 1, session, 'zones').data.zones == 0) -- la zona de otro tecnico no aparece
+    assert(not call(c, 1, session, 'zone_delete', { anchorId = 'otra' }).ok)
+    assert(call(c, 1, session, 'zone_begin', { client = 1 }).ok) -- para si mismo
+    assert(c.game.zoneAt(1, { radius = 3, position = { x = 1, y = 0, z = 1 }, normal = { x = -1, y = 0, z = 0 } }) == nil) -- tamano fuera de rango
+    assert(call(c, 1, open(c, 1, 'operations'), 'zone_begin', { client = 1 }).ok)
+    assert(c.game.zoneAt(1, { radius = 1, position = { x = 1, y = 0, z = 3 }, normal = { x = 0, y = 0, z = -1 } }))
+    session = open(c, 1, 'operations')
+    local zones = call(c, 1, session, 'zones').data.zones
+    assert(#zones == 1 and zones[1].id == 'zona_1' and zones[1].surface == 'ceiling' and zones[1].client == 'Jugador1')
+    assert(call(c, 1, session, 'zone_delete', { anchorId = 'zona_1' }).ok and not c.game.inventory.snapshot().anchors.zona_1)
+    local admin = open(c, 4, 'operations')
+    assert(#call(c, 4, admin, 'zones').data.zones == 1) -- el administrador ve todas
+    assert(not OSSecurity.InventoryState.anchor({ id = 'x', owner = c.players[1].principal, installer = c.players[1].principal,
+        position = { x = 0, y = 0, z = 0 }, normal = { x = 1, y = 0, z = 0 }, radius = 1, bucket = 0, place = '<script>' }))
+end)
+
+test('Client tablet: own property doors, own protected vehicles with GPS position and alarm incidents', function()
+    local c = fixture(); grant(c, 2, 'g6_client_tablet'); grant(c, 5, 'g6_client_tablet'); c.aces[5][config.Ace.client] = true
+    property(c, 7, 'ana'); c.active[2] = { alias = 'ana' }; c.active[5] = { alias = 'luis' }
+    c.players[2].point = { x = 101, y = 100, z = 30 }
+    assert(c.game.locks.report(2, doorReport(7, { FRONT, BACK })) == 2)
+    c.vehicleAssets = { [12] = { id = 12, plate = 'OS000012', owner = 'ana' }, [13] = { id = 13, plate = 'OS000013', owner = 'luis' } }
+    c.vehicleSpots = { OS000012 = { x = 5, y = 6, z = 7 } }
+    for _, id in ipairs({ 12, 13 }) do
+        assert(c.game.inventory.apply({ kind = 'car', carId = tostring(id), car = { id = id, plate = ('OS%06d'):format(id), lock = true, alarm = id == 12,
+            locked = true, changes = 1, updatedAt = c.core.time } }))
+    end
+    local session = open(c, 2, 'client')
+    local doors = call(c, 2, session, 'doors'); assert(doors.ok, doors.error)
+    assert(#doors.data.items == 2 and doors.data.items[1].locked and doors.data.items[1].site:find('Propiedad 7', 1, true) and doors.data.items[1].level == 1)
+    local cars = call(c, 2, session, 'trackers').data.items
+    assert(#cars == 1 and cars[1].plate == 'OS000012' and cars[1].alarm and cars[1].position.x == 5)
+    local other = open(c, 5, 'client')
+    assert(#call(c, 5, other, 'doors').data.items == 0 and call(c, 5, other, 'trackers').data.items[1].position == nil)
+    local device = alarmPanel(c, 2)
+    session = open(c, 2, 'client')
+    assert(call(c, 2, session, 'alarm', { deviceId = device.id, action = 'arm' }).ok)
+    local incidents = call(c, 2, session, 'incidents'); assert(incidents.ok, incidents.error)
+    assert(#incidents.data.items >= 1 and incidents.data.items[1].kind == 'armed' and incidents.data.items[1].deviceId == device.id)
+    assert(#call(c, 5, open(c, 5, 'client'), 'incidents').data.items == 0)
+    grant(c, 1, 'g6_operations_tablet'); local operations = open(c, 1, 'operations')
+    assert(not call(c, 1, operations, 'doors').ok and not call(c, 1, operations, 'devices', { module = 'locks' }).ok)
 end)

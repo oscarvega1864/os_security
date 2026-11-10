@@ -228,6 +228,23 @@ function OSSecurity.CarService.new(options)
         if not record or (not record.lock and not record.locked) then return nil end
         return { locked = record.locked, alarm = record.alarm }
     end
+    -- Tablet Client (Localizadores): vehiculos del personaje activo con equipo G6 y su posicion si existen.
+    function cars.owned(source)
+        local alias = options.vehicles.alias(source)
+        local result = {}
+        if not alias then return result end
+        for _, record in pairs(records()) do
+            if record.lock or record.alarm then
+                local car = asset(record.plate)
+                if car and car.owner == alias then
+                    result[#result + 1] = { plate = car.plate, lock = record.lock == true, alarm = record.alarm == true, locked = record.locked == true,
+                        sounding = sounding[record.id] ~= nil, position = options.vehicles.locate and options.vehicles.locate(car.plate) or nil }
+                end
+            end
+        end
+        table.sort(result, function(a, b) return a.plate < b.plate end)
+        return result
+    end
     function cars.describe()
         local lines, ids = {}, {}
         local list = records()
