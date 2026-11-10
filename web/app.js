@@ -41,7 +41,7 @@
     post('close', {}).catch(() => {}); state.session = null;
   }
   // Secciones con vista propia (no son listas paginadas de dispositivos).
-  const OWN_VIEWS = ['inventory', 'installations', 'locks', 'trackers', 'incidents'];
+  const OWN_VIEWS = ['inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders'];
   function pagination() {
     const enabled = !state.selected && !OWN_VIEWS.includes(state.module);
     byId('previous').disabled = !enabled || state.offset === 0;
@@ -266,7 +266,76 @@
       strip.append(list); content.append(strip);
     }
   }
-  const VIEWS = { locks: doorsView, trackers: trackersView, incidents: incidentsView, installations: zonesView };
+  const thousands = value => String(Math.round(Number(value) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  // Ficha de una orden de trabajo (cliente o tecnico): tipo, estado, lugar, nota, fechas e importe.
+  function orderCard(order, T) {
+    const card = el('article', null, `card order-card status-${/^[a-z]+$/.test(order.status) ? order.status : 'open'}`);
+    const head = el('div', null, 'card-head');
+    head.append(el('strong', T.kinds?.[order.kind] || order.kind), el('span', T.status?.[order.status] || order.status, `badge order-${order.status}`));
+    card.append(head, el('div', `${order.id} · ${date(order.createdAt)}`, 'subtle'), el('p', order.note, 'order-note'));
+    const facts = [order.place, order.distance != null ? format(T.distance, order.distance) : null, order.techName ? `${T.tech}: ${order.techName}` : null,
+      order.clientName && state.session.kind === 'operations' ? order.clientName : null].filter(Boolean).join(' · ');
+    if (facts) card.append(el('div', facts, 'subtle'));
+    if (order.price) card.append(el('div', `${T.price}: $${thousands(order.price)}`, 'order-price'));
+    return card;
+  }
+  // G6 Client > Solicitudes de mantenimiento: pedir un trabajo y seguirlo hasta pagarlo.
+  async function requestsView(content) {
+    const T = group('orders'); const data = await request('requests'); if (!data) return;
+    simpleHero(content, T.clientTitle, T.clientHelp);
+    const panel = el('section', null, 'zone-new');
+    panel.append(el('span', T.newRequest, 'overline'));
+    const form = el('div', null, 'order-form');
+    const kind = el('select'); kind.setAttribute('aria-label', T.kind);
+    for (const option of data.kinds) { const node = el('option', option.label); node.value = option.value; kind.append(node); }
+    const place = el('select'); place.setAttribute('aria-label', T.place);
+    for (const option of data.places) { const node = el('option', option.label); node.value = option.value; place.append(node); }
+    const note = el('textarea'); note.maxLength = data.noteLength; note.rows = 2; note.placeholder = format(T.note, data.noteLength);
+    form.append(kind, place, note, button(T.send, async () => {
+      const result = await request('request_create', { kind: kind.value, place: place.value, note: note.value });
+      if (result) { await refresh(); message(result.message); }
+    }, false, 'primary'));
+    panel.append(form); content.append(panel);
+    if (!data.items.length) { content.append(el('div', T.empty, 'empty')); return; }
+    const grid = el('div', null, 'grid');
+    for (const order of data.items) {
+      const card = orderCard(order, T);
+      const actions = el('div', null, 'zone-actions');
+      if (order.status === 'billed') actions.append(button(format(T.pay, thousands(order.price)), async () => { const result = await request('request_pay', { orderId: order.id }); if (result) { await refresh(); message(result.message); } }, false, 'primary'));
+      if (order.status === 'open' || order.status === 'accepted') actions.append(button(T.cancel, async () => { if (await request('request_cancel', { orderId: order.id })) refresh(); }, false, 'danger'));
+      if (actions.childElementCount) card.append(actions);
+      grid.append(card);
+    }
+    content.append(grid);
+  }
+  // G6 Operations > Ordenes de trabajo: aceptar, ir (GPS), facturar y ver lo cobrado.
+  async function ordersView(content) {
+    const T = group('orders'); const data = await request('orders'); if (!data) return;
+    simpleHero(content, T.staffTitle, format(T.staffHelp, Math.round((data.share || 0) * 100)));
+    if (!data.items.length) { content.append(el('div', T.staffEmpty, 'empty')); return; }
+    const grid = el('div', null, 'grid');
+    for (const order of data.items) {
+      const card = orderCard(order, T);
+      if (order.mine) card.querySelector('.card-head').append(el('span', T.mine, 'badge here'));
+      const actions = el('div', null, 'zone-actions');
+      const gps = () => post('waypoint', { x: order.position.x, y: order.position.y }).catch(() => {});
+      if (order.status === 'open' && data.canWork) actions.append(button(T.accept, async () => { const result = await request('order_accept', { orderId: order.id }); if (result) { gps(); await refresh(); message(result.message); } }, false, 'primary'));
+      if (order.mine && order.status === 'accepted') {
+        const amount = el('input'); amount.type = 'number'; amount.min = '1'; amount.max = String(data.maxPrice); amount.step = '1'; amount.placeholder = T.amount; amount.className = 'order-amount';
+        actions.append(button(T.gps, gps), amount, button(T.bill, async () => {
+          const price = Math.floor(Number(amount.value));
+          const result = await request('order_bill', { orderId: order.id, price }); if (result) { await refresh(); message(result.message); }
+        }, false, 'primary'), button(T.release, async () => { if (await request('order_release', { orderId: order.id })) refresh(); }));
+      }
+      if (order.mine && order.share && (order.status === 'billed' || order.status === 'paid')) {
+        actions.append(el('span', `${format(T.yourShare, thousands(order.share))}${order.payout ? ' · ' + (order.payout === 'done' ? T.payoutDone : T.payoutPending) : ''}`, 'subtle'));
+      }
+      if (actions.childElementCount) card.append(actions);
+      grid.append(card);
+    }
+    content.append(grid);
+  }
+  const VIEWS = { locks: doorsView, trackers: trackersView, incidents: incidentsView, installations: zonesView, requests: requestsView, work_orders: ordersView };
   async function refresh() {
     if (!state.session || state.busy) return;
     if (state.selected) { await showDevice(state.selected); return; }

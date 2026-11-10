@@ -127,16 +127,6 @@ function OSSecurity.Gameplay.new(options)
     local lockpick = OSSecurity.LockpickService.new({ holdings = holdings, world = options.world, now = options.now, locks = locks, cars = cars,
         random = options.random or math.random, notifyOwner = carEffects.notifyOwner or noop,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
-    local zones = OSSecurity.ZoneService.new({ inventory = inventory, holdings = holdings, identity = identity, world = options.world, now = options.now,
-        sites = options.sites, players = options.players, playerName = options.playerName,
-        alias = (options.vehicles or {}).alias, productOfModel = placement.productOfModel,
-        profile = function(source) return auth.profile(source, 'operations') end,
-        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
-    local service = OSSecurity.TabletService.new({ inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, employeeId = options.employeeId,
-        sites = options.sites, alarms = alarms, locks = locks, cars = cars,
-        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
-    local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
-        sessions = sessions, service = service, placement = placement, zones = zones, audit = options.audit })
     -- Tienda: personal G6 = empleo de servicio o ACE profesional (tecnico, supervisor o admin).
     local function isStaff(source)
         for _, ace in ipairs({ config.Ace.technician, config.Ace.supervisor, config.Ace.admin }) do
@@ -151,8 +141,23 @@ function OSSecurity.Gameplay.new(options)
         isAdmin = function(source) return options.permissions ~= nil and options.permissions.isAdmin(source) == true end,
         money = options.money or { available = function() return false end, balance = noop, charge = noop, refund = noop },
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    local orders = OSSecurity.OrderService.new({ inventory = inventory, identity = identity, world = options.world, now = options.now,
+        sites = options.sites, alias = (options.vehicles or {}).alias, playerName = options.playerName, players = options.players,
+        money = options.money or { available = function() return false end, charge = noop, refund = noop }, isStaff = isStaff,
+        notify = options.notifyPlayer,
+        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    local zones = OSSecurity.ZoneService.new({ inventory = inventory, holdings = holdings, identity = identity, world = options.world, now = options.now,
+        sites = options.sites, players = options.players, playerName = options.playerName,
+        alias = (options.vehicles or {}).alias, productOfModel = placement.productOfModel,
+        profile = function(source) return auth.profile(source, 'operations') end,
+        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    local service = OSSecurity.TabletService.new({ inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, employeeId = options.employeeId,
+        sites = options.sites, alarms = alarms, locks = locks, cars = cars,
+        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
+        sessions = sessions, service = service, placement = placement, zones = zones, orders = orders, audit = options.audit })
     local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks, cars = cars,
-        lockpick = lockpick, zones = zones, shop = shop }
+        lockpick = lockpick, zones = zones, shop = shop, orders = orders }
     function gameplay.status() return ready and inventory.status() and options.registry.status() end
     function gameplay.load()
         ready = false

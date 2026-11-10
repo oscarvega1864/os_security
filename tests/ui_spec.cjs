@@ -63,6 +63,10 @@ async function main() {
             zones:[{id:'zona_2',place:'Low Power St, Pillbox Hill',client:'segundo · amigo',createdAt:1762700000,surface:'wall',size:1.5,site:'Propiedad 200',distance:2.5,mine:true,status:'free',deletable:true},
               {id:'zona_1',place:'Vespucci Blvd',client:'oscar',createdAt:1762600000,surface:'ceiling',size:1,distance:40,mine:true,status:'installed',deviceId:'osd_0000000001',deletable:false},
               {id:'zona_f2529d2',surface:'wall',size:4,distance:66.5,mine:true,status:'free',deletable:true}]};
+          else if(body.action==='requests') result.data={kinds:[{value:'cctv',label:'Instalar camaras'},{value:'repair',label:'Reparar un dispositivo'}],places:[{value:'here',label:'Donde estoy ahora'},{value:'site:property:200',label:'Propiedad 200'}],noteLength:140,maxOpen:3,
+            items:[{id:'ot_000002',kind:'repair',status:'billed',note:'Camara sin imagen',place:'Propiedad 200',techName:'oscar_vega',price:1250,createdAt:1762700000},{id:'ot_000001',kind:'cctv',status:'open',note:'Dos camaras',place:'Propiedad 200',createdAt:1762600000}]};
+          else if(body.action==='orders') result.data={canWork:true,share:0.6,maxPrice:25000,items:[{id:'ot_000003',kind:'alarm',status:'open',note:'Alarma en el local',place:'Negocio 4',clientName:'segundo · amigo',distance:120,position:{x:1,y:2,z:3},createdAt:1762700000},
+            {id:'ot_000002',kind:'repair',status:'accepted',mine:true,note:'Camara sin imagen',place:'Propiedad 200',clientName:'oscar',distance:3,position:{x:4,y:5,z:6},createdAt:1762600000}]};
           else if(body.action==='doors') result.data={items:[{id:'p200_1',site:'Propiedad 200',tier:'Bombin de serie',level:1,locked:true}]};
           else if(body.action==='trackers') result.data={items:[{plate:'OS000012',lock:true,alarm:true,locked:true,sounding:false,position:{x:10.4,y:-20.2,z:30}}]};
           else if(body.action==='incidents') result.data={items:[{at:1762700000,kind:'triggered',device:'G6-D · osd_0000000009',deviceId:'osd_0000000009',site:'Propiedad 200'}]};
@@ -96,6 +100,17 @@ async function main() {
     await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent.includes('Mis dispositivos')).click()`);
     await until(`document.querySelectorAll('.card').length===1`);
     console.log('PASS Client doors, vehicle trackers with GPS and alarm incident history');
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent.includes('Solicitudes')).click()`);
+    await until(`document.querySelectorAll('.order-card').length===2 && document.querySelector('.order-form select')`);
+    assert(await evaluate(`document.querySelectorAll('.order-card')[0].textContent.includes('1.250') && Array.from(document.querySelectorAll('.order-card')[0].querySelectorAll('button')).some(b=>b.textContent.includes('Pagar'))`));
+    await evaluate(`window.__calls.length=0; document.querySelector('.order-form select').value='repair'; document.querySelectorAll('.order-form select')[1].value='site:property:200'; document.querySelector('.order-form textarea').value='Revisar alarma'; document.querySelector('.order-form button').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='request_create' && x.body.args.kind==='repair' && x.body.args.place==='site:property:200' && x.body.args.note==='Revisar alarma')`);
+    await evaluate(`Array.from(document.querySelectorAll('.order-card')[0].querySelectorAll('button')).find(b=>b.textContent.includes('Pagar')).click()`);
+    await until(`window.__calls.some(x=>x.body.action==='request_pay' && x.body.args.orderId==='ot_000002')`);
+    fs.writeFileSync(path.join(output, 'requests.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent.includes('Mis dispositivos')).click()`);
+    await until(`document.querySelectorAll('.card').length===1`);
+    console.log('PASS Client maintenance requests: form, list with status and pay button');
     await evaluate(`window.__device.displayId='<img src=x onerror="window.__xss=true">'; document.getElementById('refresh').click()`);
     await until(`document.getElementById('content').textContent.includes('<img src=x')`);
     assert(await evaluate(`document.querySelector('img')===null && window.__xss!==true`));
@@ -143,6 +158,15 @@ async function main() {
     await evaluate(`window.postMessage({type:'viewfinder',action:'shot'},'*')`);
     await until(`document.getElementById('viewfinder').hidden`);
     console.log('PASS Installations: zone photo cards, install from a card, viewfinder marking flow');
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Ordenes de trabajo').click()`);
+    await until(`document.querySelectorAll('.order-card').length===2`);
+    assert(await evaluate(`document.querySelectorAll('.order-card')[1].querySelector('.badge.here') && document.querySelector('.order-amount')`));
+    await evaluate(`window.__calls.length=0; document.querySelector('.order-amount').value='1500'; Array.from(document.querySelectorAll('.order-card')[1].querySelectorAll('button')).find(b=>b.textContent==='Facturar').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='order_bill' && x.body.args.price===1500 && x.body.args.orderId==='ot_000002')`);
+    await evaluate(`Array.from(document.querySelectorAll('.order-card')[0].querySelectorAll('button')).find(b=>b.textContent==='Aceptar').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='order_accept' && x.body.args.orderId==='ot_000003')`);
+    fs.writeFileSync(path.join(output, 'orders.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    console.log('PASS Work orders: accept open orders, bill own accepted orders');
     await evaluate(`window.__open('operations','supervisor')`);
     await until(`document.querySelector('.profile.role-supervisor') && document.querySelectorAll('.ability').length===3`);
     assert(await evaluate(`!Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent==='Instalaciones') && document.querySelector('.abilities').textContent.includes('Abrir mantenimiento')`));

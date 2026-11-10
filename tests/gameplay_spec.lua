@@ -1503,3 +1503,65 @@ test('Live CCTV: only viewers of an installed, powered camera get its framing; w
     assert(not call(c, 2, client, 'live', { deviceId = noCamera.id }).ok)
 end)
 
+-- Ordenes de trabajo ---------------------------------------------------------------------------------
+test('Work orders: a client requests, an on-duty technician accepts and bills, the client pays and the technician gets his share', function()
+    local c = fixture(); assert(c.loaded, c.loadError)
+    grant(c, 2, 'g6_client_tablet'); grant(c, 1, 'g6_operations_tablet'); grant(c, 3, 'g6_operations_tablet')
+    c.assets.properties[7] = { id = 7, owner = 'ana', position = { x = 50, y = 60, z = 30 } }; c.active[2] = { alias = 'ana' }
+    c.wallet[2] = { bank = 5000, cash = 0 }; c.wallet[1] = { bank = 0, cash = 0 }
+    local client = open(c, 2, 'client')
+    local list = call(c, 2, client, 'requests'); assert(list.ok, list.error)
+    assert(#list.data.items == 0 and #list.data.places == 2 and list.data.places[2].value == 'site:property:7' and list.data.places[2].label:find('Propiedad 7', 1, true) and #list.data.kinds == 6)
+    assert(not call(c, 2, client, 'request_create', { kind = 'cctv', place = 'here', note = '   ' }).ok) -- sin descripcion
+    assert(not call(c, 2, client, 'request_create', { kind = 'hack', place = 'here', note = 'x' }).ok)
+    assert(not call(c, 2, client, 'request_create', { kind = 'cctv', place = 'site:property:99', note = 'Camara' }).ok) -- no es suya
+    local created = call(c, 2, client, 'request_create', { kind = 'cctv', place = 'site:property:7', note = 'Dos camaras <b>en la entrada</b>' })
+    assert(created.ok, created.error) assert(created.data.id == 'ot_000001')
+    local order = c.game.inventory.orders().ot_000001
+    assert(order.status == 'open' and order.position.x == 50 and order.place:find('Propiedad 7', 1, true) and not order.note:find('[<>]') and order.note:find('entrada'))
+    assert(not call(c, 2, client, 'request_create', { kind = 'alarm', place = 'here', note = 'Otra' }).ok) -- una cada 10 s
+    local supervisor = open(c, 3, 'operations')
+    assert(not call(c, 3, supervisor, 'order_accept', { orderId = 'ot_000001' }).ok) -- supervisor sin perfil de instalacion
+    local tech = open(c, 1, 'operations')
+    local orders = call(c, 1, tech, 'orders'); assert(orders.ok and #orders.data.items == 1 and orders.data.items[1].clientName == 'Jugador2')
+    assert(not call(c, 1, tech, 'order_bill', { orderId = 'ot_000001', price = 500 }).ok) -- primero hay que aceptarla
+    local accepted = call(c, 1, tech, 'order_accept', { orderId = 'ot_000001' }); assert(accepted.ok and accepted.data.position.x == 50)
+    assert(c.game.inventory.orders().ot_000001.techName == 'Jugador1')
+    assert(not call(c, 1, tech, 'order_bill', { orderId = 'ot_000001', price = 999999 }).ok)
+    assert(call(c, 1, tech, 'order_bill', { orderId = 'ot_000001', price = 1000 }).ok)
+    assert(not call(c, 2, client, 'request_cancel', { orderId = 'ot_000001' }).ok) -- facturada: ya no se cancela
+    local paid = call(c, 2, client, 'request_pay', { orderId = 'ot_000001' }); assert(paid.ok, paid.error)
+    order = c.game.inventory.orders().ot_000001
+    assert(order.status == 'paid' and order.payout == 'done' and c.wallet[2].bank == 4000 and c.wallet[1].bank == 600)
+    assert(not call(c, 2, client, 'request_pay', { orderId = 'ot_000001' }).ok) -- no se paga dos veces
+end)
+
+test('Work orders: offline technicians are paid later, clients cancel their own open orders and have a limit of open requests', function()
+    local c = fixture(); assert(c.loaded, c.loadError)
+    grant(c, 2, 'g6_client_tablet'); grant(c, 1, 'g6_operations_tablet'); grant(c, 5, 'g6_client_tablet'); c.aces[5][config.Ace.client] = true
+    c.wallet[2] = { bank = 3000, cash = 0 }; c.wallet[1] = { bank = 100, cash = 0 }
+    local client = open(c, 2, 'client')
+    local function create(note) c.core.time = c.core.time + 11; return call(c, 2, client, 'request_create', { kind = 'repair', place = 'here', note = note }) end
+    assert(create('Uno').ok and create('Dos').ok and create('Tres').ok)
+    local fourth = create('Cuatro'); assert(not fourth.ok and fourth.error:find('3'))
+    assert(call(c, 2, client, 'request_cancel', { orderId = 'ot_000003' }).ok and c.game.inventory.orders().ot_000003.status == 'cancelled')
+    local other = open(c, 5, 'client'); assert(not call(c, 5, other, 'request_cancel', { orderId = 'ot_000001' }).ok) -- no es suya
+    local tech = open(c, 1, 'operations')
+    assert(call(c, 1, tech, 'order_accept', { orderId = 'ot_000001' }).ok and call(c, 1, tech, 'order_bill', { orderId = 'ot_000001', price = 2000 }).ok)
+    c.players[1].connected = false
+    client = open(c, 2, 'client')
+    assert(call(c, 2, client, 'request_pay', { orderId = 'ot_000001' }).ok)
+    assert(c.game.inventory.orders().ot_000001.payout == 'pending' and c.wallet[1].bank == 100)
+    c.players[1].connected = true; c.core.time = c.core.time + 11
+    tech = open(c, 1, 'operations')
+    local listed = call(c, 1, tech, 'orders'); assert(listed.ok)
+    assert(c.wallet[1].bank == 100 + 1200 and c.game.inventory.orders().ot_000001.payout == 'done')
+    c.wallet[2].bank = 10
+    assert(call(c, 1, tech, 'order_accept', { orderId = 'ot_000002' }).ok and call(c, 1, tech, 'order_bill', { orderId = 'ot_000002', price = 500 }).ok)
+    client = open(c, 2, 'client')
+    local poor = call(c, 2, client, 'request_pay', { orderId = 'ot_000002' }); assert(not poor.ok and poor.error:find('Saldo'))
+    assert(c.game.inventory.orders().ot_000002.status == 'billed')
+    assert(not OSSecurity.InventoryState.order({ id = 'ot_000009', kind = 'cctv', status = 'billed', client = c.players[2].principal,
+        note = 'x', place = 'y', position = { x = 0, y = 0, z = 0 }, createdAt = 1, updatedAt = 1 })) -- facturada sin tecnico ni precio
+end)
+

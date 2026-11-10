@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.12.0 — Solicitudes y órdenes de trabajo
+
+- G6 Client → Solicitudes de mantenimiento: pedir a Gruppe Sechs un trabajo (cámaras, alarma, reparación,
+  bombín, vehículo u otro) con una descripción, donde estás o en una de tus propiedades. Máximo 3 en curso;
+  se pueden cancelar hasta que estén facturadas y se pagan desde la tablet (banco).
+- G6 Operations → Órdenes de trabajo (técnicos con perfil de instalación): las órdenes abiertas con su lugar
+  y distancia; aceptar (queda a tu nombre y se marca en el GPS), soltar o facturar con un importe (máx.
+  $25.000). Los técnicos de servicio reciben un aviso con cada solicitud nueva y el cliente, al aceptarse y
+  al facturarse.
+- Al pagar el cliente, el técnico cobra el 60 % al momento o, si no está conectado, la próxima vez que abra
+  las órdenes. Las órdenes cerradas se borran a los 30 días. Configuración en `Orders` de
+  `config/gameplay.lua`.
+
 ## 0.11.1 — Vista de cámaras sin solaparse con el HUD
 
 - El HUD de la vista en directo va centrado (REC, hora y cámara arriba; ayuda abajo) y deja libres las

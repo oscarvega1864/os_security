@@ -62,6 +62,22 @@ function OSSecurity.TabletController.new(options)
             if result then return { ok = true, placement = result } end
         elseif actor.kind ~= 'inventory' and request.action == 'live' and util.object(request.args, { deviceId = true }) then
             result, reason = options.service.live(actor, request.args)
+        elseif actor.kind == 'client' and request.action == 'requests' and next(request.args) == nil then
+            result, reason = options.orders.clientList(actor)
+        elseif actor.kind == 'client' and request.action == 'request_create' then
+            result, reason = options.orders.create(actor, request.args)
+        elseif actor.kind == 'client' and request.action == 'request_cancel' then
+            result, reason = options.orders.cancel(actor, request.args)
+        elseif actor.kind == 'client' and request.action == 'request_pay' then
+            result, reason = options.orders.pay(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'orders' and next(request.args) == nil then
+            result, reason = options.orders.staffList(actor)
+        elseif actor.kind == 'operations' and request.action == 'order_accept' then
+            result, reason = options.orders.accept(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'order_release' then
+            result, reason = options.orders.release(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'order_bill' then
+            result, reason = options.orders.bill(actor, request.args)
         elseif actor.kind == 'client' and request.action == 'doors' and next(request.args) == nil then
             result, reason = options.service.doors(actor)
         elseif actor.kind == 'client' and request.action == 'trackers' and next(request.args) == nil then

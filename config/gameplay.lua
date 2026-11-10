@@ -23,6 +23,11 @@ OSSecurity.GameplayConfig = {
     -- Zonas de montaje desde la tablet: cliente a menos de ClientDistance del tecnico, propiedad del cliente
     -- a menos de SiteDistance (se vincula sola) y MarkSeconds para marcar la zona con el visor.
     Zones = { ClientDistance = 15.0, SiteDistance = 80.0, MarkSeconds = 300 },
+    -- Ordenes de trabajo: el cliente pide desde G6 Client, un tecnico G6 de servicio la acepta, hace el trabajo
+    -- y la factura; el cliente paga desde su tablet (banco) y el tecnico cobra TechShare del precio.
+    -- Las cerradas (pagadas o canceladas) se borran pasados KeepDays.
+    Orders = { MaxOrders = 400, MaxOpenPerClient = 3, MaxPrice = 25000, TechShare = 0.6, NoteLength = 140, KeepDays = 30,
+        PayAccount = 'bank' },
     -- Alarmas (central con teclado). Zona: esfera alrededor del teclado.
     Alarm = {
         Radius = 10.0, InteractDistance = 2.0, ExitDelay = 30, EntryDelay = 30, SirenSeconds = 90,

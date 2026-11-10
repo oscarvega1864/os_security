@@ -360,6 +360,8 @@ local gameplay = OSSecurity.Gameplay.new({
     locksChanged = function(list) TriggerClientEvent('os_security:locks:doors', -1, list) end,
     vehicles = carVehicles, carEffects = carEffects, money = money,
     shopMoved = function(list) TriggerClientEvent('os_security:shop:locations', -1, list) end,
+    -- Avisos de ordenes de trabajo (mismo aviso que las alarmas: texto y, si hay, punto en el mapa).
+    notifyPlayer = function(player, text, kind, position) TriggerClientEvent('os_security:alarm:alert', player, text, kind, position) end,
     audit = function(action, source, deviceId)
         local safeId = OSSecurity.DeviceValidation.id(deviceId) and deviceId or '-'
         print(('%s [G6 AUDIT] action=%s source=%d device=%s'):format(constants.LOG_PREFIX, action, source, safeId))

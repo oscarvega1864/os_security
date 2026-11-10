@@ -104,6 +104,23 @@ OSSecurity.Brand = {
             kinds = { door = 'Puerta', vehicle = 'Vehiculo' }, tiers = { 'Seguridad basica', 'Seguridad media', 'Alta seguridad' }
         },
         hello = 'Gruppe Sechs: servicio de seguridad disponible.',
+        orders = {
+            kinds = { cctv = 'Instalar camaras', alarm = 'Instalar alarma', repair = 'Reparar un dispositivo', lock = 'Cambiar bombin',
+                car = 'Seguridad del vehiculo', other = 'Otro trabajo' },
+            status = { open = 'Pendiente', accepted = 'En camino', billed = 'Por pagar', paid = 'Pagada', cancelled = 'Cancelada' },
+            here = 'Donde estoy ahora', clientPlace = 'Ubicacion del cliente',
+            clientTitle = 'Pide a Gruppe Sechs lo que necesites.', clientHelp = 'Un tecnico de servicio acepta tu solicitud, viene al sitio y, al terminar, te pasa la factura para pagar desde aqui.',
+            newRequest = 'Nueva solicitud', kind = 'Trabajo', place = 'Lugar', note = 'Que necesitas (max. %d caracteres)', send = 'Enviar solicitud',
+            empty = 'No tienes solicitudes.', cancel = 'Cancelar', pay = 'Pagar $%s', tech = 'Tecnico', price = 'Importe',
+            staffTitle = 'Trabajo pendiente en la calle.', staffHelp = 'Acepta una orden, ve al punto marcado, haz el trabajo y facturalo. Cobras el %s% del importe al pagar el cliente.',
+            staffEmpty = 'No hay ordenes de trabajo abiertas.', accept = 'Aceptar', release = 'Soltar', gps = 'GPS', bill = 'Facturar', amount = 'Importe ($)',
+            yourShare = 'Tu parte: $%s', payoutPending = 'Cobro pendiente', payoutDone = 'Cobrado', distance = 'a %s m', mine = 'Tuya',
+            newOrder = 'G6 · Nueva orden de trabajo: %s en %s.', created = 'Solicitud %s enviada a Gruppe Sechs.', cancelled = 'Solicitud cancelada.',
+            cancelledTech = 'El cliente ha cancelado la orden %s.', accepted = 'Orden %s aceptada: marcada en tu GPS.', released = 'Orden devuelta a la lista.',
+            acceptedClient = 'G6 · Tu solicitud %s la atiende %s.', billed = 'Orden %s facturada. Tu parte: $%d al pagar el cliente.',
+            billedClient = 'G6 · Trabajo %s terminado: paga $%d desde tu tablet G6 Client.', paid = 'Pagado: $%d. Gracias por confiar en Gruppe Sechs.',
+            paidTech = 'G6 · Has cobrado $%d por la orden %s.'
+        },
         live = {
             watch = 'Ver en directo', rec = 'REC', cam = 'CAM', noise = 'Senal degradada',
             help = 'Raton o flechas: mover · Rueda o + / -: zoom · Q / E: camara anterior / siguiente · Retroceso: salir',
@@ -155,7 +172,7 @@ OSSecurity.Brand = {
             { id = 'trackers', name = 'Localizadores de vehiculos', implemented = true },
             { id = 'emergencies', name = 'Emergencias', implemented = false },
             { id = 'contracts', name = 'Contratos', implemented = false },
-            { id = 'requests', name = 'Solicitudes de mantenimiento', implemented = false },
+            { id = 'requests', name = 'Solicitudes de mantenimiento', implemented = true },
             { id = 'incidents', name = 'Historial de incidencias', implemented = true }
         },
         operations = {
@@ -164,7 +181,7 @@ OSSecurity.Brand = {
             { id = 'maintenance', name = 'Mantenimiento', implemented = true },
             { id = 'inventory', name = 'Inventario tecnico', implemented = true },
             { id = 'cctv', name = 'Registro CCTV', implemented = true },
-            { id = 'work_orders', name = 'Ordenes de trabajo', implemented = false },
+            { id = 'work_orders', name = 'Ordenes de trabajo', implemented = true, requires = 'install' },
             { id = 'bodycams', name = 'Bodycams', implemented = false },
             { id = 'alarms', name = 'Alarmas', implemented = true },
             { id = 'access', name = 'Control de accesos', implemented = false },

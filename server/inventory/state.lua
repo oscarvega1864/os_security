@@ -106,6 +106,31 @@ function state.car(value)
     return true
 end
 
+-- Orden de trabajo: solicitud de un cliente que atiende un tecnico G6 (ver server/orders/service.lua).
+state.OrderKinds = { cctv = true, alarm = true, repair = true, lock = true, car = true, other = true }
+state.OrderStatus = { open = true, accepted = true, billed = true, paid = true, cancelled = true }
+function state.orderId(id)
+    return type(id) == 'string' and id:match('^ot_%d%d%d%d%d%d$') ~= nil
+end
+local function shortText(value, size) return value == nil or (util.text(value, size) and not value:find('[%c<>]')) end
+function state.order(value)
+    local limits = OSSecurity.GameplayConfig.Orders
+    if not util.object(value, { id = true, kind = true, status = true, client = true, clientName = true, technician = true, techName = true,
+        note = true, place = true, position = true, site = true, price = true, payout = true, createdAt = true, updatedAt = true })
+        or not state.orderId(value.id) or not state.OrderKinds[value.kind] or not state.OrderStatus[value.status]
+        or not identity.valid(value.client) or (value.technician ~= nil and not identity.valid(value.technician))
+        or not shortText(value.clientName, 64) or not shortText(value.techName, 64) or not shortText(value.note, limits.NoteLength)
+        or not shortText(value.place, 80) or not state.vector(value.position, 1000000) or (value.site ~= nil and not state.site(value.site))
+        or (value.price ~= nil and not util.integer(value.price, 1, limits.MaxPrice))
+        or (value.payout ~= nil and value.payout ~= 'pending' and value.payout ~= 'done')
+        or not util.integer(value.createdAt, 0, 253402300799) or not util.integer(value.updatedAt, 0, 253402300799) then return false end
+    -- Coherencia del estado: aceptada o facturada exige tecnico; facturada o pagada exige precio.
+    if (value.status == 'accepted' or value.status == 'billed') and not value.technician then return false end
+    if (value.status == 'billed' or value.status == 'paid') and not value.price then return false end
+    if value.payout ~= nil and value.status ~= 'paid' then return false end
+    return true
+end
+
 local function placement(value)
     return util.object(value, { id = true, anchorId = true, owner = true, installer = true, position = true,
         rotation = true, bucket = true, model = true, status = true, createdAt = true, updatedAt = true, deviceId = true, reason = true,
@@ -147,7 +172,7 @@ end
 local function operation(op, limits)
     if not util.object(op, { kind = true, at = true, principal = true, item = true, amount = true,
         deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true, site = true, alarm = true,
-        doorId = true, door = true, carId = true, car = true, anchorId = true })
+        doorId = true, door = true, carId = true, car = true, anchorId = true, orderId = true, order = true })
         or not util.integer(op.at, 0, 253402300799) then return false end
     local fields = { kind = true, at = true }
     if op.kind == 'grant' or op.kind == 'migrate' then
@@ -175,6 +200,10 @@ local function operation(op, limits)
     elseif op.kind == 'anchor' then
         fields.anchor = true
         if not state.anchor(op.anchor) then return false end
+    elseif op.kind == 'order' then
+        -- Sin 'order' se borra (limpieza de ordenes cerradas antiguas).
+        fields.orderId, fields.order = true, true
+        if not state.orderId(op.orderId) or (op.order ~= nil and (not state.order(op.order) or op.order.id ~= op.orderId)) then return false end
     elseif op.kind == 'unanchor' then
         -- Borrar una zona que nunca se ha usado (sin instalaciones que la referencien).
         fields.anchorId = true
@@ -213,12 +242,13 @@ end
 
 function state.snapshot(snapshot, limits)
     if not util.object(snapshot, { schemaVersion = true, revision = true, nextInstallation = true,
-        accounts = true, anchors = true, installations = true, lastOperation = true, sites = true, alarms = true, doors = true, cars = true })
+        accounts = true, anchors = true, installations = true, lastOperation = true, sites = true, alarms = true, doors = true, cars = true, orders = true })
         or snapshot.schemaVersion ~= 1 or not util.integer(snapshot.revision, 0, 9007199254740000)
         or not util.integer(snapshot.nextInstallation, 1, limits.MaxInstallations + 1)
         or not util.object(snapshot.accounts) or not util.object(snapshot.anchors) or not util.object(snapshot.installations)
         or (snapshot.sites ~= nil and not util.object(snapshot.sites)) or (snapshot.alarms ~= nil and not util.object(snapshot.alarms))
         or (snapshot.doors ~= nil and not util.object(snapshot.doors)) or (snapshot.cars ~= nil and not util.object(snapshot.cars))
+        or (snapshot.orders ~= nil and not util.object(snapshot.orders))
         or (snapshot.revision == 0 and snapshot.lastOperation ~= nil)
         or (snapshot.revision > 0 and not operation(snapshot.lastOperation, limits)) then return nil, 'Formato de inventario incompatible.' end
     local count, deviceIds = 0, {}
@@ -287,6 +317,11 @@ function state.snapshot(snapshot, limits)
     for carId, car in pairs(snapshot.cars or {}) do
         if not state.carId(carId) or not state.car(car) or tostring(car.id) ~= carId then return nil, 'Vehiculo con equipo de seguridad invalido.' end
     end
+    local orders = 0
+    for orderId, order in pairs(snapshot.orders or {}) do
+        orders = orders + 1
+        if orders > OSSecurity.GameplayConfig.Orders.MaxOrders or not state.order(order) or order.id ~= orderId then return nil, 'Orden de trabajo invalida.' end
+    end
     for doorId, door in pairs(snapshot.doors or {}) do
         count = count + 1
         if count > OSSecurity.GameplayConfig.Locks.MaxDoors or not state.door(door) or door.id ~= doorId then return nil, 'Puerta con cerradura invalida.' end
@@ -327,6 +362,15 @@ function state.apply(snapshot, op, limits)
     elseif op.kind == 'car' then
         nextState.cars = nextState.cars or {}
         nextState.cars[op.carId] = util.copy(op.car)
+    elseif op.kind == 'order' then
+        nextState.orders = nextState.orders or {}
+        if op.order and not nextState.orders[op.orderId] then
+            local count = 0
+            for _ in pairs(nextState.orders) do count = count + 1 end
+            if count >= OSSecurity.GameplayConfig.Orders.MaxOrders then return nil, 'Limite de ordenes de trabajo alcanzado.' end
+        end
+        nextState.orders[op.orderId] = op.order and util.copy(op.order) or nil
+        if next(nextState.orders) == nil then nextState.orders = nil end
     elseif op.kind == 'door' then
         nextState.doors = nextState.doors or {}
         nextState.doors[op.doorId] = op.door and util.copy(op.door) or nil
