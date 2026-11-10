@@ -1,2 +1,13 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Fuera del zip de release (git archive): solo desarrollo y publicacion.
+/tests export-ignore
+/scripts export-ignore
+/.github export-ignore
+/AGENTS.md export-ignore
+/package.json export-ignore
+/package-lock.json export-ignore
+/.npmrc export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore

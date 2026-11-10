@@ -21,3 +21,6 @@ Desktop.ini
 /node_modules/
 /.tools/
 server.cfg
+
+# Zips de release generados localmente.
+/dist/

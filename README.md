@@ -1,4 +1,4 @@
-# Gruppe Sechs — OS Security 0.8.0
+# Gruppe Sechs — OS Security 0.9.0
 
 Recurso standalone para FiveM y GTA V Legacy. La experiencia comercial pertenece
 a Gruppe Sechs; el nombre técnico sigue siendo `os_security`. Incluye Device Core,
@@ -7,9 +7,20 @@ CCTV. No requiere frameworks ni MySQL. Conserva los comandos anteriores.
 
 `g6_client_tablet` abre G6 Client; `g6_operations_tablet` abre G6 Operations. Cada
 tablet exige su propio ítem y autorización del servidor. El catálogo CCTV y los
-props colocados son funcionales; **no hay transmisión de vídeo remoto**. Alarmas,
-cerraduras, GPS, bodycams, contratos y demás servicios futuros aparecen pendientes.
-No se implementan minijuegos. Las piezas siguen siendo referencias lógicas.
+props colocados son funcionales; **no hay transmisión de vídeo remoto** todavía.
+Incluye alarmas, cerraduras de puertas, seguridad de vehículos, ganzúa y minijuegos de
+instalación. Las secciones de las tablets aún no programadas no aparecen en el menú.
+
+## Descarga
+
+Cada versión se publica en **Releases** del repositorio con un zip listo para usar
+(`os_security-vX.Y.Z.zip`) y sus cambios. Descomprimir en `resources/` (carpeta
+`os_security`), añadir `ensure os_security` y reiniciar. Al actualizar, conservar `data/`.
+
+Para publicar una versión: subir `Version` en `config/config.lua`, añadir su sección en
+`CHANGELOG.md`, hacer commit y subir la etiqueta `vX.Y.Z` (`git tag v0.9.0` y
+`git push origin v0.9.0`). GitHub Actions pasa los tests, crea el zip y la release.
+Vista previa local: `npm run package` y `npm run release:notes`.
 
 Consultar [arquitectura, permisos y prueba completa de las tablets y colocación](docs/g6-tablets.md).
 

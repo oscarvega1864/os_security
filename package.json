@@ -5,7 +5,9 @@
   "description": "Lua 5.4 test tooling only; FiveM has no npm runtime dependency",
   "scripts": {
     "test": "node tests/run.cjs",
-    "test:ui": "node tests/ui_spec.cjs"
+    "test:ui": "node tests/ui_spec.cjs",
+    "package": "node scripts/release.cjs package",
+    "release:notes": "node scripts/release.cjs notes"
   },
   "devDependencies": {
     "wasmoon": "1.16.0"

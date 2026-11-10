@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.0 — Instalaciones desde la tablet
+
+- G6 Operations → Instalaciones: eliges el cliente (tú o un jugador a tu lado), marcas la zona con un visor
+  de cámara (E fija la superficie, flechas mueven, + y − cambian el tamaño, E hace la foto) y la zona aparece
+  como una ficha tipo foto con lugar, cliente, superficie, tamaño y estado. Desde la ficha se instala la
+  cámara o la alarma con el kit elegido (a menos de 4 m) y se borran las zonas sin usar.
+- Las zonas quedan vinculadas a la propiedad o negocio del cliente si está cerca.
+- G6 Client: Cerraduras (puertas de tus propiedades), Localizadores (tus vehículos con equipo G6 y marca en
+  el GPS) e Historial de incidencias (sucesos de tus alarmas).
+- Las secciones aún no programadas ya no aparecen en el menú de las tablets.
+- Releases en GitHub: zip del recurso con su versión y changelog al publicar una etiqueta `vX.Y.Z`.
+
 ## 0.8.0 — Puente
 
 - Arrancar sin llave un vehículo OS con destornillador: segunda pulsación de Y, minijuego del vehículo en modo
