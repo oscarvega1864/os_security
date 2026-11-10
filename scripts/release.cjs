@@ -80,6 +80,8 @@ function packageZip() {
   const file = path.join(dist, zipName(value));
   // git archive respeta export-ignore (.gitattributes): sin tests, scripts ni herramientas de desarrollo.
   git('archive', '--format=zip', '--prefix=os_security/', '-o', file, 'HEAD');
+  // Copia con nombre fijo: el enlace del README (releases/latest/download/os_security.zip) baja siempre la ultima.
+  fs.copyFileSync(file, path.join(dist, 'os_security.zip'));
   const sha = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
   console.log(`${path.relative(root, file)}  ${(fs.statSync(file).size / 1024).toFixed(1)} KB  sha256:${sha}`);
 }

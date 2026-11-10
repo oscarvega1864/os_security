@@ -122,7 +122,7 @@ OSSecurity.Brand = {
             surfaces = { wall = 'Pared', ceiling = 'Techo', floor = 'Suelo' },
             states = { free = 'Libre', pending = 'Pendiente', installed = 'Instalada' },
             install = 'Instalar', kit = 'Kit', noKits = 'Sin kits en el inventario', delete = 'Borrar zona',
-            distance = 'a %s m', unknownPlace = 'Lugar sin nombre', size = '%s x %s m', notMine = 'Zona de otro tecnico',
+            distance = 'a %s m', unknownPlace = 'Lugar sin nombre', here = 'Aqui', goCloser = 'Acercate (%s m)', size = '%s x %s m', notMine = 'Zona de otro tecnico',
             device = 'Dispositivo', viewDevice = 'Ver dispositivo', site = 'Sitio', materials = 'Material disponible'
         },
         viewfinder = {

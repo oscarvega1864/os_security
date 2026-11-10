@@ -1,5 +1,8 @@
 # Gruppe Sechs — OS Security 0.10.0
 
+**[⬇ Descargar la última versión](https://github.com/oscarvega1864/os_security/releases/latest/download/os_security.zip)** ·
+[Todas las versiones y sus cambios](https://github.com/oscarvega1864/os_security/releases)
+
 Recurso standalone para FiveM y GTA V Legacy. La experiencia comercial pertenece
 a Gruppe Sechs; el nombre técnico sigue siendo `os_security`. Incluye Device Core,
 componentes, mantenimiento, inventario persistente, dos tablets y colocación física

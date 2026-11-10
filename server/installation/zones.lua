@@ -96,7 +96,9 @@ function OSSecurity.ZoneService.new(options)
                     deletable = not state.used and (anchor.installer == actor.principal or actor.role == 'admin') }
             end
         end
+        -- La mas cercana primero (la que tienes delante); sin posicion conocida, la mas reciente.
         table.sort(list, function(a, b)
+            if a.distance and b.distance and a.distance ~= b.distance then return a.distance < b.distance end
             if (a.createdAt or 0) ~= (b.createdAt or 0) then return (a.createdAt or 0) > (b.createdAt or 0) end
             return a.id < b.id
         end)

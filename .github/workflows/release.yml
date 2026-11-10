@@ -57,9 +57,9 @@ jobs:
         run: |
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release edit "$TAG" --title "OS Security $TAG" --notes-file "$RUNNER_TEMP/notes.md" --latest
-            gh release upload "$TAG" dist/os_security-*.zip --clobber
+            gh release upload "$TAG" dist/os_security-*.zip dist/os_security.zip --clobber
           else
-            gh release create "$TAG" dist/os_security-*.zip \
+            gh release create "$TAG" dist/os_security-*.zip dist/os_security.zip \
               --title "OS Security $TAG" \
               --notes-file "$RUNNER_TEMP/notes.md" \
               --latest

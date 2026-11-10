@@ -228,9 +228,14 @@
     if (!data.zones.length) content.append(el('div', T.empty, 'empty'));
     const grid = el('div', null, 'grid');
     for (const zone of data.zones) {
-      const card = el('article', null, 'card zone-card');
+      // A tu alcance: se puede instalar ya. Las lejanas no ofrecen Instalar (solo dicen a cuanto estan).
+      const near = zone.distance != null && zone.distance <= (data.installDistance || 4);
+      const card = el('article', null, `card zone-card${near ? ' near' : ''}`);
       const head = el('div', null, 'card-head');
-      head.append(el('strong', zone.place || T.unknownPlace, 'zone-place'), el('span', T.states?.[zone.status] || zone.status, `badge state-${zone.status}`));
+      const badges = el('div', null, 'zone-badges');
+      if (near) badges.append(el('span', T.here, 'badge here'));
+      badges.append(el('span', T.states?.[zone.status] || zone.status, `badge state-${zone.status}`));
+      head.append(el('strong', zone.place || zone.id, 'zone-place'), badges);
       card.append(zonePhoto(zone), head);
       const facts = [zone.client ? `${T.client}: ${zone.client}` : null, zone.distance != null ? format(T.distance, zone.distance) : null].filter(Boolean).join(' · ');
       card.append(el('div', facts, 'subtle'));
@@ -243,7 +248,8 @@
         const choice = el('select'); choice.setAttribute('aria-label', T.kit);
         for (const kit of kits) { const option = el('option', `${kit.name} (${kit.count})`); option.value = kit.id; choice.append(option); }
         if (!kits.length) { const option = el('option', T.noKits); option.value = ''; choice.append(option); choice.disabled = true; }
-        actions.append(choice, button(T.install, () => request('zone_install', { anchorId: zone.id, kit: choice.value }), !kits.length, 'primary'));
+        actions.append(choice, button(near ? T.install : format(T.goCloser, zone.distance != null ? zone.distance : '?'),
+          () => request('zone_install', { anchorId: zone.id, kit: choice.value }), !kits.length || !near, near ? 'primary' : ''));
       } else if (!zone.mine) actions.append(el('span', T.notMine, 'subtle'));
       if (zone.deletable) actions.append(button(T.delete, async () => { if (await request('zone_delete', { anchorId: zone.id })) refresh(); }, false, 'danger'));
       card.append(actions); grid.append(card);

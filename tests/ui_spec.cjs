@@ -61,7 +61,8 @@ async function main() {
           else if(body.action==='zones') result.data={installDistance:4,clients:[{id:1,name:'oscar_vega · oscar',self:true},{id:2,name:'segundo · amigo',self:false}],
             kits:[{id:'os_cctv_kit',name:'Kit CCTV',deviceType:'cctv_camera',count:2},{id:'os_alarm_kit',name:'Kit alarma',deviceType:'alarm_panel',count:0}],
             zones:[{id:'zona_2',place:'Low Power St, Pillbox Hill',client:'segundo · amigo',createdAt:1762700000,surface:'wall',size:1.5,site:'Propiedad 200',distance:2.5,mine:true,status:'free',deletable:true},
-              {id:'zona_1',place:'Vespucci Blvd',client:'oscar',createdAt:1762600000,surface:'ceiling',size:1,distance:40,mine:true,status:'installed',deviceId:'osd_0000000001',deletable:false}]};
+              {id:'zona_1',place:'Vespucci Blvd',client:'oscar',createdAt:1762600000,surface:'ceiling',size:1,distance:40,mine:true,status:'installed',deviceId:'osd_0000000001',deletable:false},
+              {id:'zona_f2529d2',surface:'wall',size:4,distance:66.5,mine:true,status:'free',deletable:true}]};
           else if(body.action==='doors') result.data={items:[{id:'p200_1',site:'Propiedad 200',tier:'Bombin de serie',level:1,locked:true}]};
           else if(body.action==='trackers') result.data={items:[{plate:'OS000012',lock:true,alarm:true,locked:true,sounding:false,position:{x:10.4,y:-20.2,z:30}}]};
           else if(body.action==='incidents') result.data={items:[{at:1762700000,kind:'triggered',device:'G6-D · osd_0000000009',deviceId:'osd_0000000009',site:'Propiedad 200'}]};
@@ -113,9 +114,12 @@ async function main() {
     assert(await evaluate(`Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent==='Instalaciones') && document.querySelector('.profile.role-technician')`));
     await evaluate(`document.querySelector('#content button').click()`); await until(`document.querySelectorAll('.card').length===1`);
     await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Instalaciones').click()`);
-    await until(`document.querySelectorAll('.zone-card').length===2 && document.querySelectorAll('.zone-card .photo').length===2`);
+    await until(`document.querySelectorAll('.zone-card').length===3 && document.querySelectorAll('.zone-card .photo').length===3`);
     assert(await evaluate(`document.querySelector('.zone-card .photo-meta').textContent.includes('Pared') && document.querySelectorAll('.zone-new option').length===2`));
     assert(await evaluate(`document.querySelectorAll('.zone-card')[1].textContent.includes('osd_0000000001') && document.querySelectorAll('.zone-card')[0].querySelector('select').options.length===1`));
+    assert(await evaluate(`(() => { const cards=document.querySelectorAll('.zone-card'); const far=cards[2].querySelector('.zone-actions button');
+      return cards[0].classList.contains('near') && cards[0].querySelector('.badge.here') && !cards[2].classList.contains('near')
+        && far.disabled && far.textContent.includes('66.5') && cards[2].querySelector('.zone-place').textContent==='zona_f2529d2'; })()`), 'Far zones cannot be installed from the tablet and say how far they are');
     fs.writeFileSync(path.join(output, 'zones.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
     await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('.zone-card button')).find(b=>b.textContent===window.__brand.Text.zones.install).click()`);
     await until(`window.__calls.some(x=>x.body.action==='zone_install' && x.body.args.anchorId==='zona_2' && x.body.args.kit==='os_cctv_kit')`);
