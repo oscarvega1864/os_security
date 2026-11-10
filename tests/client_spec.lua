@@ -14,6 +14,7 @@ do -- anchor.lua registra al cargarse las teclas + y - del tamano de zona
 end
 dofile('/repo/client/minigame.lua')
 dofile('/repo/client/minigame_fx.lua')
+dofile('/repo/client/live.lua')
 
 local function fixture()
     local c = { packets = {}, timers = {}, notifications = {}, shown = {}, hidden = 0, cancelled = 0, props = {} }
@@ -312,3 +313,30 @@ test('Cancelling the preview deletes its temporary prop and calls back once', fu
         assert(callbacks == 1 and calls.made == 1 and calls.deleted == 1 and next(objects) == nil)
     end)
 end)
+
+test('Live CCTV view frames the camera out of its mount and returns to the tablet in the CCTV section', function()
+    local position, yaw, pitch = OSSecurity.ClientLive.frame({ position = { x = 10, y = 0, z = 2 }, normal = { x = -1, y = 0, z = 0 } })
+    assert(math.abs(position.x - 9.65) < 1e-6 and position.y == 0 and math.abs(position.z - 1.9) < 1e-6)
+    assert(math.abs(yaw - 90) < 1e-6 and pitch < 0) -- pared que mira al oeste: hacia fuera y algo hacia abajo
+    position, yaw, pitch = OSSecurity.ClientLive.frame({ position = { x = 0, y = 0, z = 3 }, normal = { x = 0, y = 0, z = -1 }, rotation = { x = 0, y = 180, z = 45 } })
+    assert(math.abs(position.z - 2.75) < 1e-6 and yaw == 45 and pitch <= -60) -- techo: hacia abajo
+    position, yaw = OSSecurity.ClientLive.frame({ position = { x = 0, y = 0, z = 1 }, rotation = { x = 0, y = 0, z = 400 } })
+    assert(yaw == 40 and position.z == 0.9) -- sin normal: giro del dispositivo
+    local c = { packets = {}, timers = {}, shown = {}, hidden = 0 }
+    local started
+    local client = OSSecurity.ClientTablet.new({
+        send = function(packet) c.packets[#c.packets + 1] = packet end, timeout = function(callback) c.timers[#c.timers + 1] = callback end,
+        show = function(session) c.shown[#c.shown + 1] = session end, hide = function() c.hidden = c.hidden + 1 end,
+        cancelPlacement = function() end, beginPlacement = function() end, props = function() end, expiry = function() end, notify = function() end,
+        live = { start = function(feed) started = feed end } })
+    client.open('client')
+    client.response(c.packets[1].id, { ok = true, session = { token = 't', sequence = 0, kind = 'client', brand = OSSecurity.Brand } })
+    local answered
+    client.live('osd_0000000001', function(result) answered = result end)
+    assert(c.packets[2].action == 'live' and c.packets[2].args.deviceId == 'osd_0000000001' and c.packets[2].token == 't')
+    client.response(c.packets[2].id, { ok = true, data = { id = 'osd_0000000001', position = { x = 0, y = 0, z = 0 } } })
+    assert(answered.ok and started.id == 'osd_0000000001' and client.watching and not client.visible)
+    client.liveEnd()
+    assert(not client.watching and client.visible and c.shown[#c.shown].module == 'cctv')
+end)
+

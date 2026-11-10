@@ -18,7 +18,7 @@ async function main() {
   }
   collect('');
   for (const file of files) await factory.mountFile(`/repo/${file}`, fs.readFileSync(path.join(root, file)));
-  for (const file of ['web/index.html', 'web/style.css', 'web/app.js', 'web/minigame.js', 'web/pinpad.js', 'web/siren.js', 'web/cylinder.js', 'web/carwire.js', 'web/lockpick.js', 'web/shop.js']) await factory.mountFile(`/repo/${file}`, fs.readFileSync(path.join(root, file)));
+  for (const file of ['web/index.html', 'web/style.css', 'web/app.js', 'web/minigame.js', 'web/pinpad.js', 'web/siren.js', 'web/cylinder.js', 'web/carwire.js', 'web/lockpick.js', 'web/shop.js', 'web/live.js']) await factory.mountFile(`/repo/${file}`, fs.readFileSync(path.join(root, file)));
   const lua = await factory.createEngine({ enableProxy: false });
   try {
     // The optional codec is read only, never copied into the repository.

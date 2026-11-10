@@ -10,7 +10,7 @@ CCTV. No requiere frameworks ni MySQL. Conserva los comandos anteriores.
 
 `g6_client_tablet` abre G6 Client; `g6_operations_tablet` abre G6 Operations. Cada
 tablet exige su propio ítem y autorización del servidor. El catálogo CCTV y los
-props colocados son funcionales; **no hay transmisión de vídeo remoto** todavía.
+props colocados son funcionales y las cámaras instaladas se ven **en directo** desde la tablet.
 Incluye alarmas, cerraduras de puertas, seguridad de vehículos, ganzúa y minijuegos de
 instalación. Las secciones de las tablets aún no programadas no aparecen en el menú.
 

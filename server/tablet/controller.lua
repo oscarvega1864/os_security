@@ -60,6 +60,8 @@ function OSSecurity.TabletController.new(options)
         elseif actor.kind == 'operations' and request.action == 'place_begin' and next(request.args) == nil then
             result, reason = options.placement.begin(source, session)
             if result then return { ok = true, placement = result } end
+        elseif actor.kind ~= 'inventory' and request.action == 'live' and util.object(request.args, { deviceId = true }) then
+            result, reason = options.service.live(actor, request.args)
         elseif actor.kind == 'client' and request.action == 'doors' and next(request.args) == nil then
             result, reason = options.service.doors(actor)
         elseif actor.kind == 'client' and request.action == 'trackers' and next(request.args) == nil then

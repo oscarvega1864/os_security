@@ -135,6 +135,27 @@ function OSSecurity.ClientTablet.new(options)
             start(response.data)
         end)
     end
+    -- Ver una camara en directo: la tablet se oculta (la sesion sigue) y empieza la vista de camara.
+    function controller.live(deviceId, callback)
+        controller.request('live', { deviceId = deviceId }, function(response)
+            callback({ ok = response.ok, error = response.error, close = response.close })
+            if not response.ok or type(response.data) ~= 'table' or not options.live then return end
+            controller.watching = true
+            hide()
+            options.live.start(response.data)
+        end)
+    end
+    -- Desde la vista: otra camara o revalidar la actual (mantiene viva la sesion).
+    function controller.liveFeed(deviceId, callback)
+        if not session then callback({ ok = false, error = 'Sesion cerrada.' }); return end
+        controller.request('live', { deviceId = deviceId }, callback)
+    end
+    -- Al salir de la vista se vuelve a la tablet, en la seccion de CCTV.
+    function controller.liveEnd()
+        if not controller.watching then return end
+        controller.watching = false
+        if session then wantedModule = 'cctv'; showSession(session) end
+    end
     -- Instalar en una zona concreta desde su ficha: misma colocacion y minijuego que con el kit.
     function controller.installZone(args, callback)
         controller.request('zone_install', args, function(response)

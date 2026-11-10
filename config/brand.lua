@@ -15,7 +15,7 @@ OSSecurity.Brand = {
     Text = {
         inventory = 'Equipo personal', close = 'Cerrar', refresh = 'Actualizar', previous = 'Anterior', next = 'Siguiente',
         loading = 'Consultando el servidor...', unavailable = 'No disponible en esta fase', empty = 'No hay dispositivos accesibles en esta pagina.',
-        noSignal = 'Solo registro. Transmision de imagen no implementada.', session = 'Sesion autorizada',
+        noSignal = 'Sin senal de video.', session = 'Sesion autorizada',
         noInventory = 'No dispone de equipo.', use = 'Utilizar', items = 'Articulos', condition = 'Condicion',
         details = 'Consultar', maintenance = 'Mantenimiento', inspect = 'Inspeccionar', repair = 'Reparar', replace = 'Sustituir',
         provision = 'Equipar registro antiguo', beginMaintenance = 'Pasar a mantenimiento', installed = 'Instalacion vinculada',
@@ -104,6 +104,11 @@ OSSecurity.Brand = {
             kinds = { door = 'Puerta', vehicle = 'Vehiculo' }, tiers = { 'Seguridad basica', 'Seguridad media', 'Alta seguridad' }
         },
         hello = 'Gruppe Sechs: servicio de seguridad disponible.',
+        live = {
+            watch = 'Ver en directo', rec = 'REC', cam = 'CAM', noise = 'Senal degradada',
+            help = 'Raton o flechas: mover · Rueda o + / -: zoom · Q / E: camara anterior / siguiente · Retroceso: salir',
+            lost = 'Se ha perdido la senal de la camara.', interrupted = 'Vista interrumpida: te estan atacando.'
+        },
         shop = {
             prompt = '~INPUT_CONTEXT~ Tienda Gruppe Sechs', title = 'Equipos de seguridad', close = 'Cerrar (Esc)',
             categories = { tablet = 'Tablets', kit = 'Kits e instalaciones', tool = 'Herramientas', material = 'Consumibles', access = 'Accesos', other = 'Otros' },

@@ -133,7 +133,8 @@ function OSSecurity.Gameplay.new(options)
         profile = function(source) return auth.profile(source, 'operations') end,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local service = OSSecurity.TabletService.new({ inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, employeeId = options.employeeId,
-        sites = options.sites, alarms = alarms, locks = locks, cars = cars })
+        sites = options.sites, alarms = alarms, locks = locks, cars = cars,
+        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
         sessions = sessions, service = service, placement = placement, zones = zones, audit = options.audit })
     -- Tienda: personal G6 = empleo de servicio o ACE profesional (tecnico, supervisor o admin).

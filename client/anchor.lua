@@ -12,8 +12,9 @@ local CONTROLS = { left = 174, right = 175, up = 172, down = 173, fine = 36,
     confirm = 38, enter = 191, back = 177, escape = 200 }
 -- Tamano con + y - (teclado principal o teclado numerico), configurables en Ajustes > Teclas > FiveM.
 local sizeSteps = 0
-RegisterCommand('g6zona_mas', function() sizeSteps = sizeSteps + 1 end, false)
-RegisterCommand('g6zona_menos', function() sizeSteps = sizeSteps - 1 end, false)
+-- Tambien hacen zoom en la vista en directo de las camaras (client/live.lua).
+RegisterCommand('g6zona_mas', function() sizeSteps = sizeSteps + 1; if OSSecurity.ClientLive and OSSecurity.ClientLive.zoom then OSSecurity.ClientLive.zoom(1) end end, false)
+RegisterCommand('g6zona_menos', function() sizeSteps = sizeSteps - 1; if OSSecurity.ClientLive and OSSecurity.ClientLive.zoom then OSSecurity.ClientLive.zoom(-1) end end, false)
 RegisterKeyMapping('g6zona_mas', 'Zona de montaje G6: mas grande', 'keyboard', 'PLUS')
 RegisterKeyMapping('g6zona_menos', 'Zona de montaje G6: mas pequena', 'keyboard', 'MINUS')
 local NUMPAD_PLUS, NUMPAD_MINUS = 96, 97

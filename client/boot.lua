@@ -16,14 +16,22 @@ local minigame = OSSecurity.ClientMinigame.new({
     timeout = function(callback) SetTimeout(120000, callback) end,
     animate = function(value) if value then minigameFx.start() else minigameFx.stop() end end
 })
+local liveView -- vista en directo de camaras (client/live.lua), creada tras el controlador
 local controller = OSSecurity.ClientTablet.new({
     minigame = minigame.run,
+    live = { start = function(feed) liveView.start(feed) end },
     show = function(session) lastUiAlive = GetGameTimer(); view.show(session) end,
     hide = view.hide, cancelPlacement = placement.cancel, beginPlacement = placement.begin, props = function(list) props.sync(list); alarms.sync(list) end,
     send = function(packet) TriggerServerEvent('os_security:g6:request', packet) end,
     timeout = function(callback) SetTimeout(8000, callback) end,
     expiry = function(expires) SendNUIMessage({ type = 'expiry', expires = expires }) end,
     notify = function(message, kind) OSSecurity.Notify(message or OSSecurity.Brand.Text.failed, kind) end
+})
+
+liveView = OSSecurity.ClientLive.new({
+    send = SendNUIMessage,
+    request = function(deviceId, callback) controller.liveFeed(deviceId, callback) end,
+    exit = function() controller.liveEnd() end
 })
 
 RegisterNetEvent('os_security:g6:response', function(id, response)
@@ -119,6 +127,7 @@ RegisterNUICallback('request', function(body, callback)
     elseif body.action == 'remove' and type(body.args.deviceId) == 'string' then controller.remove(body.args.deviceId, callback)
     elseif body.action == 'zone_begin' then controller.markZone(body.args, callback, startViewfinder)
     elseif body.action == 'zone_install' then controller.installZone(body.args, callback)
+    elseif body.action == 'live' and type(body.args.deviceId) == 'string' then controller.live(body.args.deviceId, callback)
     elseif ({ inventory = true, devices = true, device = true, maintain = true, alarm = true, doors = true, trackers = true, incidents = true,
         zones = true, zone_delete = true })[body.action] then controller.request(body.action, body.args, callback)
     else callback({ ok = false, error = OSSecurity.Brand.Text.unavailable }) end
@@ -325,7 +334,7 @@ end)
 -- Tienda G6: mostrador con E; catalogo, compra y saldo los da el servidor.
 local shopOpen = false
 local shop = OSSecurity.ClientShop.new({ busy = function()
-    return shopOpen or controller.visible or controller.placing or lockpickOpen or carwireOpen or cylinderOpen or minigame.active()
+    return shopOpen or controller.visible or controller.placing or controller.watching or lockpickOpen or carwireOpen or cylinderOpen or minigame.active()
 end })
 RegisterNetEvent('os_security:shop:locations', function(list) if source == 65535 then shop.setLocations(list) end end)
 CreateThread(function()
@@ -418,6 +427,7 @@ AddEventHandler('onResourceStop', function(resource)
     if lockpickOpen then lockpickOpen = false; SetNuiFocus(false, false) end
     if hotwireOpen then hotwireOpen = false; SetNuiFocus(false, false) end
     if shopOpen then shopOpen = false; SetNuiFocus(false, false) end
+    if liveView and liveView.active then liveView.stop() end
     shop.clear()
     locks.clear()
 end)

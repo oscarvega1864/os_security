@@ -4,6 +4,33 @@ OSSecurity.TabletService = {}
 function OSSecurity.TabletService.new(options)
     local service = {}
     local config = OSSecurity.GameplayConfig
+    -- Senal de una camara CCTV para verla en directo: instalada fisicamente, activa y con alimentacion y
+    -- optica funcionando. Una optica gastada da imagen con ruido (0 limpia .. 0.75 casi perdida).
+    local LIVE_STATES = { active = true, installed = true }
+    local function signal(device, snapshot)
+        if device.type ~= 'cctv_camera' then return nil, 'No es una camara.' end
+        local installationId = device.metadata and device.metadata.installationId
+        local installation = installationId and snapshot and snapshot.installations[installationId]
+        if not installation or installation.status ~= 'committed' or installation.deviceId ~= device.id then
+            return nil, 'Sin senal: la camara no esta instalada fisicamente.'
+        end
+        if not LIVE_STATES[device.state] then
+            local label = OSSecurity.Brand.Text.states and OSSecurity.Brand.Text.states[device.state] or device.state
+            return nil, ('Sin senal: camara en estado %s.'):format(label)
+        end
+        local noise = 0
+        if device.schemaVersion == 2 then
+            local parts = device.condition.components
+            if parts.power and parts.power.health <= 0 then return nil, 'Sin senal: fallo de alimentacion.' end
+            local optics = parts.optics
+            if optics then
+                if optics.health <= 0 then return nil, 'Sin senal: optica averiada.' end
+                noise = optics.health >= 80 and 0 or optics.health >= 60 and 0.2 or optics.health >= 30 and 0.45 or 0.75
+            end
+        end
+        local anchor = snapshot.anchors[installation.anchorId]
+        return { installation = installation, noise = noise, normal = anchor and util.copy(anchor.normal) or nil }
+    end
     local function summary(actor, device)
         local diagnosis = OSSecurity.ComponentLifecycle.diagnose(device)
         local components = {}
@@ -37,7 +64,9 @@ function OSSecurity.TabletService.new(options)
             removable = installation ~= nil and installation.status == 'committed' and installation.deviceId == device.id and device.state ~= 'retired'
                 and (actor.kind == 'operations' and OSSecurity.GameplayConfig.Profiles[actor.role] and OSSecurity.GameplayConfig.Profiles[actor.role].install == true
                     and options.auth.access(actor, device, 'repair') == true or (actor.kind == 'client' and device.owner == actor.principal)),
-            remoteVideo = false }
+            remoteVideo = false,
+            live = device.type == 'cctv_camera' and signal(device, snapshot) ~= nil or nil,
+            liveReason = device.type == 'cctv_camera' and select(2, signal(device, snapshot)) or nil }
     end
     function service.inventory(actor)
         local counts, err = options.holdings.list(actor)
@@ -102,6 +131,30 @@ function OSSecurity.TabletService.new(options)
         local items, offset = {}, args.offset or 0
         for index = offset + 1, math.min(offset + config.PageSize, #accessible) do items[#items + 1] = summary(actor, accessible[index]) end
         return { items = items, total = #accessible, offset = offset, limit = config.PageSize }
+    end
+    -- Vista en directo de una camara: encuadre (posicion, giro y normal del montaje), ruido segun la optica y
+    -- las demas camaras con senal que el perfil puede ver, para cambiar sin volver a la tablet.
+    function service.live(actor, args)
+        if not util.object(args, { deviceId = true }) then return nil, 'Consulta no valida.' end
+        local device, err = service.device(actor, args.deviceId)
+        if not device then return nil, err end
+        local snapshot = options.inventory.snapshot()
+        local feed, reason = signal(device, snapshot)
+        if not feed then return nil, reason end
+        local cameras, index = {}, 1
+        local accessible = accessibleDevices(actor, function(candidate) return signal(candidate, snapshot) ~= nil end) or {}
+        table.sort(accessible, function(a, b) return a.id < b.id end)
+        for _, camera in ipairs(accessible) do
+            local site = options.inventory.site(camera.id)
+            cameras[#cameras + 1] = { id = camera.id, site = site and options.sites and options.sites.label(site) or nil }
+            if camera.id == device.id then index = #cameras end
+        end
+        local site = options.inventory.site(device.id)
+        options.audit('live_view', actor.source, device.id)
+        return { id = device.id, displayId = OSSecurity.Brand.DevicePrefix .. ' · ' .. device.id, model = device.model,
+            site = site and options.sites and options.sites.label(site) or nil,
+            position = util.copy(feed.installation.position), rotation = util.copy(feed.installation.rotation), normal = feed.normal,
+            noise = feed.noise, cameras = cameras, index = index }
     end
     -- Tablet Client: puertas con cerradura de las propiedades y negocios del personaje activo.
     function service.doors(actor)

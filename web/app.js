@@ -101,7 +101,10 @@
       const item = el('div', title, 'subtle'); item.append(el('strong', value)); meta.append(item);
     }
     content.append(meta);
-    if (device.type === 'cctv_camera') content.append(el('div', text('noSignal'), 'notice'));
+    if (device.type === 'cctv_camera') {
+      if (device.live) { const row = el('div', null, 'actions'); row.append(button(state.session.brand.Text.live?.watch || 'Ver en directo', () => request('live', { deviceId: id }), false, 'primary')); content.append(row); }
+      else content.append(el('div', device.liveReason || text('noSignal'), 'notice'));
+    }
     if (device.alarm) content.append(alarmBlock(id, device.alarm));
     if (device.removable) {
       const remove = el('div', null, 'actions');
@@ -277,7 +280,7 @@
     const data = await request('devices', { offset: state.offset, module: state.module }); if (!data) return;
     state.total = data.total; state.limit = data.limit;
     hero(content, data.total, text(state.session.kind === 'operations' ? 'operationsHero' : 'clientHero'));
-    if (state.module === 'cctv') content.append(el('div', text('noSignal'), 'notice'));
+
     const grid = el('div', null, 'grid');
     for (const device of data.items) {
       const card = el('article', null, 'card'); const head = el('div', null, 'card-head');
@@ -285,7 +288,11 @@
       card.append(head, el('h3', device.displayId), el('div', `${device.type} · ${device.model}`, 'subtle'), el('div', text(device.physical ? 'installed' : 'logical'), 'subtle'));
       if (typeof device.site === 'string') card.append(el('div', device.site, 'site'));
       const bar = el('div', null, 'health-line'); const fill = el('span'); fill.style.width = `${Number.isFinite(device.health) ? Math.min(100, Math.max(0, device.health)) : 0}%`; bar.append(fill); card.append(bar);
-      const footer = el('div', null, 'card-footer'); footer.append(el('span', `${text('health')} ${health(device.health)}`, 'subtle'), button(text('details'), () => showDevice(device.id))); card.append(footer); grid.append(card);
+      const footer = el('div', null, 'card-footer'); footer.append(el('span', `${text('health')} ${health(device.health)}`, 'subtle'));
+      const buttons = el('div', null, 'card-buttons');
+      if (device.live) buttons.append(button(state.session.brand.Text.live?.watch || 'Ver en directo', () => request('live', { deviceId: device.id }), false, 'primary'));
+      buttons.append(button(text('details'), () => showDevice(device.id)));
+      footer.append(buttons); card.append(footer); grid.append(card);
     }
     content.append(data.items.length ? grid : el('div', text('empty'), 'empty')); pagination();
   }

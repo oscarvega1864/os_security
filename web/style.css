@@ -79,3 +79,13 @@ select{font:inherit;font-size:11px;color:var(--ink);background:var(--surface);bo
 .shop-accounts{display:flex;flex-direction:column;gap:6px}.shop-account{text-align:left}.shop-account.selected{border-color:#536e38;background:#536e3818;color:#3e5528;font-weight:700}
 .shop .shop-buy{background:#536e38!important;color:#fff;border-color:#536e38!important;font-weight:700;font-size:13px!important;padding:12px!important}.shop-warning{color:#b0532f;font-size:11px;margin:0}.shop-message{font-size:11px;margin:0;padding:9px 11px;border-radius:7px}.shop-message.ok{background:#536e3818;color:#3e5528}.shop-message.error{background:#c4674c1c;color:#a2472c}
 .zone-badges{display:flex;gap:6px;align-items:center}.badge.here{background:var(--accent);color:var(--surface);border-color:var(--accent);font-weight:700}.zone-card.near{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.card-buttons{display:flex;gap:6px}
+/* Vista en directo de camaras: HUD encima de la imagen del juego (sin foco) */
+.live{position:fixed;inset:0;pointer-events:none;z-index:45;font-family:Consolas,'Courier New',monospace;color:#f4f7f0;text-shadow:0 1px 3px #000}.live[hidden]{display:none}
+.live:before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,#0000 0 2px,#00000026 2px 3px);mix-blend-mode:multiply}
+.live:after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,#0000 55%,#000a 100%)}
+.live-static{position:absolute;inset:-50%;opacity:0;background-image:repeating-radial-gradient(circle at 17% 32%,#fff3 0 1px,#0000 1px 3px),repeating-radial-gradient(circle at 71% 64%,#fff2 0 1px,#0000 1px 4px);animation:livenoise .18s steps(3) infinite}
+.live-corner{position:absolute;width:48px;height:48px;border:3px solid #ffffffcc}.live-corner.tl{left:4vw;top:6vh;border-right:0;border-bottom:0}.live-corner.tr{right:4vw;top:6vh;border-left:0;border-bottom:0}.live-corner.bl{left:4vw;bottom:8vh;border-right:0;border-top:0}.live-corner.br{right:4vw;bottom:8vh;border-left:0;border-top:0}
+.live-top{position:absolute;left:calc(4vw + 64px);right:calc(4vw + 64px);top:calc(6vh + 6px);display:flex;justify-content:space-between;font-size:16px;z-index:1}.live-rec{color:#ff4d3d;font-weight:700;animation:vfblink 1.2s steps(1) infinite}
+.live-bottom{position:absolute;left:calc(4vw + 64px);right:calc(4vw + 64px);bottom:calc(8vh + 4px);display:flex;justify-content:space-between;align-items:flex-end;gap:20px;font-size:14px;z-index:1}.live-name{font-size:18px;font-weight:700}.live-help{font-size:12px;opacity:.85;text-align:right;max-width:55%}.live-warn{color:#ffcc66}
+@keyframes livenoise{0%{transform:translate(0,0)}33%{transform:translate(-3%,2%)}66%{transform:translate(2%,-3%)}100%{transform:translate(0,0)}}

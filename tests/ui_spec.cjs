@@ -111,6 +111,16 @@ async function main() {
     assert(await evaluate(`Array.from(document.querySelectorAll('#content button')).some(b=>b.textContent===window.__brand.Text.repair && !b.disabled)`));
     assert(await evaluate(`document.getElementById('content').textContent.includes(window.__brand.Text.noSignal)`));
     console.log('PASS Operations theme, professional controls and explicit unavailable signal');
+    await evaluate(`window.__device.live=true; window.__calls.length=0; document.getElementById('refresh').click()`);
+    await until(`Array.from(document.querySelectorAll('#content button')).some(b=>b.textContent===window.__brand.Text.live.watch)`);
+    await evaluate(`Array.from(document.querySelectorAll('#content button')).find(b=>b.textContent===window.__brand.Text.live.watch).click()`);
+    await until(`window.__calls.some(x=>x.body.action==='live' && x.body.args.deviceId==='osd_0000000001')`);
+    await evaluate(`window.postMessage({type:'live',action:'show',text:window.__brand.Text.live,data:{displayId:'G6-D · osd_0000000001',site:'Propiedad 200',noise:0.45,index:2,total:3}},'*')`);
+    await until(`!document.getElementById('live').hidden && document.querySelector('.live-name').textContent.includes('2/3') && document.querySelector('.live-warn') && document.querySelector('.live-static').style.opacity!=='0'`);
+    fs.writeFileSync(path.join(output, 'live.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await evaluate(`window.postMessage({type:'live',action:'hide'},'*')`); await until(`document.getElementById('live').hidden`);
+    await evaluate(`window.__device.live=false`);
+    console.log('PASS live CCTV: watch button on cameras with signal, HUD with camera index, site and degraded-signal warning');
     assert(await evaluate(`Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent==='Instalaciones') && document.querySelector('.profile.role-technician')`));
     await evaluate(`document.querySelector('#content button').click()`); await until(`document.querySelectorAll('.card').length===1`);
     await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Instalaciones').click()`);

@@ -1482,3 +1482,24 @@ test('Shop: an admin moves the counter to the Union Depository road or to their 
     assert(location.x == 5 and location.y == 5 and location.id == 'union') -- tras reiniciar sigue donde se dejo
 end)
 
+test('Live CCTV: only viewers of an installed, powered camera get its framing; worn optics add noise and failures cut the signal', function()
+    local c = fixture(); kit(c); anchor(c); grant(c, 2, 'g6_client_tablet')
+    local session = open(c, 1, 'operations')
+    assert(call(c, 1, session, 'place_begin').ok)
+    local installed = call(c, 1, session, 'place_confirm', proposal()); assert(installed.ok, installed.error)
+    local id = installed.data.id
+    local client = open(c, 2, 'client')
+    local summary = call(c, 2, client, 'device', { deviceId = id }); assert(summary.data.live == true and summary.data.liveReason == nil)
+    local live = call(c, 2, client, 'live', { deviceId = id }); assert(live.ok, live.error)
+    assert(live.data.position.x == 1 and live.data.normal.x == -1 and live.data.noise == 0 and #live.data.cameras == 1 and live.data.index == 1)
+    grant(c, 3, 'g6_operations_tablet')
+    local stranger = open(c, 3, 'operations'); assert(not call(c, 3, stranger, 'live', { deviceId = id }).ok) -- sin acceso al dispositivo
+    assert(c.core.registry.service(0, id, 'fault', { slot = 'optics', health = 40 }))
+    live = call(c, 2, client, 'live', { deviceId = id }); assert(live.ok and live.data.noise == 0.45)
+    assert(c.core.registry.service(0, id, 'fault', { slot = 'optics', health = 0 }))
+    live = call(c, 2, client, 'live', { deviceId = id }); assert(not live.ok and live.error:find('optica'))
+    summary = call(c, 2, client, 'device', { deviceId = id }); assert(not summary.data.live and summary.data.liveReason:find('optica'))
+    local noCamera = alarmPanel(c, 2)
+    assert(not call(c, 2, client, 'live', { deviceId = noCamera.id }).ok)
+end)
+

@@ -1,6 +1,13 @@
 # Changelog
 
-## 0.10.0 — Tienda Gruppe Sechs
+## 0.10.0 — Tienda Gruppe Sechs y cámaras en directo
+
+- Cámaras CCTV en directo desde la tablet (Client y Operations): botón "Ver en directo" en las cámaras con
+  señal. La pantalla pasa a la cámara instalada con filtro de videovigilancia y HUD (REC, fecha y hora,
+  cámara y sitio); ratón o flechas para girar, rueda o + / - para zoom, Q / E para cambiar de cámara y
+  Retroceso para volver a la tablet. Solo con acceso al dispositivo; sin señal si no está instalada, está en
+  mantenimiento o avería, o falla la alimentación o la óptica; una óptica gastada mete ruido en la imagen.
+  El personaje queda quieto mientras mira y recibir daño corta la vista.
 
 - Tienda en el mostrador de Union Depository (blip, marcador y E): catálogo por categorías, cantidades,
   carrito y pago con banco o efectivo del personaje activo.
