@@ -1,4 +1,4 @@
-# Gruppe Sechs — OS Security 0.10.0
+# Gruppe Sechs — OS Security 0.11.0
 
 **[⬇ Descargar la última versión](https://github.com/oscarvega1864/os_security/releases/latest/download/os_security.zip)** ·
 [Todas las versiones y sus cambios](https://github.com/oscarvega1864/os_security/releases)

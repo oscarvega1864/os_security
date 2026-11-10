@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.0 — Tienda Gruppe Sechs y cámaras en directo
+## 0.11.0 — Cámaras en directo
 
 - Cámaras CCTV en directo desde la tablet (Client y Operations): botón "Ver en directo" en las cámaras con
   señal. La pantalla pasa a la cámara instalada con filtro de videovigilancia y HUD (REC, fecha y hora,
@@ -8,6 +8,11 @@
   Retroceso para volver a la tablet. Solo con acceso al dispositivo; sin señal si no está instalada, está en
   mantenimiento o avería, o falla la alimentación o la óptica; una óptica gastada mete ruido en la imagen.
   El personaje queda quieto mientras mira y recibir daño corta la vista.
+- Tienda: F10 → Gruppe Sechs → "Tienda: en la calle de Union Depository" (la carretera más cercana, donde
+  salía el furgón de las misiones) y "Tienda: mover a mi posición", para sacar el mostrador a un sitio
+  accesible. Se guarda en `data/shop.json` y llega al momento a todos los jugadores.
+
+## 0.10.0 — Tienda Gruppe Sechs
 
 - Tienda en el mostrador de Union Depository (blip, marcador y E): catálogo por categorías, cantidades,
   carrito y pago con banco o efectivo del personaje activo.
@@ -19,9 +24,8 @@
   inventario se devuelve al momento.
 - Dinero con `ossecurity_money_resource` (por defecto `os_devtools`: `ChargeCharacter`, `PayCharacter`,
   `GetCharacterBalance`); `none` cierra la tienda. Precios y ubicaciones en `config/shop.lua`.
-- F10 → Gruppe Sechs: "Tienda: en la calle de Union Depository" (la carretera más cercana, donde salía el
-  furgón de las misiones) y "Tienda: mover a mi posición". Se guarda en `data/shop.json` y llega al momento a
-  todos los jugadores.
+- Instalaciones: la zona más cercana sale primero y se marca como "Aquí"; en las lejanas el botón dice a
+  cuántos metros están. Enlace fijo de descarga de la última versión en el README.
 
 ## 0.9.0 — Instalaciones desde la tablet
 
