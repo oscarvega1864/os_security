@@ -343,6 +343,9 @@ local gameplay = OSSecurity.Gameplay.new({
     employeeId = function(principal) return OSSecurity.Brand.EmployeePrefix .. '-' .. ('%08X'):format(GetHashKey(principal) & 0xffffffff) end,
     log = storageLog,
     items = externalItems,
+    -- Con objetos por personaje, cada personaje es titular de sus dispositivos, zonas y solicitudes.
+    --   set ossecurity_ownership account   -> vuelve a compartirlos entre los personajes de la cuenta.
+    characterOwnership = externalItems ~= nil and GetConvar('ossecurity_ownership', 'character') ~= 'account',
     employment = employment,
     alarmEffects = alarmEffects,
     sites = sites,

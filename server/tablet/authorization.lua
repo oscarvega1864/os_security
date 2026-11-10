@@ -36,7 +36,7 @@ function OSSecurity.TabletAuthorization.new(options)
         local account = options.inventory.get(actor.principal)
         if not account then return false end
         local grant = account.grants[device.id]
-        if device.owner == actor.principal then return true end
+        if options.ownerOf(device) == actor.principal then return true end
         if action == 'view' then
             if grant ~= nil then return true end
             -- Titular de la propiedad o negocio vinculado, con su personaje activo: solo consulta, en la tablet Client.

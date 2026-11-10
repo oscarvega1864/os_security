@@ -127,7 +127,7 @@ function OSSecurity.InstallationService.new(options)
     end
     local function finalize(installation, device)
         local definition = productOfModel(installation.model)
-        if not definition or device.type ~= definition.deviceType or device.model ~= installation.model or device.owner ~= installation.owner
+        if not definition or device.type ~= definition.deviceType or device.model ~= installation.model or options.ownerOf(device) ~= installation.owner
             or not util.equal(device.position, installation.position) or not util.equal(device.rotation, installation.rotation) then
             return nil, 'El dispositivo no coincide con la reserva; requiere revision.'
         end

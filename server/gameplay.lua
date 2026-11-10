@@ -3,7 +3,10 @@ OSSecurity.Gameplay = {}
 function OSSecurity.Gameplay.new(options)
     local ready, tokenCounter = false, 0
     local config = OSSecurity.GameplayConfig
-    local identity = OSSecurity.Identity.new({ connected = options.connected, identifier = options.identifier })
+    -- Con proveedor externo de objetos y characterOwnership, cada personaje es titular de lo suyo.
+    local characterOwnership = options.items ~= nil and options.characterOwnership == true
+    local identity = OSSecurity.Identity.new({ connected = options.connected, identifier = options.identifier,
+        character = characterOwnership and function(source) return options.items.holder(source) end or nil })
     local store = OSSecurity.JsonStorage.new({
         base = config.StorageBase, limits = config, validation = OSSecurity.InventoryState,
         initialSnapshot = OSSecurity.InventoryState.initial(),
@@ -47,20 +50,21 @@ function OSSecurity.Gameplay.new(options)
         return items.refund(installation.id, installation.holder, installation.materials)
     end
     function holdings.grant(holder, item, amount, operationId) return items.grant(holder, item, amount, operationId) end
-    local auth = OSSecurity.TabletAuthorization.new({ identity = identity, inventory = inventory, holdings = holdings, ace = options.ace,
+    local function ownerOf(device) return inventory.owner(device.id) or device.owner end
+    local auth = OSSecurity.TabletAuthorization.new({ identity = identity, inventory = inventory, holdings = holdings, ace = options.ace, ownerOf = ownerOf,
         employment = options.employment, sites = options.sites })
     local sessions = OSSecurity.TabletSessions.new({ auth = auth, alive = options.alive, now = options.now,
         token = function(source) tokenCounter = tokenCounter + 1; return options.token(source, tokenCounter) end })
     local alarmsRef -- se asigna al crear el servicio de alarmas (mas abajo)
     local placement = OSSecurity.InstallationService.new({ inventory = inventory, holdings = holdings, registry = options.registry,
         now = options.now, world = options.world, audit = options.audit, schedule = options.schedule,
-        alive = options.alive, invalidate = sessions.close, log = options.log,
+        alive = options.alive, invalidate = sessions.close, log = options.log, ownerOf = ownerOf,
         -- Desmontar: perfil con instalacion y acceso tecnico al dispositivo, o su propietario.
         canRemove = function(actor, device)
             if actor.kind == 'operations' then
                 return config.Profiles[actor.role] and config.Profiles[actor.role].install == true and auth.access(actor, device, 'repair') == true
             end
-            return actor.kind == 'client' and device.owner == actor.principal
+            return actor.kind == 'client' and ownerOf(device) == actor.principal
         end,
         removed = function(deviceId) if alarmsRef then alarmsRef.forgetDevice(deviceId) end end })
     local function actorOf(source)
@@ -151,7 +155,7 @@ function OSSecurity.Gameplay.new(options)
         alias = (options.vehicles or {}).alias, productOfModel = placement.productOfModel,
         profile = function(source) return auth.profile(source, 'operations') end,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
-    local service = OSSecurity.TabletService.new({ inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, employeeId = options.employeeId,
+    local service = OSSecurity.TabletService.new({ inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, ownerOf = ownerOf, employeeId = options.employeeId,
         sites = options.sites, alarms = alarms, locks = locks, cars = cars,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
@@ -159,10 +163,45 @@ function OSSecurity.Gameplay.new(options)
     local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks, cars = cars,
         lockpick = lockpick, zones = zones, shop = shop, orders = orders }
     function gameplay.status() return ready and inventory.status() and options.registry.status() end
+    -- Datos antiguos por cuenta (license): pasan al unico personaje que hizo sus instalaciones.
+    -- Si una cuenta instalo con varios personajes no se adivina: se avisa y se deja como estaba.
+    function gameplay.rehome()
+        local snapshot = inventory.snapshot()
+        if not snapshot then return nil, 'Inventario no disponible.' end
+        local holders = {}
+        for _, installation in pairs(snapshot.installations) do
+            if OSSecurity.Identity.account(installation.installer) and installation.holder then
+                holders[installation.installer] = holders[installation.installer] or {}
+                holders[installation.installer][installation.holder] = true
+            end
+        end
+        local accounts = {}
+        for principal in pairs(snapshot.accounts) do
+            if OSSecurity.Identity.account(principal) then accounts[#accounts + 1] = principal end
+        end
+        table.sort(accounts)
+        for _, principal in ipairs(accounts) do
+            local only, count = nil, 0
+            for holder in pairs(holders[principal] or {}) do only, count = holder, count + 1 end
+            local target = only and ('char:' .. only) or nil
+            if count == 1 and OSSecurity.Identity.character(target) then
+                local done, err = inventory.apply({ kind = 'rehome', principal = principal, target = target })
+                if not done then return nil, 'No se pudieron pasar los datos de la cuenta a su personaje: ' .. tostring(err) end
+                if options.log then options.log(('Datos de %s... asignados al personaje %s.'):format(principal:sub(1, 14), only)) end
+            elseif options.log then
+                options.log(('Cuenta %s... sin un personaje claro (%d); sus datos no se muestran a ningun personaje.'):format(principal:sub(1, 14), count))
+            end
+        end
+        return true
+    end
     function gameplay.load()
         ready = false
         local loaded, err = inventory.load()
         if not loaded then return nil, err end
+        if characterOwnership then
+            local moved, moveError = gameplay.rehome()
+            if not moved then return nil, moveError end
+        end
         if not options.registry.status() then return nil, 'Device Core no disponible para reconciliar instalaciones.' end
         local recovered, recoveryError = placement.recover()
         if not recovered then return nil, recoveryError end

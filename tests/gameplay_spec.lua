@@ -70,6 +70,7 @@ local function fixture(files, external)
             alias = function(source) return c.active[source] and c.active[source].alias end,
             driving = function() return nil end, locate = function(plate) return c.vehicleSpots and c.vehicleSpots[plate] end },
         items = external and external.items or nil,
+        characterOwnership = external and external.characters or nil,
         locksChanged = function(list) c.doorBroadcasts = (c.doorBroadcasts or 0) + 1; c.lastDoors = list end,
         alarmEffects = {
             players = function()
@@ -1565,3 +1566,45 @@ test('Work orders: offline technicians are paid later, clients cancel their own 
         note = 'x', place = 'y', position = { x = 0, y = 0, z = 0 }, createdAt = 1, updatedAt = 1 })) -- facturada sin tecnico ni precio
 end)
 
+test('Character ownership: devices belong to the active character, so another character of the same account sees nothing', function()
+    local e = externalItems(); e.characters = true
+    local c = fixture(nil, e); assert(c.loaded, c.loadError)
+    local own = create(c.core, 'cctv_camera', { owner = 'char:oschar_0000000002' })
+    create(c.core, 'cctv_camera', { owner = c.players[2].principal }) -- dato por cuenta: ya no es de nadie
+    e.give(2, 'g6_client_tablet')
+    local listed = call(c, 2, open(c, 2, 'client'), 'devices', { offset = 0 })
+    assert(listed.ok and listed.data.total == 1 and listed.data.items[1].id == own.id)
+    assert(not codec.encode(listed):find('char:', 1, true))
+    e.holders[2] = 'oschar_0000000009'; e.give(2, 'g6_client_tablet') -- mismo jugador, otro personaje
+    local other = open(c, 2, 'client')
+    assert(call(c, 2, other, 'devices', { offset = 0 }).data.total == 0)
+    local requests = call(c, 2, other, 'requests'); assert(requests.ok and #requests.data.items == 0)
+    e.holders[2] = nil
+    nextRequest = nextRequest + 1
+    assert(not c.game.handle(2, { id = nextRequest, action = 'open', args = { kind = 'client' } }).ok)
+end)
+
+test('Character ownership: on start, account data moves to the only character that installed it and survives restarts', function()
+    local e = externalItems(); local c = fixture(nil, e); e.kit(1)
+    assert(c.game.inventory.apply({ kind = 'anchor', anchor = { id = 'mount_1', owner = c.players[1].principal, installer = c.players[1].principal,
+        position = { x = 1, y = 0, z = 1 }, normal = { x = -1, y = 0, z = 0 }, radius = 0.75, bucket = 0 } }))
+    local operations = open(c, 1, 'operations')
+    assert(call(c, 1, operations, 'place_begin').ok)
+    local placed = call(c, 1, operations, 'place_confirm', proposal())
+    assert(placed.ok, placed.error)
+    local deviceId = c.game.inventory.snapshot().installations.g6i_0000000001.deviceId
+    local license = c.players[1].principal
+    e.characters = true
+    local moved = fixture(c.core.files, e); assert(moved.loaded, moved.loadError)
+    local snapshot = moved.game.inventory.snapshot()
+    local char = 'char:oschar_0000000001'
+    assert(snapshot.accounts[license] == nil and snapshot.accounts[char].grants[deviceId] == 'technician')
+    assert(snapshot.anchors.mount_1.owner == char and snapshot.installations.g6i_0000000001.owner == char and snapshot.owners[deviceId] == char)
+    moved.aces[1][config.Ace.client] = true; e.give(1, 'g6_client_tablet')
+    local mine = call(moved, 1, open(moved, 1, 'client'), 'devices', { offset = 0 })
+    assert(mine.ok and mine.data.total == 1 and mine.data.items[1].id == deviceId)
+    local again = fixture(c.core.files, e); assert(again.loaded, again.loadError)
+    assert(again.game.inventory.snapshot().revision == snapshot.revision) -- sin repetir la migracion
+    e.holders[1] = 'oschar_0000000009'; e.give(1, 'g6_client_tablet'); again.aces[1][config.Ace.client] = true
+    assert(call(again, 1, open(again, 1, 'client'), 'devices', { offset = 0 }).data.total == 0)
+end)

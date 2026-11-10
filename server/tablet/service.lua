@@ -63,7 +63,7 @@ function OSSecurity.TabletService.new(options)
             alarm = device.type == 'alarm_panel' and options.alarms and options.alarms.summary(device) or nil,
             removable = installation ~= nil and installation.status == 'committed' and installation.deviceId == device.id and device.state ~= 'retired'
                 and (actor.kind == 'operations' and OSSecurity.GameplayConfig.Profiles[actor.role] and OSSecurity.GameplayConfig.Profiles[actor.role].install == true
-                    and options.auth.access(actor, device, 'repair') == true or (actor.kind == 'client' and device.owner == actor.principal)),
+                    and options.auth.access(actor, device, 'repair') == true or (actor.kind == 'client' and options.ownerOf(device) == actor.principal)),
             remoteVideo = false,
             live = device.type == 'cctv_camera' and signal(device, snapshot) ~= nil or nil,
             liveReason = device.type == 'cctv_camera' and select(2, signal(device, snapshot)) or nil }

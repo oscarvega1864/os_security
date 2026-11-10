@@ -39,6 +39,11 @@ function OSSecurity.StandaloneInventory.new(options)
         local record = data.cars[id]
         return record and { locked = record.locked, alarm = record.alarm, lock = record.lock } or nil
     end
+    -- Titular actual de un dispositivo si cambio tras crearse (paso de cuenta a personaje).
+    function inventory.owner(deviceId)
+        if not inventory.status() then return nil end
+        return data.owners and data.owners[deviceId] or nil
+    end
     function inventory.orders()
         if not inventory.status() then return nil end
         return OSSecurity.Util.copy(data.orders or {})

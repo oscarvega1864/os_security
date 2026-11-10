@@ -172,7 +172,7 @@ end
 local function operation(op, limits)
     if not util.object(op, { kind = true, at = true, principal = true, item = true, amount = true,
         deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true, site = true, alarm = true,
-        doorId = true, door = true, carId = true, car = true, anchorId = true, orderId = true, order = true })
+        doorId = true, door = true, carId = true, car = true, anchorId = true, orderId = true, order = true, target = true })
         or not util.integer(op.at, 0, 253402300799) then return false end
     local fields = { kind = true, at = true }
     if op.kind == 'grant' or op.kind == 'migrate' then
@@ -204,6 +204,10 @@ local function operation(op, limits)
         -- Sin 'order' se borra (limpieza de ordenes cerradas antiguas).
         fields.orderId, fields.order = true, true
         if not state.orderId(op.orderId) or (op.order ~= nil and (not state.order(op.order) or op.order.id ~= op.orderId)) then return false end
+    elseif op.kind == 'rehome' then
+        -- Paso de datos de una cuenta (license) al personaje que los creo (char:...).
+        fields.principal, fields.target = true, true
+        if not identity.account(op.principal) or not identity.character(op.target) then return false end
     elseif op.kind == 'unanchor' then
         -- Borrar una zona que nunca se ha usado (sin instalaciones que la referencien).
         fields.anchorId = true
@@ -242,13 +246,14 @@ end
 
 function state.snapshot(snapshot, limits)
     if not util.object(snapshot, { schemaVersion = true, revision = true, nextInstallation = true,
-        accounts = true, anchors = true, installations = true, lastOperation = true, sites = true, alarms = true, doors = true, cars = true, orders = true })
+        accounts = true, anchors = true, installations = true, lastOperation = true, sites = true, alarms = true, doors = true, cars = true, orders = true,
+        owners = true })
         or snapshot.schemaVersion ~= 1 or not util.integer(snapshot.revision, 0, 9007199254740000)
         or not util.integer(snapshot.nextInstallation, 1, limits.MaxInstallations + 1)
         or not util.object(snapshot.accounts) or not util.object(snapshot.anchors) or not util.object(snapshot.installations)
         or (snapshot.sites ~= nil and not util.object(snapshot.sites)) or (snapshot.alarms ~= nil and not util.object(snapshot.alarms))
         or (snapshot.doors ~= nil and not util.object(snapshot.doors)) or (snapshot.cars ~= nil and not util.object(snapshot.cars))
-        or (snapshot.orders ~= nil and not util.object(snapshot.orders))
+        or (snapshot.orders ~= nil and not util.object(snapshot.orders)) or (snapshot.owners ~= nil and not util.object(snapshot.owners))
         or (snapshot.revision == 0 and snapshot.lastOperation ~= nil)
         or (snapshot.revision > 0 and not operation(snapshot.lastOperation, limits)) then return nil, 'Formato de inventario incompatible.' end
     local count, deviceIds = 0, {}
@@ -317,6 +322,13 @@ function state.snapshot(snapshot, limits)
     for carId, car in pairs(snapshot.cars or {}) do
         if not state.carId(carId) or not state.car(car) or tostring(car.id) ~= carId then return nil, 'Vehiculo con equipo de seguridad invalido.' end
     end
+    count = 0
+    for deviceId, owner in pairs(snapshot.owners or {}) do
+        count = count + 1
+        if count > limits.MaxInstallations or not OSSecurity.DeviceValidation.id(deviceId) or not identity.valid(owner) then
+            return nil, 'Titular de dispositivo invalido.'
+        end
+    end
     local orders = 0
     for orderId, order in pairs(snapshot.orders or {}) do
         orders = orders + 1
@@ -371,6 +383,41 @@ function state.apply(snapshot, op, limits)
         end
         nextState.orders[op.orderId] = op.order and util.copy(op.order) or nil
         if next(nextState.orders) == nil then nextState.orders = nil end
+    elseif op.kind == 'rehome' then
+        -- Todo lo de la cuenta pasa al personaje: objetos locales, concesiones, zonas, instalaciones y
+        -- solicitudes. Los dispositivos del registro no cambian (es historico); su titular nuevo queda en 'owners'.
+        local from, to = op.principal, op.target
+        local origin = nextState.accounts[from]
+        if not origin then return nil, 'Cuenta de origen inexistente.' end
+        local target = account(to)
+        for item, entry in pairs(origin.items) do
+            local current = target.items[item] or { count = 0, metadata = {} }
+            current.count = current.count + entry.count; target.items[item] = current
+        end
+        for deviceId, role in pairs(origin.grants) do target.grants[deviceId] = target.grants[deviceId] or role end
+        for item, amount in pairs(origin.migrated or {}) do
+            target.migrated = target.migrated or {}
+            target.migrated[item] = (target.migrated[item] or 0) + amount
+        end
+        nextState.accounts[from] = nil
+        for _, anchor in pairs(nextState.anchors) do
+            if anchor.owner == from then anchor.owner = to end
+            if anchor.installer == from then anchor.installer = to end
+        end
+        for _, installation in pairs(nextState.installations) do
+            if installation.owner == from then
+                installation.owner = to
+                if installation.deviceId then
+                    nextState.owners = nextState.owners or {}
+                    nextState.owners[installation.deviceId] = to
+                end
+            end
+            if installation.installer == from then installation.installer = to end
+        end
+        for _, order in pairs(nextState.orders or {}) do
+            if order.client == from then order.client = to end
+            if order.technician == from then order.technician = to end
+        end
     elseif op.kind == 'door' then
         nextState.doors = nextState.doors or {}
         nextState.doors[op.doorId] = op.door and util.copy(op.door) or nil

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.1 — Cada personaje con lo suyo
+
+- Corregido: con objetos por personaje (`ossecurity_items os_inventory`), los dispositivos, zonas, concesiones
+  y solicitudes eran de la cuenta, así que otro personaje de la misma cuenta veía cámaras, alarmas y
+  solicitudes que no eran suyas. Ahora el titular es el personaje activo.
+- Al arrancar, los datos antiguos de cada cuenta pasan al único personaje que hizo sus instalaciones. Si los
+  hicieron varios personajes no se adivina: se avisa en consola y quedan sin mostrarse.
+- `set ossecurity_ownership account` mantiene el comportamiento anterior (compartido por cuenta).
+
 ## 0.12.0 — Solicitudes y órdenes de trabajo
 
 - G6 Client → Solicitudes de mantenimiento: pedir a Gruppe Sechs un trabajo (cámaras, alarma, reparación,
