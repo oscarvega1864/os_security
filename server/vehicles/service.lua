@@ -1,7 +1,7 @@
 -- Seguridad de vehiculos de os_devtools: cierre centralizado (mando) y alarma.
 -- Se instalan sentado al volante con el motor parado, con un minijuego propio (embellecedor bajo el
 -- volante, cables con multimetro y prueba del mando). El dueno (personaje activo), un tecnico G6 de
--- servicio o un administrador instalan; el dueno o un administrador abren y cierran. Con la alarma y el
+-- servicio o un administrador instalan; solo el personaje dueno abre, cierra y arranca. Con la alarma y el
 -- vehiculo cerrado, intentar entrar la hace sonar y avisa al dueno. Logica pura: los natives (bloqueo de
 -- puertas, efectos, avisos) los aplica server/main.lua a traves de options.effects.
 OSSecurity.CarService = {}
@@ -34,8 +34,8 @@ function OSSecurity.CarService.new(options)
         if type(record) ~= 'table' or trim(record.plate) ~= trim(plate) then return nil end
         return { id = id, plate = trim(plate), owner = type(record.owner) == 'string' and record.owner or nil }
     end
+    -- La llave es del personaje dueno (tambien para los administradores: no abren coches de otros personajes).
     local function owns(source, car)
-        if options.isAdmin(source) then return true end
         local alias = options.vehicles.alias(source)
         return car.owner ~= nil and alias ~= nil and alias == car.owner
     end
@@ -58,7 +58,7 @@ function OSSecurity.CarService.new(options)
         local car = asset(driving.plate)
         if not car then return nil, 'Solo se instala en vehiculos registrados (matricula OS).' end
         local staff = options.employment and options.employment(source, holder) == 'technician'
-        if not owns(source, car) and not staff then return nil, 'Solo el dueno o un tecnico G6 de servicio puede instalarlo.' end
+        if not owns(source, car) and not staff and not options.isAdmin(source) then return nil, 'Solo el dueno o un tecnico G6 de servicio puede instalarlo.' end
         local record = records()[tostring(car.id)] or blank(car)
         if record[kind] then return nil, ('Este vehiculo ya tiene %s.'):format(LABELS[kind]) end
         if kind == 'alarm' and not record.lock then return nil, 'Instala antes el cierre centralizado: la alarma se arma al cerrar.' end
@@ -164,7 +164,7 @@ function OSSecurity.CarService.new(options)
         options.audit('car_forced', source, tostring(record.id))
         return { alarm = record.alarm }
     end
-    -- Arrancar o apagar: solo quien conduce un vehiculo propio (o un administrador). Los vehiculos que no
+    -- Arrancar o apagar: solo quien conduce un vehiculo propio (o le ha hecho un puente). Los vehiculos que no
     -- son de os_devtools quedan libres, como en GTA.
     function cars.engine(source)
         local driving = options.vehicles.driving(source)

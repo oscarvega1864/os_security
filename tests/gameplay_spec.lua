@@ -978,7 +978,7 @@ test('Doors of an owned property are detected from a nearby player, locked with 
     assert(c.game.locks.list()[1].id == 'n3_1' and c.game.locks.list()[1].locked == false) -- los negocios quedan abiertos
 end)
 
-test('Only the current owner (or an admin) holds the key; double doors lock together and reassignment moves the key', function()
+test('Only the current owner holds the key (admins too need their own character); double doors lock together and reassignment moves the key', function()
     local c = fixture(); property(c, 7, 'ana')
     c.active[2] = { alias = 'ana' }; c.active[5] = { alias = 'luis' }
     c.players[2].point = { x = 102, y = 100, z = 30 }
@@ -995,7 +995,7 @@ test('Only the current owner (or an admin) holds the key; double doors lock toge
     c.players[2].point = { x = 102.5, y = 100, z = 30 }
     assert(not c.game.locks.toggle(2) and assert(c.game.locks.toggle(5)).locked == true)
     c.players[4].point = { x = 100, y = 110.5, z = 30 }
-    assert(assert(c.game.locks.toggle(4)).locked == false) -- administrador
+    local _, adminWhy = c.game.locks.toggle(4); assert(adminWhy:find('llave')) -- un administrador con otro personaje no tiene la llave
 end)
 
 test('Changing the cylinder needs the open door, a screwdriver and the kit; charges once and returns the previous cylinder', function()
@@ -1140,7 +1140,7 @@ test('Installing in a vehicle needs the driver seat, engine off, ownership or a 
     assert(record.lock and record.alarm and not record.locked and record.changes == 2 and record.plate == 'OS000012')
 end)
 
-test('Only the owner (or an admin) locks with the key fob; a stranger trying to enter a locked car sets the alarm off once and alerts the owner', function()
+test('Only the owner locks with the key fob (not an admin with another character); a stranger trying to enter a locked car sets the alarm off once and alerts the owner', function()
     local c, e, v = carFixture()
     v.driving[2] = { plate = 'OS000012', engine = false, speed = 0 }
     e.give(2, 'os_car_lock_kit'); e.give(2, 'os_screwdriver')
@@ -1162,7 +1162,8 @@ test('Only the owner (or an admin) locks with the key fob; a stranger trying to 
     assert(v.cars.tamper(5, carAt()) and logged(v, 'alarm') == 1) -- ya esta sonando
     local opened = assert(v.cars.toggle(2, carAt())); assert(not opened.locked and v.log[#v.log - 1][1] == 'alarm' and v.log[#v.log - 1][3] == 0)
     assert(not v.cars.tamper(5, carAt())) -- abierto: nada
-    assert(v.cars.toggle(4, carAt())) -- administrador
+    local _, adminWhy = v.cars.toggle(4, carAt()); assert(adminWhy:find('llave')) -- administrador con otro personaje: sin llave
+    assert(v.cars.toggle(2, carAt()).locked)
     assert(#v.cars.describe() == 1 and v.cars.describe()[1]:find('cerrado'))
 end)
 
@@ -1188,7 +1189,7 @@ test('Without a kit the owner still locks with the key next to the car, and only
     v.driving[5] = { plate = 'OS000012', engine = false, speed = 0 }; _, why = v.cars.engine(5); assert(why:find('llave'))
     v.driving[2] = { plate = 'OS000012', engine = false, speed = 0 }; assert(v.cars.engine(2).owned)
     v.driving[5] = { plate = 'VMENU01', engine = false, speed = 0 }; assert(v.cars.engine(5).free) -- vehiculos ajenos a os_devtools: libres
-    v.driving[4] = { plate = 'OS000012', engine = true, speed = 0 }; assert(v.cars.engine(4).owned) -- administrador
+    v.driving[4] = { plate = 'OS000012', engine = true, speed = 0 }; assert(not v.cars.engine(4)) -- administrador con otro personaje: sin llave
 end)
 
 -- Ganzua ---------------------------------------------------------------------------------------

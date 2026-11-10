@@ -2,7 +2,7 @@
 -- Las puertas son las que ya trae el mapa (GTA o MLO) junto al punto de cada propiedad o negocio con
 -- titular: un jugador cercano las detecta y el servidor las valida y guarda con el bombin de serie
 -- (nivel 1); las de propiedades quedan cerradas con llave. La llave la tiene el titular de cada momento
--- (o un administrador): al reasignar la propiedad pasa al nuevo titular; sin titular no hay cerradura.
+-- (su personaje; un administrador no tiene llave de otros personajes): al reasignar la propiedad pasa al nuevo titular; sin titular no hay cerradura.
 -- Para mas seguridad se cambia el bombin por otro kit (nivel 2 o 3) con la puerta abierta: el titular o
 -- un tecnico G6 de servicio, con destornillador, tras el minijuego. El bombin retirado vuelve al inventario.
 -- Todo se valida en el servidor; el cliente solo informa de las puertas que ve y pide acciones.
@@ -76,8 +76,9 @@ function OSSecurity.LockService.new(options)
         if not best then return nil, 'No hay ninguna puerta con cerradura a tu alcance.' end
         return best, point
     end
+    -- La llave es del personaje titular (tambien para los administradores).
     local function owner(source, door)
-        return options.isAdmin(source) or (options.sites ~= nil and options.sites.owns(source, door.site) == true)
+        return options.sites ~= nil and options.sites.owns(source, door.site) == true
     end
     -- Alta de una puerta nueva para un sitio (comun a la deteccion y al registro manual).
     local function add(site, model, position, bucket, all)
@@ -253,7 +254,7 @@ function OSSecurity.LockService.new(options)
         local door, point = nearest(source, config.InteractDistance)
         if not door then return nil, point end
         local staff = options.employment and options.employment(source, holder) == 'technician'
-        if not owner(source, door) and not staff then return nil, 'Solo el titular o un tecnico G6 de servicio puede cambiar el bombin.' end
+        if not owner(source, door) and not staff and not options.isAdmin(source) then return nil, 'Solo el titular o un tecnico G6 de servicio puede cambiar el bombin.' end
         if door.locked then return nil, 'Abre la puerta antes de cambiar el bombin.' end
         if door.cylinder == item then return nil, ('Esta puerta ya tiene un %s.'):format(tierLabel(tier):lower()) end
         local actor = { holder = holder }

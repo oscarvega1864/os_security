@@ -164,7 +164,7 @@ juego o las que tienen forma de hoja de puerta) y el servidor las valida y guard
 
 - Quedan con el **bombín de serie** (nivel 1). Las de propiedades, cerradas con llave; las de negocios,
   abiertas.
-- **Llave:** E junto a la puerta. Solo el titular actual (personaje activo) o un administrador. Al
+- **Llave:** E junto a la puerta. Solo el titular actual (su personaje activo; los administradores, solo con el suyo). Al
   reasignar la propiedad la llave pasa al nuevo titular; sin titular las puertas quedan libres. Las hojas
   de una puerta doble (a menos de 2,6 m) se abren y cierran juntas.
 - **Cambiar el bombín:** con la puerta abierta, "Usar" el kit junto a ella con destornillador. Lo puede
@@ -189,7 +189,7 @@ Las dos primeras también están en el panel F10. Necesita el export `ListAssets
 ## Vehículos: llave, motor, cierre centralizado y alarma
 
 Todos los vehículos de os_devtools (matrícula `OS` + ID) tienen **llave**, que solo usa el dueño (personaje
-activo) o un administrador:
+activo); un administrador solo con su propio personaje:
 
 - **Abrir / cerrar:** tecla **L** junto a la puerta (3,5 m) o desde dentro. Con cierre centralizado, a 15 m.
 - **Motor:** tecla **Y** al volante. El juego ya no arranca solo al subirse; sin la llave sale "No tienes la
