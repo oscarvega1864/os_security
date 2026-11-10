@@ -1,6 +1,6 @@
 # Publica una release de OS Security al subir una etiqueta de version (vX.Y.Z).
 # Pasos: tests Lua, la etiqueta debe coincidir con config/config.lua y tener seccion en CHANGELOG.md,
-# zip solo con los archivos del recurso y release con notas al estilo vMenu (commits desde la anterior).
+# zip solo con los archivos del recurso y release con notas al estilo vMenu (cambios del CHANGELOG, en español).
 # Tambien se puede lanzar a mano (Actions > Release > Run workflow) con una etiqueta ya subida para
 # regenerar su release: si existe, se actualizan las notas y el zip.
 name: Release

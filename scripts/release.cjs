@@ -2,7 +2,7 @@
 //   node scripts/release.cjs version          -> imprime la version de config/config.lua
 //   node scripts/release.cjs check v0.9.0     -> falla si la etiqueta no coincide con la version
 //   node scripts/release.cjs package          -> dist/os_security-vX.Y.Z.zip (solo archivos del recurso)
-//   node scripts/release.cjs notes v0.9.0     -> notas de la release en Markdown (CHANGELOG + commits)
+//   node scripts/release.cjs notes v0.9.0     -> notas de la release en Markdown (seccion del CHANGELOG)
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
@@ -52,8 +52,8 @@ function repository() {
   return '';
 }
 
-// Mismo formato que las releases de vMenu: presentacion, tabla de descarga, instalacion,
-// "Cambios en ..." (hash, autor y mensaje de cada commit) y enlace a la documentacion.
+// Formato de las releases de vMenu: presentacion, tabla de descarga, instalacion,
+// "Cambios en ..." (seccion del CHANGELOG, en español) y enlace a la documentacion.
 function notes(tag) {
   const value = tag.replace(/^v/, '');
   const { previous, items } = commits(tag);
@@ -65,8 +65,11 @@ function notes(tag) {
   out.push(`¿Servidor nuevo? Descomprime el zip en \`resources/\` (la carpeta debe llamarse \`os_security\`), añade \`ensure os_security\` a tu \`server.cfg\` y reinicia. Los permisos ACE están en la [guía de instalación](${docs}).`, '');
   out.push('¿Actualizando? Sustituye la carpeta `os_security` **conservando `data/`** (inventario, montajes y dispositivos) y reinicia el servidor completo.', '');
   out.push('¿Integraciones? `os_inventory`, `os_devtools`, `os_notify` y `os_admin` son opcionales: sin ellas OS Security funciona por sí solo, con su propio inventario y sin frameworks ni MySQL.', '');
-  out.push(`## Cambios en OS Security ${tag}`, '');
-  if (items.length) for (const [hash, author, subject] of items) out.push(`- \`${hash}\` (${author}) ${subject}`);
+  // Los cambios salen del CHANGELOG (en español). Solo si la version no tiene seccion se listan los commits.
+  const { title, body } = changelog(value);
+  out.push(`## Cambios en OS Security ${tag}${title ? ` — ${title}` : ''}`, '');
+  if (body) out.push(body);
+  else if (items.length) for (const [hash, author, subject] of items) out.push(`- \`${hash}\` (${author}) ${subject}`);
   else out.push('- Sin cambios de código.');
   out.push('');
   out.push(`Docs: [OS Security](${docs}). Historial: [CHANGELOG](${repo}/blob/${tag}/CHANGELOG.md).${previous ? ` Comparar: [${previous}...${tag}](${repo}/compare/${previous}...${tag}).` : ''}`);
