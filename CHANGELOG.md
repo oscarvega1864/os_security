@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.1 — Vista de cámaras sin solaparse con el HUD
+
+- El HUD de la vista en directo va centrado (REC, hora y cámara arriba; ayuda abajo) y deja libres las
+  esquinas, donde están el chat y los HUD de otros mods.
+- Al entrar y salir de la vista se emite el evento local `os_security:cameraView` (true/false) para que otros
+  HUD se oculten; os_devtools ya oculta su ID y dinero con él.
+
 ## 0.11.0 — Cámaras en directo
 
 - Cámaras CCTV en directo desde la tablet (Client y Operations): botón "Ver en directo" en las cámaras con
