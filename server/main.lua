@@ -123,6 +123,33 @@ local employment = OSSecurity.Employment.new({
     end or nil
 })
 
+-- Dinero de la tienda G6: cobra y devuelve al personaje activo. Por defecto os_devtools
+-- (ChargeCharacter / PayCharacter / GetCharacterBalance).   set ossecurity_money_resource none   la cierra.
+local moneyResource = GetConvar('ossecurity_money_resource', identityResource)
+local MAX_REFUND_CHUNK = 50000 -- tope por ingreso del proveedor (MaxPayment de os_devtools)
+local money = {
+    available = function() return moneyResource ~= 'none' and GetResourceState(moneyResource) == 'started' end,
+    balance = function(source)
+        local ok, balance = pcall(function() return exports[moneyResource]:GetCharacterBalance(source) end)
+        return ok and type(balance) == 'table' and balance or nil
+    end,
+    charge = function(source, amount, account, reason)
+        local ok, done, err = pcall(function() return exports[moneyResource]:ChargeCharacter(source, amount, account, reason) end)
+        if not ok then return false, 'provider_error' end
+        return done == true, err
+    end,
+    refund = function(source, amount, account, reason)
+        local left = amount
+        while left > 0 do
+            local part = math.min(left, MAX_REFUND_CHUNK)
+            local ok, done = pcall(function() return exports[moneyResource]:PayCharacter(source, part, account, reason) end)
+            if not ok or done ~= true then return false end
+            left = left - part
+        end
+        return true
+    end
+}
+
 -- Propiedades y negocios: el titular del personaje activo ve en la tablet Client los dispositivos vinculados.
 --   set ossecurity_sites_resource none   lo desactiva.
 local sitesResource = GetConvar('ossecurity_sites_resource', identityResource)
@@ -331,7 +358,7 @@ local gameplay = OSSecurity.Gameplay.new({
         return alias or name
     end,
     locksChanged = function(list) TriggerClientEvent('os_security:locks:doors', -1, list) end,
-    vehicles = carVehicles, carEffects = carEffects,
+    vehicles = carVehicles, carEffects = carEffects, money = money,
     audit = function(action, source, deviceId)
         local safeId = OSSecurity.DeviceValidation.id(deviceId) and deviceId or '-'
         print(('%s [G6 AUDIT] action=%s source=%d device=%s'):format(constants.LOG_PREFIX, action, source, safeId))
@@ -481,6 +508,20 @@ RegisterNetEvent('os_security:car:tamper', function(netId)
     local result, err = lockCall(function() return gameplay.cars.tamper(player, vehicleOf(netId)) end)
     if not result and err then TriggerClientEvent('os_security:car:result', player, false, err) end
 end)
+-- Tienda G6: catalogo al acercarse al mostrador y compra validada en el servidor.
+RegisterNetEvent('os_security:shop:open', function()
+    local player = source
+    if not lockAllowed(player) then return end
+    local data, err = lockCall(function() return gameplay.shop.catalog(player) end)
+    TriggerClientEvent('os_security:shop:catalog', player, data ~= nil, data or err)
+end)
+RegisterNetEvent('os_security:shop:buy', function(cart, account)
+    local player = source
+    if not lockAllowed(player) then return end
+    local result, err = lockCall(function() return gameplay.shop.buy(player, cart, account) end)
+    TriggerClientEvent('os_security:shop:result', player, result ~= nil, result or err)
+end)
+
 RegisterNetEvent('os_security:car:engine', function()
     local player = source
     if not lockAllowed(player) then return end

@@ -1,6 +1,6 @@
 {
   "name": "os-security-tests",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "description": "Lua 5.4 test tooling only; FiveM has no npm runtime dependency",
   "scripts": {

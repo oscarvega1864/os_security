@@ -5,7 +5,7 @@ local bootNumber = 0
 local function fixture(files, external)
     bootNumber = bootNumber + 1
     local core = coreFixture(files)
-    local c = { core = core, players = {}, aces = {}, jobs = {}, alarmLog = {}, assets = { properties = {}, businesses = {} }, active = {}, commands = {}, audit = {}, replies = {}, invWrites = 0, timers = {} }
+    local c = { core = core, wallet = {}, players = {}, aces = {}, jobs = {}, alarmLog = {}, assets = { properties = {}, businesses = {} }, active = {}, commands = {}, audit = {}, replies = {}, invWrites = 0, timers = {} }
     local prefix = 'boot-' .. bootNumber
     for id = 1, 5 do
         c.players[id] = { principal = 'license:' .. string.rep(string.char(96 + id), 40), alive = true, connected = true,
@@ -53,6 +53,19 @@ local function fixture(files, external)
             table.sort(list); return list
         end,
         playerName = function(id) return 'Jugador' .. id end,
+        money = {
+            available = function() return not c.moneyDown end,
+            balance = function(source) return c.wallet[source] and util.copy(c.wallet[source]) or nil end,
+            charge = function(source, amount, account)
+                local wallet = c.wallet[source]
+                if not wallet or wallet[account] < amount then return false, 'insufficient_funds' end
+                wallet[account] = wallet[account] - amount; return true
+            end,
+            refund = function(source, amount, account)
+                if c.refundFails then return false end
+                c.wallet[source][account] = c.wallet[source][account] + amount; return true
+            end
+        },
         vehicles = { asset = function(id) return c.vehicleAssets and c.vehicleAssets[id] end,
             alias = function(source) return c.active[source] and c.active[source].alias end,
             driving = function() return nil end, locate = function(plate) return c.vehicleSpots and c.vehicleSpots[plate] end },
@@ -770,7 +783,7 @@ test('Native server wiring keeps replies private, normalizes ACE and creates uni
     local handlers, commands, files, replies, hashes = {}, {}, {}, {}, 0
     local ok, err = pcall(function()
         stub('RegisterNetEvent', function(name, callback)
-            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name == 'os_security:g6:zoneAim' or name:match('^os_security:alarm:') or name:match('^os_security:locks:') or name:match('^os_security:car:') or name:match('^os_security:lockpick:'))
+            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name == 'os_security:g6:zoneAim' or name:match('^os_security:shop:') or name:match('^os_security:alarm:') or name:match('^os_security:locks:') or name:match('^os_security:car:') or name:match('^os_security:lockpick:'))
             if name == 'os_security:g6:request' then handlers.request = callback else handlers.anchorAim = callback end
         end)
         stub('RegisterCommand', function(name, callback) commands[name] = callback end)
@@ -827,7 +840,7 @@ local function externalItems()
         add = function(holder, item, amount, operationId)
             e.calls = e.calls + 1
             if operationId and e.receipts[operationId] then return true end
-            if e.addFails then return false, 'Inventario lleno.' end
+            if e.addFails or e.failItem == item then return false, 'Inventario lleno.' end
             bag(holder)[item] = (bag(holder)[item] or 0) + amount
             if operationId then e.receipts[operationId] = true end
             return true
@@ -1383,4 +1396,63 @@ test('Client tablet: own property doors, own protected vehicles with GPS positio
     assert(#call(c, 5, open(c, 5, 'client'), 'incidents').data.items == 0)
     grant(c, 1, 'g6_operations_tablet'); local operations = open(c, 1, 'operations')
     assert(not call(c, 1, operations, 'doors').ok and not call(c, 1, operations, 'devices', { module = 'locks' }).ok)
+end)
+
+-- Tienda Gruppe Sechs ------------------------------------------------------------------------------
+local COUNTER = { x = 10.17, y = -671.55, z = 33.45 }
+test('Shop: catalog only at the counter; public items for anyone, staff items only for on-duty G6 or professional ACE', function()
+    local c = fixture(); assert(c.loaded, c.loadError)
+    c.players[2].point = util.copy(COUNTER); c.wallet[2] = { bank = 5000, cash = 100 }
+    local catalog = assert(c.game.shop.catalog(2))
+    assert(not catalog.staff and catalog.balance.bank == 5000 and catalog.maxQuantity == 10)
+    local function find(list, item) for _, p in ipairs(list) do if p.item == item then return p end end end
+    assert(find(catalog.products, 'os_lock_kit').allowed and not find(catalog.products, 'os_cctv_kit').allowed and not find(catalog.products, 'os_lockpick'))
+    c.players[1].point = util.copy(COUNTER)
+    assert(assert(c.game.shop.catalog(1)).staff) -- ACE de tecnico
+    c.players[5].point = util.copy(COUNTER); c.jobs[5] = { job = 'gruppe6', rank = 'tecnico', duty = true }
+    assert(assert(c.game.shop.catalog(5)).staff) -- empleo de servicio
+    c.jobs[5].duty = false; assert(not assert(c.game.shop.catalog(5)).staff)
+    c.players[2].point = { x = 50, y = -671.55, z = 33.45 }
+    local _, far = c.game.shop.catalog(2); assert(far:find('mostrador'))
+    c.players[2].point = util.copy(COUNTER); c.players[2].bucket = 3; assert(not c.game.shop.catalog(2))
+    c.players[2].bucket = 0; c.moneyDown = true
+    local _, down = c.game.shop.catalog(2); assert(down:find('Pago no disponible'))
+end)
+
+test('Shop: purchases are validated, charged once and delivered to the local ledger', function()
+    local c = fixture(); assert(c.loaded, c.loadError)
+    c.players[2].point = util.copy(COUNTER); c.wallet[2] = { bank = 5000, cash = 100 }
+    local function buy(cart, account) c.core.time = c.core.time + 3; return c.game.shop.buy(2, cart, account) end
+    local done = assert(buy({ { item = 'os_lock_kit', amount = 2 }, { item = 'os_screwdriver', amount = 1 } }, 'bank'))
+    assert(done.total == 1760 and c.wallet[2].bank == 3240 and done.balance.bank == 3240 and not done.partial)
+    assert(count(c, 2, 'os_lock_kit') == 2 and count(c, 2, 'os_screwdriver') == 1)
+    local _, why = buy({ { item = 'os_cctv_kit', amount = 1 } }, 'bank'); assert(why:find('personal'))
+    _, why = buy({ { item = 'os_lockpick', amount = 1 } }, 'bank'); assert(why == 'Producto no disponible.')
+    _, why = buy({ { item = 'os_lock_kit', amount = 11 } }, 'bank'); assert(why:find('Maximo'))
+    _, why = buy({ { item = 'os_battery', amount = 1 }, { item = 'os_battery', amount = 1 } }, 'bank'); assert(why == 'Producto no disponible.')
+    _, why = buy({ { item = 'os_battery', amount = 1, price = 0 } }, 'bank'); assert(why == 'Carrito no valido.')
+    _, why = buy({ { item = 'os_battery', amount = 1 } }, 'crypto'); assert(why:find('Forma de pago'))
+    _, why = buy({ { item = 'os_lock_kit_high', amount = 1 } }, 'cash'); assert(why == 'Saldo insuficiente.' and c.wallet[2].cash == 100)
+    assert(c.wallet[2].bank == 3240 and count(c, 2, 'os_cctv_kit') == 0) -- los rechazos no cobran
+    c.core.time = c.core.time + 3
+    assert(c.game.shop.buy(2, { { item = 'os_battery', amount = 1 } }, 'cash'))
+    _, why = c.game.shop.buy(2, { { item = 'os_battery', amount = 1 } }, 'cash'); assert(why:find('Espera')) -- una compra cada 2 s
+    c.players[1].point = util.copy(COUNTER); c.wallet[1] = { bank = 3000, cash = 0 }
+    assert(c.game.shop.buy(1, { { item = 'os_cctv_kit', amount = 1 }, { item = 'os_drill', amount = 1 } }, 'bank'))
+    assert(c.wallet[1].bank == 3000 - 950 - 380)
+end)
+
+test('Shop: with the character inventory, undeliverable items are refunded and a failed refund is reported', function()
+    local e = externalItems(); local c = fixture(nil, e); assert(c.loaded, c.loadError)
+    c.players[2].point = util.copy(COUNTER); c.wallet[2] = { bank = 10000, cash = 0 }
+    e.failItem = 'os_car_alarm_kit'
+    local result = assert(c.game.shop.buy(2, { { item = 'os_car_lock_kit', amount = 1 }, { item = 'os_car_alarm_kit', amount = 2 } }, 'bank'))
+    assert(result.partial and result.message:find('Devueltos $3800', 1, true) and result.total == 1250)
+    assert(c.wallet[2].bank == 10000 - 1250 and e.count(2, 'os_car_lock_kit') == 1 and e.count(2, 'os_car_alarm_kit') == 0)
+    e.failItem = nil; e.addFails = true; c.refundFails = true; c.core.time = c.core.time + 3
+    result = assert(c.game.shop.buy(2, { { item = 'os_battery', amount = 2 } }, 'bank'))
+    assert(result.partial and result.message:find('administrador') and c.wallet[2].bank == 8750 - 90)
+    local logged = false
+    for _, reply in ipairs(c.replies) do if reply[2]:find('PENDIENTE') then logged = true end end
+    assert(logged)
 end)

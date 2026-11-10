@@ -1,4 +1,4 @@
-# Gruppe Sechs — OS Security 0.9.0
+# Gruppe Sechs — OS Security 0.10.0
 
 Recurso standalone para FiveM y GTA V Legacy. La experiencia comercial pertenece
 a Gruppe Sechs; el nombre técnico sigue siendo `os_security`. Incluye Device Core,
@@ -32,6 +32,13 @@ explícita y vigente verificada por ese servicio. Los ACE siguen funcionando por
 solos; desactivar con `AdminAuthorizationResource = false`. Este adaptador no
 concede tablets, empleos, roles G6 ni acceso de cliente a dispositivos. Los errores,
 parada o revocación del proveedor deniegan la delegación en la siguiente consulta.
+
+## Tienda Gruppe Sechs
+
+Mostrador en Union Depository (configurable en `config/shop.lua`: ubicaciones, productos, precios y
+público). Cobra al personaje activo mediante `ossecurity_money_resource` (por defecto `os_devtools`, que debe
+autorizar a `os_security` en `Chargers` y `Payers` de su `config/core.lua`). `set ossecurity_money_resource none`
+cierra la tienda. Los productos `staff` solo los compra personal G6 de servicio o con ACE profesional.
 
 ## Proveedor de objetos
 

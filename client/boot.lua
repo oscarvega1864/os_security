@@ -322,6 +322,42 @@ RegisterNetEvent('os_security:lockpick:result', function(ok, message, broken)
     OSSecurity.Notify(message, ok and 'success' or (broken and 'error' or 'warning'))
 end)
 
+-- Tienda G6: mostrador con E; catalogo, compra y saldo los da el servidor.
+local shopOpen = false
+local shop = OSSecurity.ClientShop.new({ busy = function()
+    return shopOpen or controller.visible or controller.placing or lockpickOpen or carwireOpen or cylinderOpen or minigame.active()
+end })
+RegisterNetEvent('os_security:shop:catalog', function(ok, data)
+    if source ~= 65535 then return end
+    if not ok or type(data) ~= 'table' then OSSecurity.Notify(type(data) == 'string' and data or OSSecurity.Brand.Text.failed, 'error'); return end
+    if shopOpen or controller.visible or minigame.active() then return end
+    shopOpen = true
+    SetNuiFocus(true, true)
+    SendNUIMessage({ type = 'shop', data = data, text = OSSecurity.Brand.Text.shop })
+end)
+RegisterNUICallback('shopBuy', function(body, callback)
+    callback({ ok = true })
+    if not shopOpen or type(body) ~= 'table' or type(body.cart) ~= 'table' then return end
+    TriggerServerEvent('os_security:shop:buy', body.cart, body.account)
+end)
+RegisterNetEvent('os_security:shop:result', function(ok, data)
+    if source ~= 65535 then return end
+    local text = ok and type(data) == 'table' and data.message or data
+    if type(text) == 'string' then OSSecurity.Notify(text, ok and (data.partial and 'warning' or 'success') or 'error') end
+    if shopOpen then SendNUIMessage({ type = 'shopResult', ok = ok == true, data = data }) end
+end)
+RegisterNUICallback('shopClose', function(_, callback)
+    callback({ ok = true })
+    shopOpen = false
+    SetNuiFocus(false, false)
+end)
+CreateThread(function()
+    while true do
+        Wait(1000)
+        if shopOpen and IsEntityDead(PlayerPedId()) then shopOpen = false; SetNuiFocus(false, false); SendNUIMessage({ type = 'shopClose' }) end
+    end
+end)
+
 -- Puerta apuntada desde el panel F10: E sobre la puerta la registra; Retroceso o Esc sale.
 local aimingDoor = 0
 RegisterNetEvent('os_security:locks:aimDoor', function(site)
@@ -365,5 +401,7 @@ AddEventHandler('onResourceStop', function(resource)
     if carwireOpen then carwireOpen = false; SetNuiFocus(false, false) end
     if lockpickOpen then lockpickOpen = false; SetNuiFocus(false, false) end
     if hotwireOpen then hotwireOpen = false; SetNuiFocus(false, false) end
+    if shopOpen then shopOpen = false; SetNuiFocus(false, false) end
+    shop.clear()
     locks.clear()
 end)

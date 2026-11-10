@@ -367,6 +367,26 @@ async function main() {
     await evaluate(`Array.from(document.querySelectorAll('#content button')).find(b => b.textContent === window.__brand.Text.remove).click()`);
     await until(`window.__calls.some(x => x.endpoint === 'request' && x.body.action === 'remove' && x.body.args.deviceId)`);
     console.log('PASS removable devices offer an uninstall button that requests the removal');
+    // Tienda G6: catalogo por categorias, cantidades, total, saldo, pago y resultado.
+    await evaluate(`window.__calls.length=0; window.postMessage({type:'shop',text:window.__brand.Text.shop,data:{location:'Gruppe Sechs · Union Depository',staff:false,maxQuantity:10,accounts:['bank','cash'],balance:{bank:3000,cash:50},
+      products:[{item:'g6_client_tablet',name:'G6 Client',category:'tablet',price:1500,staff:false,allowed:true},{item:'os_lock_kit',name:'Gruppe Sechs · Bombin de seguridad',category:'kit',price:850,staff:false,allowed:true},
+      {item:'os_cctv_kit',name:'Gruppe Sechs · Kit CCTV (exterior)',category:'kit',price:950,staff:true,allowed:false},{item:'os_screwdriver',name:'Gruppe Sechs · Destornillador',category:'tool',price:60,staff:false,allowed:true}]}},'*')`);
+    await until(`!document.getElementById('shop').hidden && document.querySelectorAll('.shop-card').length===4 && document.querySelector('.shop-card.locked')`);
+    const plus = name => evaluate(`Array.from(document.querySelectorAll('.shop-card')).find(c=>c.textContent.includes(${JSON.stringify(name)})).querySelectorAll('.shop-stepper button')[1].click()`);
+    await plus('Bombin'); await plus('Bombin'); await plus('Destornillador');
+    await until(`document.querySelector('.shop-total strong').textContent.includes('1760') || document.querySelector('.shop-total strong').textContent.includes('1.760')`);
+    assert(await evaluate(`document.querySelector('.shop-card.locked .shop-stepper button:last-child').disabled && !document.querySelector('.shop-buy').disabled`));
+    await evaluate(`Array.from(document.querySelectorAll('.shop-account')).find(b=>b.textContent.includes('Efectivo')).click()`);
+    await until(`document.querySelector('.shop-warning') && document.querySelector('.shop-buy').disabled`);
+    await evaluate(`Array.from(document.querySelectorAll('.shop-account')).find(b=>b.textContent.includes('Banco')).click()`);
+    fs.writeFileSync(path.join(output, 'shop.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await evaluate(`document.querySelector('.shop-buy').click()`);
+    await until(`window.__calls.some(x=>x.endpoint==='shopBuy' && x.body.account==='bank' && x.body.cart.length===2 && x.body.cart.some(l=>l.item==='os_lock_kit' && l.amount===2))`);
+    await evaluate(`window.postMessage({type:'shopResult',ok:true,data:{message:'Compra realizada: $1.760.',balance:{bank:1240,cash:50},partial:false}},'*')`);
+    await until(`document.querySelector('.shop-message.ok') && document.querySelector('.shop-total strong').textContent==='$0' && document.querySelector('.shop-account').textContent.includes('1.240')`);
+    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
+    await until(`document.getElementById('shop').hidden && window.__calls.some(x=>x.endpoint==='shopClose')`);
+    console.log('PASS shop: categories, staff-only items locked, quantities, balance check, payment request, result and Escape');
     console.log(`UI screenshots: ${path.relative(root, output)}`);
   } finally { socket?.close(); child.kill(); }
 }

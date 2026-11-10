@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.0 — Tienda Gruppe Sechs
+
+- Tienda en el mostrador de Union Depository (blip, marcador y E): catálogo por categorías, cantidades,
+  carrito y pago con banco o efectivo del personaje activo.
+- Al público: tablet Client, bombines, kits de cierre y alarma de vehículo, destornillador y baterías.
+  Solo personal G6 de servicio (o ACE técnico, supervisor o admin): kits CCTV y de alarma, taladro y tablet
+  Operations. La ganzúa no se vende.
+- Todo validado en el servidor: cerca del mostrador, catálogo, cantidades (máx. 10 por producto), total y
+  saldo. Se cobra una vez y se entrega cada producto con su identificador de operación; lo que no cabe en el
+  inventario se devuelve al momento.
+- Dinero con `ossecurity_money_resource` (por defecto `os_devtools`: `ChargeCharacter`, `PayCharacter`,
+  `GetCharacterBalance`); `none` cierra la tienda. Precios y ubicaciones en `config/shop.lua`.
+
 ## 0.9.0 — Instalaciones desde la tablet
 
 - G6 Operations → Instalaciones: eliges el cliente (tú o un jugador a tu lado), marcas la zona con un visor

@@ -136,8 +136,21 @@ function OSSecurity.Gameplay.new(options)
         sites = options.sites, alarms = alarms, locks = locks, cars = cars })
     local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
         sessions = sessions, service = service, placement = placement, zones = zones, audit = options.audit })
+    -- Tienda: personal G6 = empleo de servicio o ACE profesional (tecnico, supervisor o admin).
+    local function isStaff(source)
+        for _, ace in ipairs({ config.Ace.technician, config.Ace.supervisor, config.Ace.admin }) do
+            if options.ace(source, ace) then return true end
+        end
+        if not options.employment then return false end
+        local holder = holdings.external() and holdings.holder(source) or nil
+        return options.employment(source, holder) ~= nil
+    end
+    local shop = OSSecurity.ShopService.new({ holdings = holdings, inventory = inventory, identity = identity, world = options.world,
+        now = options.now, isStaff = isStaff, log = options.log,
+        money = options.money or { available = function() return false end, balance = noop, charge = noop, refund = noop },
+        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks, cars = cars,
-        lockpick = lockpick, zones = zones }
+        lockpick = lockpick, zones = zones, shop = shop }
     function gameplay.status() return ready and inventory.status() and options.registry.status() end
     function gameplay.load()
         ready = false
@@ -153,7 +166,7 @@ function OSSecurity.Gameplay.new(options)
         if not gameplay.status() then return { ok = false, error = 'Flujo Gruppe Sechs no disponible; revisar servidor.', close = true } end
         return controller.handle(source, request)
     end
-    function gameplay.drop(source) controller.drop(source); locks.drop(source); cars.drop(source); lockpick.drop(source) end
+    function gameplay.drop(source) controller.drop(source); locks.drop(source); cars.drop(source); lockpick.drop(source); shop.drop(source) end
     function gameplay.clear() ready = false; controller.clear(); alarms.clear(); locks.clear(); cars.clear(); lockpick.clear() end
     -- Zona marcada con el visor (desde la tablet): el servidor revalida perfil, cercania y datos.
     function gameplay.zoneAt(source, payload)

@@ -104,6 +104,14 @@ OSSecurity.Brand = {
             kinds = { door = 'Puerta', vehicle = 'Vehiculo' }, tiers = { 'Seguridad basica', 'Seguridad media', 'Alta seguridad' }
         },
         hello = 'Gruppe Sechs: servicio de seguridad disponible.',
+        shop = {
+            prompt = '~INPUT_CONTEXT~ Tienda Gruppe Sechs', title = 'Equipos de seguridad', close = 'Cerrar (Esc)',
+            categories = { tablet = 'Tablets', kit = 'Kits e instalaciones', tool = 'Herramientas', material = 'Consumibles', access = 'Accesos', other = 'Otros' },
+            staffItem = 'Personal G6', staffOnly = 'Solo personal G6 de servicio', cart = 'Tu pedido', empty = 'Elige productos con + y -.',
+            total = 'Total', pay = 'Pagar con', accounts = { bank = 'Banco', cash = 'Efectivo' }, buy = 'Pagar', paying = 'Pagando...',
+            insufficient = 'No tienes saldo suficiente en esa cuenta.', failed = 'No se pudo completar la compra.',
+            staffHint = 'Los kits de camaras y alarmas y el taladro son para tecnicos G6 de servicio.'
+        },
         -- Seccion Instalaciones (G6 Operations): zonas de montaje marcadas con el visor e instalacion.
         zones = {
             title = 'Zonas de montaje', hero = 'Marca la zona. Instala sin volver a la oficina.',
