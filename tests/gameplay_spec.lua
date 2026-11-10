@@ -964,7 +964,7 @@ test('Doors of an owned property are detected from a nearby player, locked with 
     local far = { model = 5, x = 150, y = 100, z = 30 }
     assert(c.game.locks.report(2, doorReport(7, { FRONT, BACK, far, { model = 'x', x = 1, y = 1, z = 1 } })) == 2)
     local list = c.game.locks.list()
-    assert(#list == 2 and list[1].id == 'p7_1' and list[1].locked == true and list[1].tier == 1 and c.lastDoors and #c.lastDoors == 2)
+    assert(#list == 2 and list[1].id == 'p7_1' and list[1].locked == true and list[1].tier == nil and c.game.locks.security('p7_1') == 1 and c.lastDoors and #c.lastDoors == 2)
     assert(c.game.locks.report(2, doorReport(7, { FRONT2 })) == 0) -- enfriamiento por propiedad
     c.core.time = c.core.time + 61
     assert(c.game.locks.report(2, doorReport(7, { FRONT, FRONT2 })) == 1) -- el duplicado no se repite
@@ -1268,4 +1268,14 @@ test('Hotwiring: without the key a screwdriver allows a hotwire; difficulty by s
     v.driving[2] = nil
     local hard = assert(v.cars.hotwireBegin(5)); assert(hard.tier == 3 and hard.band < plain.band)
     assert(logged(v, 'notify') == 2) -- aviso: estan intentando arrancarlo
+end)
+
+test('Vehicle key and tamper require the same routing bucket as the vehicle', function()
+    local c, e, v = carFixture()
+    c.players[2].point = { x = 3, y = 0, z = 1 }; c.players[5].point = { x = 1, y = 0, z = 1 }
+    local elsewhere = carAt(); elsewhere.bucket = 3
+    assert(not v.cars.toggle(2, elsewhere)) -- otro bucket: no llega
+    assert(v.cars.toggle(2, carAt()).locked)
+    assert(not v.cars.tamper(5, elsewhere))
+    assert(c.game.inventory.car('12').locked == true and c.game.inventory.car('99') == nil)
 end)

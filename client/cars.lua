@@ -126,18 +126,14 @@ function OSSecurity.ClientCars.new(options)
             Wait((keyed or driven ~= 0) and 100 or 400)
         end
     end)
-    -- Intentar entrar en un vehiculo cerrado (o estar dentro de uno cerrado sin abrirlo) se informa al
-    -- servidor, que decide si salta la alarma. Una vez cada 3 s por vehiculo.
+    -- Intentar entrar en un vehiculo cerrado se informa al servidor, que decide si salta la alarma. Una vez
+    -- cada 3 s por vehiculo. Ir sentado dentro de un coche cerrado (el dueno lo cierra desde dentro) no cuenta.
     CreateThread(function()
         local reported = {}
         while true do
             Wait(250)
             local ped = PlayerPedId()
             local vehicle = GetVehiclePedIsTryingToEnter(ped)
-            if vehicle == 0 then
-                local inside = GetVehiclePedIsIn(ped, false)
-                if inside ~= 0 and GetPedInVehicleSeat(inside, -1) == ped then vehicle = inside end
-            end
             local value = vehicle ~= 0 and state(vehicle)
             if value and value.locked and NetworkGetEntityIsNetworked(vehicle) then
                 local now = GetGameTimer()

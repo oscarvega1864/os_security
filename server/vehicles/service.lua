@@ -103,9 +103,9 @@ function OSSecurity.CarService.new(options)
         local car = asset(vehicle.plate)
         if not car then return nil, 'Ese vehiculo no tiene dueno registrado (matricula OS).' end
         local record = records()[tostring(car.id)] or blank(car)
-        local point = options.world(source)
+        local point, bucket = options.world(source)
         local reach = record.lock and config.KeyDistance or config.ManualDistance
-        if not point or distance(point, vehicle.position) > reach then
+        if not point or (vehicle.bucket ~= nil and bucket ~= vehicle.bucket) or distance(point, vehicle.position) > reach then
             return nil, record.lock and 'Acercate al vehiculo.' or 'Acercate a la puerta: sin cierre centralizado se cierra con la llave.'
         end
         if not owns(source, car) then return nil, 'No tienes la llave de este vehiculo.' end
@@ -127,8 +127,8 @@ function OSSecurity.CarService.new(options)
         local car = asset(vehicle.plate)
         local record = car and records()[tostring(car.id)]
         if not record or not record.locked then return nil end
-        local point = options.world(source)
-        if not point or distance(point, vehicle.position) > config.TamperDistance then return nil end
+        local point, bucket = options.world(source)
+        if not point or (vehicle.bucket ~= nil and bucket ~= vehicle.bucket) or distance(point, vehicle.position) > config.TamperDistance then return nil end
         if owns(source, car) then return nil, 'Esta cerrado: abrelo con el mando (L).' end
         if not record.alarm then return nil, 'Esta cerrado.' end
         local now = options.now()
@@ -224,7 +224,7 @@ function OSSecurity.CarService.new(options)
     -- Estado que deben tener las entidades de ese vehiculo (sincronizacion periodica).
     function cars.desired(plate)
         local id = OSSecurity.CarService.plateId(plate)
-        local record = id and records()[tostring(id)]
+        local record = id and options.inventory.car(tostring(id))
         if not record or (not record.lock and not record.locked) then return nil end
         return { locked = record.locked, alarm = record.alarm }
     end

@@ -37,7 +37,7 @@ function OSSecurity.LockService.new(options)
     function locks.list()
         local result = {}
         for _, door in pairs(active()) do
-            result[#result + 1] = { id = door.id, model = door.model, position = util.copy(door.position), locked = door.locked, tier = door.tier }
+            result[#result + 1] = { id = door.id, model = door.model, position = util.copy(door.position), locked = door.locked }
         end
         table.sort(result, function(a, b) return a.id < b.id end)
         return result

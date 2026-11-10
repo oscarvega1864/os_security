@@ -3,6 +3,9 @@ local alarms = OSSecurity.ClientAlarms.new()
 local locks = OSSecurity.ClientLocks.new({ detectRadius = 15.0, scanRange = 25.0,
     report = function(report) TriggerServerEvent('os_security:locks:report', report) end })
 local cylinderOpen = false
+-- Generacion de cada minijuego con temporizador: un SetTimeout de una sesion anterior no cierra la nueva.
+local sessions = { cylinder = 0, carwire = 0, hotwire = 0 }
+local function session(name) sessions[name] = sessions[name] + 1; return sessions[name] end
 local cars = OSSecurity.ClientCars.new({ notify = OSSecurity.Notify })
 local carwireOpen = false
 local lastUiAlive = GetGameTimer()
@@ -189,7 +192,8 @@ RegisterNetEvent('os_security:locks:change', function(data)
     minigameFx.phase('screw')
     SetNuiFocus(true, true)
     SendNUIMessage({ type = 'cylinder', data = { from = data.from, to = data.to, tier = data.tier }, text = OSSecurity.Brand.Text.locks.minigame })
-    SetTimeout(170000, function() if cylinderOpen then cylinderClose(false) end end)
+    local mine = session('cylinder')
+    SetTimeout(170000, function() if cylinderOpen and sessions.cylinder == mine then cylinderClose(false) end end)
 end)
 RegisterNUICallback('cylinder', function(body, callback)
     callback({ ok = true })
@@ -216,7 +220,12 @@ RegisterNetEvent('os_security:car:hotwireStart', function(data)
     hotwireOpen = true
     SetNuiFocus(true, true)
     SendNUIMessage({ type = 'carwire', data = { kind = 'hotwire', plate = data.plate, decoys = data.decoys, band = data.band }, text = OSSecurity.Brand.Text.cars.minigame })
-    SetTimeout(115000, function() if hotwireOpen then hotwireOpen = false; SetNuiFocus(false, false); SendNUIMessage({ type = 'carwireClose' }); TriggerServerEvent('os_security:car:hotwireFinish', false) end end)
+    local mine = session('hotwire')
+    SetTimeout(115000, function()
+        if hotwireOpen and sessions.hotwire == mine then
+            hotwireOpen = false; SetNuiFocus(false, false); SendNUIMessage({ type = 'carwireClose' }); TriggerServerEvent('os_security:car:hotwireFinish', false)
+        end
+    end)
 end)
 RegisterNUICallback('hotwire', function(body, callback)
     callback({ ok = true })
@@ -251,7 +260,8 @@ RegisterNetEvent('os_security:car:install', function(data)
     carwireOpen = true
     SetNuiFocus(true, true)
     SendNUIMessage({ type = 'carwire', data = { kind = data.kind, plate = data.plate }, text = OSSecurity.Brand.Text.cars.minigame })
-    SetTimeout(170000, function() if carwireOpen then carwireClose(false) end end)
+    local mine = session('carwire')
+    SetTimeout(170000, function() if carwireOpen and sessions.carwire == mine then carwireClose(false) end end)
 end)
 RegisterNUICallback('carwire', function(body, callback)
     callback({ ok = true })

@@ -201,19 +201,26 @@ local function vehicleOf(netId)
     local entity = NetworkGetEntityFromNetworkId(netId)
     if not entity or entity == 0 or not DoesEntityExist(entity) or GetEntityType(entity) ~= 2 then return nil end
     local p = GetEntityCoords(entity)
-    return { entity = entity, netId = netId, plate = GetVehicleNumberPlateText(entity), position = { x = p.x, y = p.y, z = p.z } }
+    return { entity = entity, netId = netId, plate = GetVehicleNumberPlateText(entity), position = { x = p.x, y = p.y, z = p.z },
+        bucket = GetEntityRoutingBucket(entity) }
 end
--- Vehiculo mas cercano al jugador (para la ganzua): lo elige el servidor, no el cliente.
-local function nearestVehicle(player, radius)
+-- Vehiculo mas cercano al jugador que cumpla 'accept' (para la ganzua): lo elige el servidor, no el cliente,
+-- y salta los que no valen (trafico, coches abiertos) aunque esten mas cerca.
+local function nearestVehicle(player, radius, accept)
     local ped = GetPlayerPed(player)
     if not ped or ped == 0 then return nil end
-    local here = GetEntityCoords(ped)
-    local best, bestDistance
+    local here, bucket = GetEntityCoords(ped), GetPlayerRoutingBucket(player)
+    local candidates = {}
     for _, entity in ipairs(GetAllVehicles()) do
         local d = #(GetEntityCoords(entity) - here)
-        if d <= radius and (not bestDistance or d < bestDistance) then best, bestDistance = entity, d end
+        if d <= radius and GetEntityRoutingBucket(entity) == bucket then candidates[#candidates + 1] = { entity = entity, d = d } end
     end
-    return best and vehicleOf(NetworkGetNetworkIdFromEntity(best)) or nil
+    table.sort(candidates, function(a, b) return a.d < b.d end)
+    for _, candidate in ipairs(candidates) do
+        local vehicle = vehicleOf(NetworkGetNetworkIdFromEntity(candidate.entity))
+        if vehicle and (not accept or accept(vehicle)) then return vehicle end
+    end
+    return nil
 end
 local function playersNear(position, radius)
     local list = {}
@@ -523,7 +530,8 @@ local function registerUsableTablets()
                     if definition.tablet then TriggerClientEvent('os_security:g6:openTablet', player, definition.tablet)
                     elseif definition.usable == 'lockpick' then
                         local challenge, err = lockCall(function()
-                            return gameplay.lockpick.begin(player, nearestVehicle(player, OSSecurity.GameplayConfig.Lockpick.VehicleReach))
+                            return gameplay.lockpick.begin(player, nearestVehicle(player, OSSecurity.GameplayConfig.Lockpick.VehicleReach,
+                                function(vehicle) return gameplay.cars.pickTarget(vehicle) ~= nil end))
                         end)
                         if challenge then TriggerClientEvent('os_security:lockpick:start', player, challenge)
                         else TriggerClientEvent('os_security:lockpick:result', player, false, err, false) end

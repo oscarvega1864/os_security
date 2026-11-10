@@ -33,6 +33,12 @@ function OSSecurity.StandaloneInventory.new(options)
         if not inventory.status() then return nil end
         return OSSecurity.Util.copy(data.cars or {})
     end
+    -- Un registro de vehiculo (sin copiar: solo lectura, para la sincronizacion periodica).
+    function inventory.car(id)
+        if not inventory.status() or not data.cars then return nil end
+        local record = data.cars[id]
+        return record and { locked = record.locked, alarm = record.alarm, lock = record.lock } or nil
+    end
     function inventory.doors()
         if not inventory.status() then return nil end
         return OSSecurity.Util.copy(data.doors or {})

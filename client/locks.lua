@@ -28,7 +28,7 @@ function OSSecurity.ClientLocks.new(options)
                     AddDoorToSystem(hash, door.model, p.x + 0.0, p.y + 0.0, p.z + 0.0, false, false, false)
                 end
                 DoorSystemSetDoorState(hash, door.locked and 1 or 0, false, false)
-                locks.doors[door.id] = { id = door.id, hash = hash, locked = door.locked == true, tier = door.tier,
+                locks.doors[door.id] = { id = door.id, hash = hash, locked = door.locked == true,
                     position = vector3(door.position.x, door.position.y, door.position.z) }
             end
         end
