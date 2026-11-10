@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.13.0 — Puente con la web de Gruppe Sechs (fase 1)
+
+- Conexión opcional y firmada con gruppe6.es (`ossecurity_web_url`, `ossecurity_web_secret`): sin configurar
+  no cambia nada. OS Security inicia siempre la conexión por HTTPS; la web nunca llama al servidor de juego.
+- Seguridad: HMAC-SHA256 sobre cliente, versión de clave, fecha (±90 s), nonce de un solo uso, ruta, clave de
+  idempotencia y hash del cuerpo; las respuestas de la web también van firmadas y se descartan si no
+  verifican. SHA-256/HMAC en Lua puro, comprobados con los vectores oficiales y con el de la web.
+- Tolerante a caídas: eventos en cola persistente (`data/web_bridge.json`) reenviados con el mismo cuerpo y
+  clave; comandos de la web aplicados una sola vez y confirmados. Consola: `g6bridge`.
+- Base para las fases siguientes (vinculación `/g6web`, solicitudes web ↔ tablet, estados ampliados).
+
 ## 0.12.1 — Cada personaje con lo suyo
 
 - Corregido: con objetos por personaje (`ossecurity_items os_inventory`), los dispositivos, zonas, concesiones

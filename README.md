@@ -278,6 +278,27 @@ estándar, como antes. No es una dependencia: OS Security sigue siendo portable.
 comandos administrativos (`osdev`, `osmaint`, `osg6`, `osstatus`) y `/oshello` siguen en el chat porque
 incluyen listados.
 
+## Puente con la web de Gruppe Sechs (opcional)
+
+Conexión firmada con la web (gruppe6.es) para vincular personajes y sincronizar solicitudes (fases
+siguientes; diseño en `docs/integracion-web-gruppe6.md`). Sin configurar no hace nada y OS Security sigue
+siendo independiente. Se activa en un cfg aparte cargado con `exec` (nunca `setr`/`sets`, que se envían a
+los jugadores):
+
+```cfg
+set ossecurity_web_url "https://gruppe6.es/intranet/api/fivem-bridge.php"
+set ossecurity_web_secret "<64 hex, el mismo que FIVEM_BRIDGE_SECRET de la web>"
+set ossecurity_web_client "fivem-prod"      # opcional
+set ossecurity_web_key_version 1            # opcional, para rotar el secreto
+```
+
+- OS Security inicia siempre la conexión (HTTPS saliente); la web nunca llama al servidor de juego.
+- Cada petición va firmada (HMAC-SHA256 con fecha, nonce de un solo uso, ruta, clave de idempotencia y hash
+  del cuerpo) y las respuestas de la web también: una respuesta que no verifica se descarta.
+- Los eventos esperan en `data/web_bridge.json` si la web está caída y se reenvían con el mismo cuerpo y la
+  misma clave, así que un reintento nunca duplica. Los comandos de la web se aplican una sola vez (cursor).
+- `g6bridge` (consola) muestra el estado. Si la cola está corrupta no se sobrescribe: el puente se bloquea.
+
 ## Arquitectura
 
 | Archivo o directorio | Responsabilidad |

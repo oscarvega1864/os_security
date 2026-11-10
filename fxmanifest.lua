@@ -78,5 +78,7 @@ server_scripts {
     'server/tablet/controller.lua',
     'server/commands/gameplay.lua',
     'server/gameplay.lua',
+    'server/web/crypto.lua',
+    'server/web/bridge.lua',
     'server/main.lua'
 }

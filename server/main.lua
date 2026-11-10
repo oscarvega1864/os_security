@@ -663,6 +663,41 @@ local runPanelCommand = OSSecurity.AdminPanel.runner(commandHandlers, panelCaptu
 OSSecurity.AdminPanelRun = runPanelCommand
 AddEventHandler('os_admin:ready', function() OSSecurity.AdminPanel.publish(runPanelCommand) end)
 
+-- Puente con la web de Gruppe Sechs (opcional). Sin estas convars no se crea y nada cambia:
+--   set ossecurity_web_url "https://gruppe6.es/intranet/api/fivem-bridge.php"
+--   set ossecurity_web_secret "<64 hex>"     (en un cfg aparte con exec; nunca setr/sets)
+--   set ossecurity_web_client "fivem-prod"   set ossecurity_web_key_version 1
+local function createWebBridge()
+    local url, secret = GetConvar('ossecurity_web_url', ''), GetConvar('ossecurity_web_secret', '')
+    local client, version = GetConvar('ossecurity_web_client', 'fivem-prod'), tonumber(GetConvar('ossecurity_web_key_version', '1'))
+    if url == '' and secret == '' then return nil, 'deshabilitado (sin ossecurity_web_url ni ossecurity_web_secret)' end
+    if not OSSecurity.WebBridge.validUrl(url) then return nil, 'ossecurity_web_url no valida (se exige https)' end
+    if not OSSecurity.WebBridge.validSecret(secret) then return nil, 'ossecurity_web_secret no valido (64-128 caracteres hexadecimales)' end
+    if not OSSecurity.WebBridge.validClient(client) or not math.tointeger(version) or version < 1 then return nil, 'cliente o version de clave no validos' end
+    return OSSecurity.WebBridge.new({
+        url = url, secret = secret, client = client, version = math.tointeger(version), resourceVersion = config.Version,
+        -- Semilla de nonces: bcrypt con sal aleatoria del servidor, una sola vez por arranque.
+        seed = GetPasswordHash(('%s:%d:%d'):format(resourceName, os.time(), GetGameTimer())),
+        now = os.time, encode = OSSecurity.JsonCodec.encode, decode = OSSecurity.JsonCodec.decode,
+        files = resourceFiles, path = 'data/web_bridge.json',
+        http = function(target, method, body, headers, callback)
+            PerformHttpRequest(target, function(status, responseBody, responseHeaders) callback(status, responseBody, responseHeaders) end,
+                method, body, headers)
+        end,
+        schedule = function(seconds, callback) SetTimeout(math.max(0, math.floor(seconds * 1000)), callback) end,
+        log = function(message) print(('%s %s'):format(constants.LOG_PREFIX, message)) end
+    })
+end
+
+-- Estado del puente web (solo consola).
+RegisterCommand('g6bridge', function(source)
+    if source ~= 0 then return end
+    if not OSSecurity.Web then print(('%s Puente web: deshabilitado.'):format(constants.LOG_PREFIX)); return end
+    local s = OSSecurity.Web.status()
+    print(('%s Puente web: %s | cursor %d | eventos en cola %d | confirmaciones %d | fallos %d%s'):format(constants.LOG_PREFIX,
+        s.connected and 'conectado' or 'sin conexion', s.cursor, s.queued, s.acks, s.failures, s.lastError and (' | ' .. s.lastError) or ''))
+end, true)
+
 RegisterCommand('osstatus', function(source)
     local ready = registry.status()
     local message = ('Estado: %s | Version: %s | Device Core: %s'):format(
@@ -697,6 +732,13 @@ AddEventHandler('onResourceStart', function(startedResource)
 
     local gameLoaded, gameError = gameplay.load()
     if not gameLoaded then storageLog('Flujo Gruppe Sechs bloqueado: ' .. tostring(gameError)) end
+    local web, webStatus = createWebBridge()
+    if web then
+        local started, startError = web.start()
+        OSSecurity.Web = started and web or nil
+        webStatus = started and 'activo' or ('bloqueado: ' .. tostring(startError))
+    end
+    print(('%s Puente web: %s'):format(constants.LOG_PREFIX, webStatus))
     print(('%s Objetos: %s'):format(constants.LOG_PREFIX, externalItems and ('%s por personaje (%s)'):format(inventoryResource, identityResource) or 'registro local (standalone)'))
     registerUsableTablets()
     OSSecurity.AdminPanel.publish(runPanelCommand)
@@ -712,6 +754,7 @@ AddEventHandler('onResourceStop', function(stoppedResource)
     end
 
     gameplay.clear()
+    if OSSecurity.Web then OSSecurity.Web.stop(); OSSecurity.Web = nil end
 
     print(('%s Recurso detenido. Version: %s'):format(constants.LOG_PREFIX, config.Version))
 end)
