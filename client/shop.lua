@@ -6,20 +6,34 @@ function OSSecurity.ClientShop.new(options)
     local config = OSSecurity.ShopConfig
     local shop = {}
     local blips = {}
+    local locations = config.Locations -- hasta que el servidor mande las suyas (pueden haberse movido en F10)
 
-    for _, location in ipairs(config.Locations) do
-        if location.blip then
-            local blip = AddBlipForCoord(location.x + 0.0, location.y + 0.0, location.z + 0.0)
-            SetBlipSprite(blip, 52)
-            SetBlipColour(blip, 2)
-            SetBlipScale(blip, 0.8)
-            SetBlipAsShortRange(blip, true)
-            BeginTextCommandSetBlipName('STRING')
-            AddTextComponentSubstringPlayerName(location.label)
-            EndTextCommandSetBlipName(blip)
-            blips[#blips + 1] = blip
+    local function clearBlips()
+        for _, blip in ipairs(blips) do if DoesBlipExist(blip) then RemoveBlip(blip) end end
+        blips = {}
+    end
+    local function drawBlips()
+        clearBlips()
+        for _, location in ipairs(locations) do
+            if location.blip then
+                local blip = AddBlipForCoord(location.x + 0.0, location.y + 0.0, location.z + 0.0)
+                SetBlipSprite(blip, 52)
+                SetBlipColour(blip, 2)
+                SetBlipScale(blip, 0.8)
+                SetBlipAsShortRange(blip, true)
+                BeginTextCommandSetBlipName('STRING')
+                AddTextComponentSubstringPlayerName(location.label)
+                EndTextCommandSetBlipName(blip)
+                blips[#blips + 1] = blip
+            end
         end
     end
+    function shop.setLocations(list)
+        if type(list) ~= 'table' or #list == 0 then return end
+        locations = list
+        drawBlips()
+    end
+    drawBlips()
 
     CreateThread(function()
         local lastOpen = 0
@@ -27,7 +41,7 @@ function OSSecurity.ClientShop.new(options)
             local ped = PlayerPedId()
             local here = GetEntityCoords(ped)
             local nearest, best
-            for _, location in ipairs(config.Locations) do
+            for _, location in ipairs(locations) do
                 local d = #(here - vector3(location.x, location.y, location.z))
                 if not best or d < best then nearest, best = location, d end
             end
@@ -50,9 +64,6 @@ function OSSecurity.ClientShop.new(options)
         end
     end)
 
-    function shop.clear()
-        for _, blip in ipairs(blips) do if DoesBlipExist(blip) then RemoveBlip(blip) end end
-        blips = {}
-    end
+    function shop.clear() clearBlips() end
     return shop
 end

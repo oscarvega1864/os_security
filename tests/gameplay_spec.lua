@@ -1456,3 +1456,29 @@ test('Shop: with the character inventory, undeliverable items are refunded and a
     for _, reply in ipairs(c.replies) do if reply[2]:find('PENDIENTE') then logged = true end end
     assert(logged)
 end)
+
+test('Shop: an admin moves the counter to the Union Depository road or to their position; it persists and is broadcast', function()
+    local c = fixture(); assert(c.loaded, c.loadError)
+    local moved = {}
+    c.game.shop = OSSecurity.ShopService.new({ holdings = c.game.holdings, inventory = c.game.inventory, identity = c.game.identity,
+        world = function(source) local p = c.players[source]; return util.copy(p.point), p.bucket end, now = function() return c.core.time end,
+        isStaff = function() return false end, isAdmin = function(source) return source == 4 end, audit = function() end,
+        files = { read = function(path) return c.core.files[path] end, write = function(path, content) c.core.files[path] = content; return true end },
+        moved = function(list) moved[#moved + 1] = list end,
+        money = { available = function() return true end, balance = function() return { bank = 0, cash = 0 } end } })
+    local _, why = c.game.shop.move(2, 'here'); assert(why:find('ossecurity.admin'))
+    _, why = c.game.shop.move(4, 'road', { x = 900, y = 0, z = 30 }); assert(why:find('carretera'))
+    assert(not c.game.shop.move(4, 'road', { x = 'a', y = 0, z = 0 }))
+    local message = assert(c.game.shop.move(4, 'road', { x = 40.123, y = -700.456, z = 29.9 }))
+    assert(message:find('40.12') and #moved == 1 and moved[1][1].x == 40.12 and moved[1][1].y == -700.46)
+    c.players[2].point = { x = 40.12, y = -700.46, z = 29.9 }; c.wallet[2] = { bank = 100, cash = 0 }
+    assert(c.game.shop.catalog(2)) -- el mostrador ya esta en la calle
+    c.players[4].point = { x = 5, y = 5, z = 30 }; c.players[4].bucket = 2
+    _, why = c.game.shop.move(4, 'here'); assert(why:find('bucket'))
+    c.players[4].bucket = 0; assert(c.game.shop.move(4, 'here'))
+    local reloaded = OSSecurity.ShopService.new({ files = { read = function(path) return c.core.files[path] end, write = function() return true end },
+        isAdmin = function() return false end, world = function() return nil end, now = function() return 0 end })
+    local location = reloaded.locations()[1]
+    assert(location.x == 5 and location.y == 5 and location.id == 'union') -- tras reiniciar sigue donde se dejo
+end)
+

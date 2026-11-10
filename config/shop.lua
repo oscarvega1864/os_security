@@ -7,6 +7,10 @@ OSSecurity.ShopConfig = {
     MaxQuantity = 10,        -- unidades por producto y compra
     MaxLines = 16,           -- productos distintos por compra
     Accounts = { 'bank', 'cash' },
+    -- F10 > Gruppe Sechs > "Tienda: en la calle de Union Depository": la carretera mas cercana a este
+    -- punto, el mismo calculo con el que salia el furgon de las misiones antes de las plazas de garaje.
+    RoadFrom = { x = 10.17, y = -671.55, z = 33.45 }, RoadMaxDistance = 200.0,
+    -- Ubicacion cambiada desde F10 (se guarda en data/shop.json y se reparte a todos los jugadores).
     Locations = {
         { id = 'union', label = 'Gruppe Sechs · Union Depository', x = 10.17, y = -671.55, z = 33.45, blip = true }
     },

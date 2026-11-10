@@ -146,7 +146,8 @@ function OSSecurity.Gameplay.new(options)
         return options.employment(source, holder) ~= nil
     end
     local shop = OSSecurity.ShopService.new({ holdings = holdings, inventory = inventory, identity = identity, world = options.world,
-        now = options.now, isStaff = isStaff, log = options.log,
+        now = options.now, isStaff = isStaff, log = options.log, files = options.files, moved = options.shopMoved,
+        isAdmin = function(source) return options.permissions ~= nil and options.permissions.isAdmin(source) == true end,
         money = options.money or { available = function() return false end, balance = noop, charge = noop, refund = noop },
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks, cars = cars,

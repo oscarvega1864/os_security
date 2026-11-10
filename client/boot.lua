@@ -327,6 +327,22 @@ local shopOpen = false
 local shop = OSSecurity.ClientShop.new({ busy = function()
     return shopOpen or controller.visible or controller.placing or lockpickOpen or carwireOpen or cylinderOpen or minigame.active()
 end })
+RegisterNetEvent('os_security:shop:locations', function(list) if source == 65535 then shop.setLocations(list) end end)
+CreateThread(function()
+    while not NetworkIsPlayerActive(PlayerId()) do Wait(1000) end
+    TriggerServerEvent('os_security:shop:locations')
+end)
+-- F10 > Tienda en la calle: carretera mas cercana a Union Depository, igual que el furgon de las misiones.
+RegisterNetEvent('os_security:shop:findRoad', function(around)
+    if source ~= 65535 or type(around) ~= 'table' then return end
+    local ok, position = GetClosestVehicleNodeWithHeading(around.x + 0.0, around.y + 0.0, around.z + 0.0, 1, 3.0, 0)
+    if not ok or ok == 0 then OSSecurity.Notify('No hay carretera cargada cerca: acercate a Union Depository y repite.', 'error'); return end
+    TriggerServerEvent('os_security:shop:roadPoint', { x = position.x, y = position.y, z = position.z })
+end)
+RegisterNetEvent('os_security:shop:moved', function(ok, message)
+    if source ~= 65535 or type(message) ~= 'string' then return end
+    OSSecurity.Notify(message, ok and 'success' or 'error')
+end)
 RegisterNetEvent('os_security:shop:catalog', function(ok, data)
     if source ~= 65535 then return end
     if not ok or type(data) ~= 'table' then OSSecurity.Notify(type(data) == 'string' and data or OSSecurity.Brand.Text.failed, 'error'); return end

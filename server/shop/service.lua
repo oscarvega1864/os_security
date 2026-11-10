@@ -12,6 +12,57 @@ function OSSecurity.ShopService.new(options)
     local config = options.config or OSSecurity.ShopConfig
     local shop = {}
     local orders, lastBuy = 0, {}
+    local FILE = 'data/shop.json'
+    -- Ubicaciones: las de config/shop.lua, con las movidas desde F10 (data/shop.json) por encima.
+    local locations = {}
+    for _, location in ipairs(config.Locations) do locations[#locations + 1] = util.copy(location) end
+    local function finite(v) return type(v) == 'number' and v == v and math.abs(v) < 100000 end
+    if options.files then
+        local ok, saved = pcall(function()
+            local content = options.files.read(FILE)
+            return content and OSSecurity.JsonCodec.decode(content) or nil
+        end)
+        if ok and type(saved) == 'table' and type(saved.locations) == 'table' then
+            for _, location in ipairs(locations) do
+                local moved = saved.locations[location.id]
+                if type(moved) == 'table' and finite(moved.x) and finite(moved.y) and finite(moved.z) then
+                    location.x, location.y, location.z = moved.x, moved.y, moved.z
+                end
+            end
+        elseif not ok and options.log then options.log('Tienda G6: data/shop.json ilegible; se usan las ubicaciones de config/shop.lua.') end
+    end
+    function shop.locations()
+        local result = {}
+        for _, location in ipairs(locations) do result[#result + 1] = util.copy(location) end
+        return result
+    end
+    -- Mover el mostrador (F10, administrador). mode 'road': punto de carretera calculado por el cliente cerca
+    -- de RoadFrom; mode 'here': la posicion del administrador en el servidor.
+    function shop.move(source, mode, point)
+        if not options.isAdmin(source) then return nil, 'Se requiere ossecurity.admin.' end
+        local location = locations[1]
+        if not location then return nil, 'No hay tienda configurada.' end
+        local here, bucket = options.world(source)
+        if not here or bucket ~= 0 then return nil, 'Hazlo en el mundo normal (bucket 0).' end
+        local target
+        if mode == 'here' then target = here
+        elseif mode == 'road' then
+            if not util.object(point, { x = true, y = true, z = true }) or not finite(point.x) or not finite(point.y) or not finite(point.z) then return nil, 'Punto no valido.' end
+            if distance(point, config.RoadFrom) > config.RoadMaxDistance then return nil, 'No hay carretera cerca de Union Depository: acercate y repite.' end
+            target = point
+        else return nil, 'Modo no valido.' end
+        location.x, location.y, location.z = util.round(target.x, 2), util.round(target.y, 2), util.round(target.z, 2)
+        if options.files then
+            local saved = { locations = {} }
+            for _, item in ipairs(locations) do saved.locations[item.id] = { x = item.x, y = item.y, z = item.z } end
+            if not options.files.write(FILE, OSSecurity.JsonCodec.encode(saved)) and options.log then
+                options.log('Tienda G6: no se pudo guardar data/shop.json; la ubicacion nueva dura hasta reiniciar.')
+            end
+        end
+        if options.moved then options.moved(shop.locations()) end
+        options.audit('shop_moved', source)
+        return ('Tienda movida a %.2f, %.2f, %.2f.'):format(location.x, location.y, location.z)
+    end
     local products = {}
     for _, product in ipairs(config.Products) do products[product.item] = product end
     local accounts = {}
@@ -21,7 +72,7 @@ function OSSecurity.ShopService.new(options)
     local function counter(source)
         local point, bucket = options.world(source)
         if not point or bucket ~= 0 then return nil end
-        for _, location in ipairs(config.Locations) do
+        for _, location in ipairs(locations) do
             if distance(point, location) <= config.Distance then return location end
         end
         return nil

@@ -359,6 +359,7 @@ local gameplay = OSSecurity.Gameplay.new({
     end,
     locksChanged = function(list) TriggerClientEvent('os_security:locks:doors', -1, list) end,
     vehicles = carVehicles, carEffects = carEffects, money = money,
+    shopMoved = function(list) TriggerClientEvent('os_security:shop:locations', -1, list) end,
     audit = function(action, source, deviceId)
         local safeId = OSSecurity.DeviceValidation.id(deviceId) and deviceId or '-'
         print(('%s [G6 AUDIT] action=%s source=%d device=%s'):format(constants.LOG_PREFIX, action, source, safeId))
@@ -515,6 +516,19 @@ RegisterNetEvent('os_security:shop:open', function()
     local data, err = lockCall(function() return gameplay.shop.catalog(player) end)
     TriggerClientEvent('os_security:shop:catalog', player, data ~= nil, data or err)
 end)
+-- Ubicacion del mostrador: al entrar y cada vez que un administrador la mueve desde F10.
+RegisterNetEvent('os_security:shop:locations', function()
+    local player = source
+    if not lockAllowed(player) then return end
+    TriggerClientEvent('os_security:shop:locations', player, gameplay.shop.locations())
+end)
+-- Punto de carretera calculado por el cliente del administrador (F10 > Tienda en la calle).
+RegisterNetEvent('os_security:shop:roadPoint', function(point)
+    local player = source
+    if not lockAllowed(player) then return end
+    local message, err = lockCall(function() return gameplay.shop.move(player, 'road', point) end)
+    TriggerClientEvent('os_security:shop:moved', player, message ~= nil, message or err)
+end)
 RegisterNetEvent('os_security:shop:buy', function(cart, account)
     local player = source
     if not lockAllowed(player) then return end
@@ -636,7 +650,9 @@ end)
 OSSecurity.AdminPanel.hooks = {
     anchorEditor = function(player, payload) TriggerClientEvent('os_security:g6:anchorEditor', player, payload) end,
     aimDoor = function(player, site) TriggerClientEvent('os_security:locks:aimDoor', player, site) end,
-    removeNearDoor = function(player) return gameplay.locks.unregister(player) end
+    removeNearDoor = function(player) return gameplay.locks.unregister(player) end,
+    shopRoad = function(player) TriggerClientEvent('os_security:shop:findRoad', player, OSSecurity.ShopConfig.RoadFrom) end,
+    shopHere = function(player) return gameplay.shop.move(player, 'here') end
 }
 local runPanelCommand = OSSecurity.AdminPanel.runner(commandHandlers, panelCapture)
 OSSecurity.AdminPanelRun = runPanelCommand

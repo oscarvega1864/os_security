@@ -136,6 +136,22 @@ function OSSecurity.AdminPanel.build(run)
                   return { ok = message ~= nil, message = message or err }
               end },
             { id = 'vehiculos', label = 'Vehiculos con cierre o alarma', ace = ace, handler = cmd('osg6', function() return { 'cars' } end) },
+            { id = 'tiendacalle', label = 'Tienda: en la calle de Union Depository', ace = ace, self = true,
+              description = 'El mostrador pasa a la carretera mas cercana a Union Depository (donde salia el furgon). Hazlo cerca de alli.',
+              handler = function(source)
+                  local hook = OSSecurity.AdminPanel.hooks.shopRoad
+                  if not hook then return { ok = false, message = 'No disponible.' } end
+                  hook(source)
+                  return { ok = true, close = true, message = 'Buscando la carretera de Union Depository...' }
+              end },
+            { id = 'tiendaaqui', label = 'Tienda: mover a mi posicion', ace = ace, self = true, confirm = true,
+              description = 'El mostrador de la tienda G6 pasa a donde estas ahora.',
+              handler = function(source)
+                  local hook = OSSecurity.AdminPanel.hooks.shopHere
+                  if not hook then return { ok = false, message = 'No disponible.' } end
+                  local message, err = hook(source)
+                  return { ok = message ~= nil, message = message or err }
+              end },
             { id = 'puertas', label = 'Puertas con cerradura', ace = ace, description = 'Puertas detectadas en propiedades y negocios, bombin y estado.',
               handler = cmd('osg6', function() return { 'doors' } end) },
             { id = 'borrarpuerta', label = 'Dar de baja una puerta', ace = ace, confirm = true,

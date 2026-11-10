@@ -12,6 +12,9 @@
   inventario se devuelve al momento.
 - Dinero con `ossecurity_money_resource` (por defecto `os_devtools`: `ChargeCharacter`, `PayCharacter`,
   `GetCharacterBalance`); `none` cierra la tienda. Precios y ubicaciones en `config/shop.lua`.
+- F10 → Gruppe Sechs: "Tienda: en la calle de Union Depository" (la carretera más cercana, donde salía el
+  furgón de las misiones) y "Tienda: mover a mi posición". Se guarda en `data/shop.json` y llega al momento a
+  todos los jugadores.
 
 ## 0.9.0 — Instalaciones desde la tablet
 
