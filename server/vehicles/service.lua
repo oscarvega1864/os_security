@@ -21,6 +21,7 @@ function OSSecurity.CarService.new(options)
     local util = OSSecurity.Util
     local cars = {}
     local installs, sounding, lastAlarm = {}, {}, {}
+    local hotwires, hotwired = {}, {} -- source -> intento en curso; carId -> source que le hizo el puente
     local LABELS = { lock = 'cierre centralizado', alarm = 'alarma' }
 
     local function records() return options.inventory.cars() or {} end
@@ -109,6 +110,7 @@ function OSSecurity.CarService.new(options)
         end
         if not owns(source, car) then return nil, 'No tienes la llave de este vehiculo.' end
         record.locked = not record.locked
+        if record.locked then hotwired[record.id] = nil end -- el dueno lo recupera: el puente deja de valer
         local saved, err = save(record)
         if not saved then return nil, err end
         if not record.locked and sounding[record.id] then
@@ -169,8 +171,55 @@ function OSSecurity.CarService.new(options)
         if not driving then return nil, 'Sientate al volante.' end
         local car = asset(driving.plate)
         if not car then return { free = true } end
-        if not owns(source, car) then return nil, 'No tienes la llave de este vehiculo.' end
-        return { owned = true }
+        if owns(source, car) then return { owned = true } end
+        if hotwired[car.id] == source then return { hotwired = true } end
+        local holder = options.holdings.external() and options.holdings.holder(source)
+        local tool = holder and options.holdings.has({ holder = holder }, config.Hotwire.Tool, 1)
+        return nil, tool and 'No tienes la llave. Pulsa otra vez para hacer un puente.' or 'No tienes la llave de este vehiculo.', tool == true
+    end
+    -- Puente, paso 1: al volante, motor apagado, sin la llave y con destornillador.
+    function cars.hotwireBegin(source)
+        local driving = options.vehicles.driving(source)
+        if not driving then return nil, 'Sientate al volante.' end
+        if driving.engine then return nil, 'El motor ya esta en marcha.' end
+        local car = asset(driving.plate)
+        if not car then return nil, 'Este vehiculo no necesita llave.' end
+        if owns(source, car) or hotwired[car.id] == source then return nil, 'Ya puedes arrancarlo con la llave.' end
+        if not options.holdings.external() then return nil, 'El puente requiere el inventario de personajes (os_inventory).' end
+        local holder = options.holdings.holder(source)
+        if not holder or not options.holdings.has({ holder = holder }, config.Hotwire.Tool, 1) then return nil, 'Necesitas un destornillador.' end
+        local record = records()[tostring(car.id)]
+        local tier = record and record.alarm and 3 or (record and record.lock and 2) or 1
+        hotwires[source] = { carId = car.id, plate = car.plate, started = options.now(), expires = options.now() + config.Hotwire.Seconds }
+        if record and record.alarm and options.vehicles.entity then
+            local vehicle = options.vehicles.entity(source)
+            if vehicle then
+                local now = options.now()
+                lastAlarm[record.id], sounding[record.id] = now, now + config.AlarmSeconds
+                options.effects.alarm(vehicle, config.AlarmSeconds)
+            end
+        end
+        if car.owner and record and record.alarm then
+            options.effects.notifyOwner(car.owner, ('Estan intentando arrancar tu vehiculo %s.'):format(car.plate), nil)
+        end
+        local level = config.Hotwire.Levels[tier]
+        return { tier = tier, decoys = level.decoys, band = level.band, plate = car.plate, seconds = config.Hotwire.Seconds }
+    end
+    -- Paso 2: resultado del minijuego. Con exito, este jugador puede arrancar y apagar ese vehiculo.
+    function cars.hotwireFinish(source, success)
+        local attempt = hotwires[source]
+        hotwires[source] = nil
+        if not attempt then return nil, 'No estas haciendo ningun puente.' end
+        if success ~= true then return nil, 'El puente no ha salido.' end
+        local now = options.now()
+        if now > attempt.expires or now - attempt.started < config.Hotwire.MinSeconds then return nil, 'El puente no ha salido.' end
+        local driving = options.vehicles.driving(source)
+        if not driving or trim(driving.plate) ~= attempt.plate then return nil, 'Has salido del vehiculo.' end
+        hotwired[attempt.carId] = source
+        local car = asset(driving.plate)
+        if car and car.owner then options.effects.notifyOwner(car.owner, ('Han hecho un puente a tu vehiculo %s.'):format(attempt.plate), nil) end
+        options.audit('car_hotwired', source, tostring(attempt.carId))
+        return { message = 'Puente hecho: el motor arranca. Y para arrancar o apagar.' }
     end
     -- Estado que deben tener las entidades de ese vehiculo (sincronizacion periodica).
     function cars.desired(plate)
@@ -195,7 +244,10 @@ function OSSecurity.CarService.new(options)
         local now = options.now()
         for id, untilAt in pairs(sounding) do if untilAt <= now then sounding[id] = nil end end
     end
-    function cars.drop(source) installs[source] = nil end
-    function cars.clear() installs, sounding, lastAlarm = {}, {}, {} end
+    function cars.drop(source)
+        installs[source], hotwires[source] = nil, nil
+        for id, player in pairs(hotwired) do if player == source then hotwired[id] = nil end end
+    end
+    function cars.clear() installs, sounding, lastAlarm, hotwires, hotwired = {}, {}, {}, {}, {} end
     return cars
 end

@@ -241,6 +241,13 @@ local carVehicles = {
         return exports[sitesResource]:GetAsset('vehicles', id)
     end,
     alias = activeAlias,
+    -- Vehiculo que conduce el jugador, como descriptor (para efectos como la alarma).
+    entity = function(player)
+        local ped = GetPlayerPed(player)
+        local vehicle = ped and ped ~= 0 and GetVehiclePedIsIn(ped, false) or 0
+        if vehicle == 0 then return nil end
+        return vehicleOf(NetworkGetNetworkIdFromEntity(vehicle))
+    end,
     driving = function(player)
         local ped = GetPlayerPed(player)
         if not ped or ped == 0 then return nil end
@@ -382,9 +389,9 @@ local function lockAllowed(player, limit)
     return entry.count <= (limit or 6) and gameplay.status()
 end
 local function lockCall(callback)
-    local ok, result, err = pcall(callback)
+    local ok, result, err, extra = pcall(callback)
     if not ok then storageLog('Fallo en las cerraduras; no se registra la excepcion.'); return nil, OSSecurity.Brand.Text.failed end
-    return result, err
+    return result, err, extra
 end
 RegisterNetEvent('os_security:locks:sync', function()
     local player = source
@@ -436,8 +443,21 @@ end)
 RegisterNetEvent('os_security:car:engine', function()
     local player = source
     if not lockAllowed(player) then return end
-    local result, err = lockCall(function() return gameplay.cars.engine(player) end)
-    TriggerClientEvent('os_security:car:engineResult', player, result ~= nil, err)
+    local result, err, canHotwire = lockCall(function() return gameplay.cars.engine(player) end)
+    TriggerClientEvent('os_security:car:engineResult', player, result ~= nil, err, canHotwire == true)
+end)
+RegisterNetEvent('os_security:car:hotwire', function()
+    local player = source
+    if not lockAllowed(player) then return end
+    local challenge, err = lockCall(function() return gameplay.cars.hotwireBegin(player) end)
+    if challenge then TriggerClientEvent('os_security:car:hotwireStart', player, challenge)
+    else TriggerClientEvent('os_security:car:result', player, false, err) end
+end)
+RegisterNetEvent('os_security:car:hotwireFinish', function(success)
+    local player = source
+    if not lockAllowed(player) then return end
+    local result, err = lockCall(function() return gameplay.cars.hotwireFinish(player, success == true) end)
+    TriggerClientEvent('os_security:car:hotwireResult', player, result ~= nil, result and result.message or err)
 end)
 RegisterNetEvent('os_security:car:installFinish', function(success)
     local player = source

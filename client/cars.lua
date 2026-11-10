@@ -69,20 +69,34 @@ function OSSecurity.ClientCars.new(options)
     -- Motor: en un vehiculo con matricula OS el juego no lo arranca solo al subirse; se arranca y se apaga
     -- con la llave (tecla) si el servidor confirma que es tuyo.
     local started = {} -- vehiculo -> true si lo arranco este jugador con la llave
+    -- Sin la llave y con destornillador, una segunda pulsacion en 5 s empieza el puente.
+    local hotwireUntil = 0
     function cars.engine()
         local ped = PlayerPedId()
         local vehicle = GetVehiclePedIsIn(ped, false)
         if vehicle == 0 or GetPedInVehicleSeat(vehicle, -1) ~= ped then options.notify('Sientate al volante.', 'info'); return end
+        if GetGameTimer() < hotwireUntil then hotwireUntil = 0; TriggerServerEvent('os_security:car:hotwire'); return end
         TriggerServerEvent('os_security:car:engine')
     end
-    function cars.engineResult(ok, message)
-        if not ok then options.notify(message or 'No tienes la llave de este vehiculo.', 'error'); return end
+    function cars.engineResult(ok, message, canHotwire)
+        if not ok then
+            hotwireUntil = canHotwire and GetGameTimer() + 5000 or 0
+            options.notify(message or 'No tienes la llave de este vehiculo.', canHotwire and 'warning' or 'error')
+            return
+        end
         local ped = PlayerPedId()
         local vehicle = GetVehiclePedIsIn(ped, false)
         if vehicle == 0 then return end
         local on = not GetIsVehicleEngineRunning(vehicle)
         started[vehicle] = on or nil
         SetVehicleEngineOn(vehicle, on, false, true)
+    end
+    -- Puente hecho: el motor arranca y este jugador ya lo controla con la tecla.
+    function cars.hotwired()
+        local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+        if vehicle == 0 then return end
+        started[vehicle] = true
+        SetVehicleEngineOn(vehicle, true, false, true)
     end
     CreateThread(function()
         local last, driven, keepUntil = 0, 0, 0

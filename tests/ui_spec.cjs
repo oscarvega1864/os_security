@@ -268,6 +268,36 @@ async function main() {
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
     await until(`document.getElementById('lockpick').hidden && window.__calls.some(x => x.endpoint === 'lockpick' && x.body.cancel === true)`);
     console.log('PASS lockpick: miss outside the zone, set every pin in the green zone, Escape gives up');
+    // Puente: tapa de la columna, unir +12V con Llave y arrancar soltando en la franja verde.
+    await evaluate(`window.__calls.length = 0; window.postMessage({type:'carwire',text:window.__brand.Text.cars.minigame,data:{kind:'hotwire',plate:'OS000012',decoys:2,band:0.3}},'*')`);
+    await until(`!document.getElementById('carwire').hidden && document.querySelectorAll('.cw-clip').length === 4`);
+    for (const clip of await centers('.cw-clip')) {
+      await mouse('mouseMoved', clip.x, clip.y); await mouse('mousePressed', clip.x, clip.y, 1); await pause(990);
+      await mouse('mouseReleased', clip.x, clip.y); await pause(120);
+    }
+    await until(`document.querySelectorAll('.cw-wire').length === 4 && document.querySelectorAll('.cw-lead').length === 2`);
+    const hotNames = { '+12V': 0, 'Llave': 1 }; const hotWires = [];
+    for (const wire of await centers('.cw-wire')) {
+      await mouse('mouseMoved', wire.x, wire.y); await mouse('mousePressed', wire.x, wire.y, 1); await mouse('mouseReleased', wire.x, wire.y); await pause(60);
+      const name = await evaluate(`document.querySelector('#carwire .mg-status').textContent.split(': ').slice(1).join(': ').split(' (')[0]`);
+      if (name in hotNames) hotWires[hotNames[name]] = wire;
+    }
+    const hotLeads = await centers('.cw-lead');
+    for (let i = 0; i < 2; i++) {
+      await mouse('mouseMoved', hotLeads[i].x, hotLeads[i].y); await mouse('mousePressed', hotLeads[i].x, hotLeads[i].y, 1);
+      await mouse('mouseMoved', hotWires[i].x, hotWires[i].y + 20, 1); await mouse('mouseReleased', hotWires[i].x, hotWires[i].y + 20); await pause(60);
+    }
+    await until(`document.querySelector('.cw-start')`);
+    fs.writeFileSync(path.join(output, 'hotwire-start.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    const band = await evaluate(`(() => { const b = document.querySelector('#carwire .cw-band'); return { from: parseFloat(b.style.left) / 100, width: parseFloat(b.style.width) / 100 }; })()`);
+    const start = (await centers('.cw-start'))[0];
+    await mouse('mouseMoved', start.x, start.y); await mouse('mousePressed', start.x, start.y, 1); await pause(200);
+    await mouse('mouseReleased', start.x, start.y); await pause(100);
+    assert(await evaluate(`document.querySelector('#carwire .mg-status').textContent.includes('No arranca')`), 'Releasing too early does not start');
+    const hold = Math.round(((band.from + band.width / 2) / 0.62) * 1000);
+    await mouse('mousePressed', start.x, start.y, 1); await pause(hold); await mouse('mouseReleased', start.x, start.y);
+    await until(`document.getElementById('carwire').hidden && window.__calls.some(x => x.endpoint === 'hotwire' && x.body.ok === true)`);
+    console.log('PASS hotwire: column cover, join +12V with the key wire, crank and release in the green band');
     // Teclado de alarma (pinpad) y bloque de alarma de la tablet.
     await evaluate(`window.__calls.length = 0; window.postMessage({ type: 'pinpad', data: { deviceId: 'osd_0000000009', label: 'Propiedad 200', mode: 'armed', hasPin: true, tags: true, locked: 0, entry: 22, triggered: false }, text: { pad: window.__brand.Text.alarm.pad, pinFormat: 'formato' } }, '*')`);
     await until(`!document.getElementById('pinpad').hidden && document.querySelector('.pp-status').textContent.includes('22')`);

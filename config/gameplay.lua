@@ -46,7 +46,12 @@ OSSecurity.GameplayConfig = {
     Cars = {
         Kits = { os_car_lock_kit = 'lock', os_car_alarm_kit = 'alarm' }, Tools = { 'os_screwdriver' },
         InstallSeconds = 180, KeyDistance = 15.0, ManualDistance = 3.5, TamperDistance = 8.0, AlarmSeconds = 30, AlarmCooldown = 45,
-        AlarmHearing = 150.0, SyncSeconds = 3
+        AlarmHearing = 150.0, SyncSeconds = 3,
+        -- Puente: con destornillador, al volante de un vehiculo ajeno con el motor apagado. Nivel 1 sin kit,
+        -- 2 con cierre centralizado, 3 con alarma (que salta al empezar). Decoys: cables de relleno; Band:
+        -- ancho de la franja verde del arranque.
+        Hotwire = { Tool = 'os_screwdriver', Seconds = 120, MinSeconds = 4,
+            Levels = { { decoys = 2, band = 0.26 }, { decoys = 3, band = 0.19 }, { decoys = 3, band = 0.13 } } }
     },
     -- Ganzua: forzar puertas cerradas (segun el bombin) y vehiculos cerrados (manual 1, cierre centralizado 2).
     -- Levels por nivel de seguridad: pines, tamano de la zona verde (0-1) y velocidad del pin.

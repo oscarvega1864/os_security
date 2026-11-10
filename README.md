@@ -1,4 +1,4 @@
-# Gruppe Sechs — OS Security 0.7.0
+# Gruppe Sechs — OS Security 0.8.0
 
 Recurso standalone para FiveM y GTA V Legacy. La experiencia comercial pertenece
 a Gruppe Sechs; el nombre técnico sigue siendo `os_security`. Incluye Device Core,
@@ -227,7 +227,14 @@ matrícula OS cerrado (3 m; el servidor elige el vehículo más cercano). Miniju
 
 El servidor exige un tiempo mínimo por pin y que sigas cerca. Si sale bien, abre la puerta (y su otra hoja)
 o el vehículo, avisa al dueño con un marcador y, si el vehículo tiene alarma, salta. Si sale mal, la ganzúa
-se rompe con un 40 % de probabilidad. Abrir el coche no lo arranca: el motor sigue necesitando la llave.
+se rompe con un 40 % de probabilidad. Abrir el coche no lo arranca: el motor sigue necesitando la llave o un puente.
+
+**Puente:** al volante de un vehículo OS ajeno, con el motor apagado y un destornillador, **Y** dice "No
+tienes la llave" y una segunda pulsación en 5 s empieza el puente: quitar la tapa de la columna, medir y
+unir **+12V** con **Llave**, y dar al arranque soltando en la franja verde (si te pasas se quema un fusible;
+tres y se deja). Nivel 1 sin kit, 2 con cierre centralizado, 3 con alarma (más cables de relleno y franja
+más estrecha; con alarma, salta al empezar y avisa al dueño). Hecho el puente, ese jugador arranca y apaga
+con Y; el dueño recibe aviso y, al cerrar con su llave, el puente deja de valer.
 
 ## Panel de administración (os_admin)
 

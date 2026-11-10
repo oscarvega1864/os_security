@@ -84,7 +84,11 @@ OSSecurity.Brand = {
         },
         cars = {
             minigame = {
-                title = 'Instalacion en vehiculo', cancel = 'Cancelar (Esc)', kinds = { lock = 'Cierre centralizado', alarm = 'Alarma' },
+                title = 'Instalacion en vehiculo', cancel = 'Cancelar (Esc)', kinds = { lock = 'Cierre centralizado', alarm = 'Alarma', hotwire = 'Puente' },
+                hotwireTitle = 'Vehiculo sin llave', coverTitle = 'Quitar la tapa de la columna', coverHelp = 'Manten pulsado sobre cada grapa y suelta cuando la tension este en la franja verde. Si te pasas, la grapa se rompe.',
+                starterTitle = 'Dar al motor de arranque', starterHelp = 'Manten pulsado ARRANCAR y suelta cuando la carga este en la franja verde. Antes no arranca; si te pasas, se quema el fusible.',
+                start = 'ARRANCAR', charge = 'Arranque', fuses = 'Fusibles', cranking = 'Girando el motor...', started = 'Arranca',
+                noStart = 'No arranca: vuelve a intentarlo', fuse = 'Fusible quemado',
                 trimTitle = 'Quitar el embellecedor bajo el volante', trimHelp = 'Manten pulsado sobre cada grapa y suelta cuando la tension este en la franja verde. Si te pasas, la grapa se rompe.',
                 tension = 'Tension', broken = 'Grapas rotas', pulling = 'Tirando...', clipOut = 'Grapa fuera', notEnough = 'Poca fuerza: vuelve a tirar',
                 clipBroken = 'Grapa rota',

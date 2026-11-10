@@ -208,7 +208,27 @@ RegisterNetEvent('os_security:car:fx', function(netId, locked, remote) if source
 -- Motor: Y por defecto. Solo en vehiculos con matricula OS hace falta la llave.
 RegisterCommand('g6motor', function() if not carwireOpen and not cylinderOpen then cars.engine() end end, false)
 RegisterKeyMapping('g6motor', 'Arrancar / apagar el motor (Gruppe Sechs)', 'keyboard', 'Y')
-RegisterNetEvent('os_security:car:engineResult', function(ok, message) if source == 65535 then cars.engineResult(ok == true, message) end end)
+RegisterNetEvent('os_security:car:engineResult', function(ok, message, canHotwire) if source == 65535 then cars.engineResult(ok == true, message, canHotwire == true) end end)
+-- Puente: minijuego del vehiculo en modo puente; el servidor valida y, si sale, el motor arranca.
+local hotwireOpen = false
+RegisterNetEvent('os_security:car:hotwireStart', function(data)
+    if source ~= 65535 or type(data) ~= 'table' or hotwireOpen or carwireOpen or cylinderOpen or minigame.active() or controller.visible then return end
+    hotwireOpen = true
+    SetNuiFocus(true, true)
+    SendNUIMessage({ type = 'carwire', data = { kind = 'hotwire', plate = data.plate, decoys = data.decoys, band = data.band }, text = OSSecurity.Brand.Text.cars.minigame })
+    SetTimeout(115000, function() if hotwireOpen then hotwireOpen = false; SetNuiFocus(false, false); SendNUIMessage({ type = 'carwireClose' }); TriggerServerEvent('os_security:car:hotwireFinish', false) end end)
+end)
+RegisterNUICallback('hotwire', function(body, callback)
+    callback({ ok = true })
+    if not hotwireOpen then return end
+    hotwireOpen = false; SetNuiFocus(false, false)
+    TriggerServerEvent('os_security:car:hotwireFinish', type(body) == 'table' and body.ok == true)
+end)
+RegisterNetEvent('os_security:car:hotwireResult', function(ok, message)
+    if source ~= 65535 or type(message) ~= 'string' then return end
+    OSSecurity.Notify(message, ok and 'success' or 'error')
+    if ok then cars.hotwired() end
+end)
 RegisterNetEvent('os_security:car:alarm', function(netId, seconds)
     if source == 65535 and type(netId) == 'number' and type(seconds) == 'number' then cars.alarm(netId, seconds) end
 end)
@@ -303,5 +323,6 @@ AddEventHandler('onResourceStop', function(resource)
     if cylinderOpen then cylinderOpen = false; SetNuiFocus(false, false); minigameFx.stop() end
     if carwireOpen then carwireOpen = false; SetNuiFocus(false, false) end
     if lockpickOpen then lockpickOpen = false; SetNuiFocus(false, false) end
+    if hotwireOpen then hotwireOpen = false; SetNuiFocus(false, false) end
     locks.clear()
 end)

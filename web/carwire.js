@@ -17,7 +17,9 @@
   // cada cable (lectura y nombre); los demas cables del mazo son de otros sistemas del coche.
   const LEADS = {
     lock: [{ id: '12v', name: '+12V', reading: '12.6 V' }, { id: 'gnd', name: 'Masa', reading: '0 V con continuidad' }, { id: 'can', name: 'CAN', reading: '2.5 V de datos' }],
-    alarm: [{ id: '12v', name: '+12V', reading: '12.6 V' }, { id: 'gnd', name: 'Masa', reading: '0 V con continuidad' }, { id: 'door', name: 'Puerta', reading: '12 V, cae al abrir' }]
+    alarm: [{ id: '12v', name: '+12V', reading: '12.6 V' }, { id: 'gnd', name: 'Masa', reading: '0 V con continuidad' }, { id: 'door', name: 'Puerta', reading: '12 V, cae al abrir' }],
+    // Puente: unir la bateria (+12V) con el cable de la llave (contacto).
+    hotwire: [{ id: 'bat', name: '+12V', reading: '12.6 V' }, { id: 'ign', name: 'Llave', reading: '0 V; 12 V al girar la llave' }]
   };
   const DECOYS = [{ name: 'Llave', reading: '12 V solo con contacto' }, { name: 'Sensor', reading: '5 V de referencia' },
     { name: 'Luz', reading: '0 V sin continuidad' }, { name: 'Bocina', reading: '0 V hasta pitar' }];
@@ -27,14 +29,15 @@
     fetch(`https://${resource()}/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json; charset=UTF-8' }, body: JSON.stringify(body) }).catch(() => {});
   }
   function stop() { if (run?.frame) cancelAnimationFrame(run.frame); run = null; root.hidden = true; root.replaceChildren(); }
-  function finish(ok, reason) { if (!run) return; stop(); post('carwire', { ok, reason }); }
+  function finish(ok, reason) { if (!run) return; const endpoint = run.data.kind === 'hotwire' ? 'hotwire' : 'carwire'; stop(); post(endpoint, { ok, reason }); }
   const shuffled = list => { const copy = [...list]; for (let i = copy.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [copy[i], copy[j]] = [copy[j], copy[i]]; } return copy; };
 
   function shell(title, help, step) {
     root.replaceChildren();
     const panel = el('section', null, 'mg-panel');
     const head = el('header', null, 'mg-head');
-    head.append(el('span', `${run.text.title} · ${run.text.kinds[run.data.kind] || ''} · ${run.data.plate} · ${step}/${TOTAL}`, 'mg-overline'), el('h2', title), el('p', help, 'mg-help'));
+    const overline = run.data.kind === 'hotwire' ? run.text.hotwireTitle : run.text.title;
+    head.append(el('span', `${overline} · ${run.text.kinds[run.data.kind] || ''} · ${run.data.plate} · ${step}/${TOTAL}`, 'mg-overline'), el('h2', title), el('p', help, 'mg-help'));
     const board = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'mg-board' });
     const meters = el('div', null, 'mg-meters');
     const foot = el('footer', null, 'mg-foot');
@@ -71,7 +74,8 @@
   const BAND = [0.6, 0.88];
   function trim() {
     const t = run.text;
-    const { board, meters, status } = shell(t.trimTitle, t.trimHelp, 1);
+    const hot = run.data.kind === 'hotwire';
+    const { board, meters, status } = shell(hot ? t.coverTitle : t.trimTitle, hot ? t.coverHelp : t.trimHelp, 1);
     board.append(svg('path', { d: 'M 60 40 Q 200 10 340 40 L 360 220 Q 200 245 40 220 Z', class: 'cw-trim' }));
     board.append(svg('circle', { cx: 200, cy: 40, r: 34, class: 'cw-column' }));
     const clips = [[85, 80], [315, 80], [80, 195], [320, 195]].map(([x, y]) => {
@@ -115,8 +119,10 @@
     const t = run.text;
     const { board, meters, status } = shell(t.wireTitle, t.wireHelp, 2);
     const leads = LEADS[run.data.kind] || LEADS.lock;
+    const names = new Set(leads.map(lead => lead.name));
+    const decoys = Number.isInteger(run.data.decoys) ? run.data.decoys : 3;
     const readings = shuffled([...leads.map(lead => ({ name: lead.name, reading: lead.reading, lead: lead.id })),
-      ...shuffled(DECOYS).slice(0, 3).map(decoy => ({ name: decoy.name, reading: decoy.reading, lead: null }))]);
+      ...shuffled(DECOYS.filter(decoy => !names.has(decoy.name))).slice(0, decoys).map(decoy => ({ name: decoy.name, reading: decoy.reading, lead: null }))]);
     const colors = shuffled(COLORS);
     board.append(svg('rect', { x: 150, y: 14, width: 240, height: 34, rx: 6, class: 'cw-meter' }));
     const display = svg('text', { x: 270, y: 37, class: 'cw-display', 'text-anchor': 'middle' }); display.textContent = '--.- V'; board.append(display);
@@ -161,7 +167,7 @@
         plug.done = wire.used = true; plug.node.classList.add('done'); wire.line.classList.add('spliced');
         plug.cable.setAttribute('d', `M ${plug.x} ${plug.y} C ${plug.x + 40} ${plug.y + 30}, ${wire.x - 40} ${p.y + 30}, ${wire.x} ${p.y}`);
         status.textContent = `${t.spliced}: ${plug.name}`;
-        if (plugs.every(item => item.done)) next(test);
+        if (plugs.every(item => item.done)) next(run.data.kind === 'hotwire' ? starter : test);
       } else {
         plug.cable.setAttribute('d', ''); errors++; showErrors(errors); status.textContent = t.wrongWire;
         if (errors >= 3) finish(false, 'shorted');
@@ -170,6 +176,41 @@
   }
 
   // Fase 3: probar el mando; el LED del modulo parpadea y termina.
+  // Puente, fase 3: dar al motor de arranque. Mantener pulsado sube la carga; soltar en la franja verde
+  // arranca. Soltar antes no arranca; pasarse quema el fusible (fallo). La franja depende del nivel.
+  function starter() {
+    const t = run.text;
+    const { board, meters, status } = shell(t.starterTitle, t.starterHelp, 3);
+    const width = Math.max(0.08, Math.min(0.4, Number(run.data.band) || 0.2));
+    const from = 0.5 + Math.random() * (0.38 - width);
+    board.append(svg('rect', { x: 120, y: 70, width: 160, height: 120, rx: 14, class: 'cw-fob' }));
+    const button = svg('circle', { cx: 200, cy: 130, r: 38, class: 'cw-button cw-start' }); board.append(button);
+    const label = svg('text', { x: 200, y: 135, class: 'cw-start-label', 'text-anchor': 'middle' }); label.textContent = t.start; board.append(label);
+    const charge = meter(meters, t.charge); const showFuses = strikes(meters, t.fuses);
+    const band = el('div', null, 'cw-band'); band.style.left = `${from * 100}%`; band.style.width = `${width * 100}%`;
+    meters.querySelector('.mg-meter').append(band);
+    const state = { holding: false, value: 0, fuses: 0 };
+    button.addEventListener('pointerdown', event => { board.setPointerCapture?.(event.pointerId); state.holding = true; state.value = 0; status.textContent = t.cranking; });
+    const release = () => {
+      if (!state.holding) return;
+      state.holding = false;
+      if (state.value >= from && state.value <= from + width) { status.textContent = t.started; charge(state.value); setTimeout(() => finish(true), 450); state.done = true; return; }
+      status.textContent = t.noStart; state.value = 0;
+    };
+    board.addEventListener('pointerup', release); board.addEventListener('pointercancel', release);
+    loop(dt => {
+      if (state.done) return false;
+      if (state.holding) {
+        state.value += 0.62 * dt;
+        if (state.value > 1) {
+          state.holding = false; state.value = 0; state.fuses++; showFuses(state.fuses); status.textContent = t.fuse;
+          if (state.fuses >= 3) { finish(false, 'fuse'); return false; }
+        }
+      }
+      charge(state.value);
+    });
+  }
+
   function test() {
     const t = run.text;
     const { board, status } = shell(t.testTitle, t.testHelp, 3);

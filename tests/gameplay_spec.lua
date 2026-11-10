@@ -1239,3 +1239,32 @@ test('Lockpicking a locked vehicle opens it, sets its alarm off and alerts the o
     assert(not c.game.inventory.cars()['12'].locked and logged(v, 'alarm') == 1 and alerts[1][1] == 'ana')
     local _, none = pick.begin(5, carAt()); assert(none:find('cerrado'))
 end)
+
+test('Hotwiring: without the key a screwdriver allows a hotwire; difficulty by security, alarm and owner alert, owner locking revokes it', function()
+    local c, e, v = carFixture()
+    v.driving[5] = { plate = 'OS000012', engine = false, speed = 0 }
+    local _, why, can = v.cars.engine(5); assert(why:find('llave') and not can) -- sin destornillador: no hay puente
+    e.give(5, 'os_screwdriver')
+    _, why, can = v.cars.engine(5); assert(why:find('puente') and can == true)
+    local plain = assert(v.cars.hotwireBegin(5)); assert(plain.tier == 1 and plain.decoys == 2)
+    assert(not v.cars.hotwireFinish(5, true)) -- demasiado rapido
+    assert(v.cars.hotwireBegin(5)); c.core.time = c.core.time + 10
+    v.driving[5] = nil; assert(not v.cars.hotwireFinish(5, true)) -- salio del coche
+    v.driving[5] = { plate = 'OS000012', engine = false, speed = 0 }
+    assert(v.cars.hotwireBegin(5)); c.core.time = c.core.time + 10
+    assert(not v.cars.hotwireFinish(5, false))
+    assert(v.cars.hotwireBegin(5)); c.core.time = c.core.time + 10
+    assert(v.cars.hotwireFinish(5, true).message:find('Puente') and v.cars.engine(5).hotwired)
+    assert(logged(v, 'notify') == 1)
+    -- El dueno instala cierre y alarma y cierra con su llave: el puente deja de valer y la siguiente vez es mas dificil.
+    v.driving[2] = { plate = 'OS000012', engine = false, speed = 0 }
+    e.give(2, 'os_car_lock_kit'); e.give(2, 'os_car_alarm_kit'); e.give(2, 'os_screwdriver')
+    assert(v.cars.installBegin(2, 'os_car_lock_kit')); assert(v.cars.installFinish(2, true))
+    assert(v.cars.installBegin(2, 'os_car_alarm_kit')); assert(v.cars.installFinish(2, true))
+    c.players[2].point = { x = 1, y = 0, z = 1 }; assert(v.cars.toggle(2, carAt()).locked)
+    assert(not v.cars.engine(5)) -- sin puente
+    assert(v.cars.toggle(2, carAt()).locked == false) -- abierto otra vez (lo forzaria con ganzua)
+    v.driving[2] = nil
+    local hard = assert(v.cars.hotwireBegin(5)); assert(hard.tier == 3 and hard.band < plain.band)
+    assert(logged(v, 'notify') == 2) -- aviso: estan intentando arrancarlo
+end)

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0 — Puente
+
+- Arrancar sin llave un vehículo OS con destornillador: segunda pulsación de Y, minijuego del vehículo en modo
+  puente (tapa de la columna, +12V con Llave, arranque en la franja verde con fusibles). Dificultad según el
+  equipo del vehículo; con alarma salta y avisa al dueño. El dueño recibe aviso y su llave lo revoca.
+
 ## 0.7.0 — Ganzúa
 
 - `os_lockpick` para forzar puertas cerradas (dificultad según el bombín: 3, 5 o 7 pines y zona verde
