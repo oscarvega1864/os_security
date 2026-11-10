@@ -9,7 +9,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 
-const root = path.resolve(__dirname, '..');
+// Raiz del repositorio: el directorio actual (en Actions el script se ejecuta desde una copia en RUNNER_TEMP).
+const root = process.cwd();
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 
 function version() {
@@ -36,26 +37,39 @@ function commits(tag) {
   let previous = null;
   try { previous = git('describe', '--tags', '--abbrev=0', '--match', 'v*', `${tag}^`); } catch { previous = null; }
   const range = previous ? `${previous}..${tag}` : tag;
-  const log = git('log', '--no-merges', '--format=%h%x09%s', range);
+  const log = git('log', '--no-merges', '--format=%h%x09%an%x09%s', range);
   return { previous, items: log ? log.split('\n').map(line => line.split('\t')) : [] };
 }
 
+// URL del repositorio: la de GitHub Actions o la del remoto origin.
+function repository() {
+  if (process.env.GITHUB_REPOSITORY) return `https://github.com/${process.env.GITHUB_REPOSITORY}`;
+  try {
+    const remote = git('remote', 'get-url', 'origin').replace(/\.git$/, '');
+    const match = remote.match(/github\.com[:/](.+\/.+)$/);
+    if (match) return `https://github.com/${match[1]}`;
+  } catch { /* sin remoto */ }
+  return '';
+}
+
+// Mismo formato que las releases de vMenu: presentacion, tabla de descarga, instalacion,
+// "Cambios en ..." (hash, autor y mensaje de cada commit) y enlace a la documentacion.
 function notes(tag) {
   const value = tag.replace(/^v/, '');
-  const { title, body } = changelog(value);
   const { previous, items } = commits(tag);
+  const repo = repository();
+  const docs = `${repo}/blob/${tag}/README.md`;
   const out = [];
-  out.push(`Gruppe Sechs · **OS Security ${tag}**${title ? ` — ${title}` : ''}. Recurso standalone de seguridad para FiveM: tablets G6, CCTV, alarmas, cerraduras, vehículos y minijuegos, sin frameworks ni MySQL.`, '');
-  out.push('| Tu servidor | Descarga |', '| --- | --- |', `| FiveM (GTA V Legacy) | \`${zipName(value)}\` |`, '');
-  out.push('**Instalación nueva:** descomprime el zip en `resources/` (la carpeta debe llamarse `os_security`), añade `ensure os_security` al `server.cfg` y reinicia el servidor. Permisos e integraciones opcionales en el [README](../../blob/' + tag + '/README.md).', '');
-  out.push('**Actualizar:** sustituye la carpeta `os_security` conservando `data/` (inventario, montajes y dispositivos) y reinicia el servidor completo.', '');
-  if (body) out.push(`## Novedades en ${tag}`, '', body, '');
-  out.push(`## Cambios en ${tag}`, '');
-  if (items.length) for (const [hash, subject] of items) out.push(`- \`${hash}\` ${subject}`);
-  else out.push('- Sin commits nuevos.');
+  out.push('Una versión de OS Security (Gruppe Sechs) para FiveM. Descarga el zip y ponlo en tu servidor.', '');
+  out.push('| Tu servidor | Descarga |', '| :---: | :---: |', `| FiveM (GTA V Legacy) | \`${zipName(value)}\` |`, '');
+  out.push(`¿Servidor nuevo? Descomprime el zip en \`resources/\` (la carpeta debe llamarse \`os_security\`), añade \`ensure os_security\` a tu \`server.cfg\` y reinicia. Los permisos ACE están en la [guía de instalación](${docs}).`, '');
+  out.push('¿Actualizando? Sustituye la carpeta `os_security` **conservando `data/`** (inventario, montajes y dispositivos) y reinicia el servidor completo.', '');
+  out.push('¿Integraciones? `os_inventory`, `os_devtools`, `os_notify` y `os_admin` son opcionales: sin ellas OS Security funciona por sí solo, con su propio inventario y sin frameworks ni MySQL.', '');
+  out.push(`## Cambios en OS Security ${tag}`, '');
+  if (items.length) for (const [hash, author, subject] of items) out.push(`- \`${hash}\` (${author}) ${subject}`);
+  else out.push('- Sin cambios de código.');
   out.push('');
-  if (previous) out.push(`**Comparar:** [${previous}...${tag}](../../compare/${previous}...${tag})`, '');
-  out.push(`Historial completo: [CHANGELOG.md](../../blob/${tag}/CHANGELOG.md).`);
+  out.push(`Docs: [OS Security](${docs}). Historial: [CHANGELOG](${repo}/blob/${tag}/CHANGELOG.md).${previous ? ` Comparar: [${previous}...${tag}](${repo}/compare/${previous}...${tag}).` : ''}`);
   return out.join('\n');
 }
 

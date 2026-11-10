@@ -21,6 +21,8 @@ Para publicar una versión: subir `Version` en `config/config.lua`, añadir su s
 `CHANGELOG.md`, hacer commit y subir la etiqueta `vX.Y.Z` (`git tag v0.9.0` y
 `git push origin v0.9.0`). GitHub Actions pasa los tests, crea el zip y la release.
 Vista previa local: `npm run package` y `npm run release:notes`.
+Para regenerar la release de una etiqueta ya subida (por ejemplo tras cambiar el formato de
+las notas): GitHub → Actions → Release → Run workflow, indicando la etiqueta.
 
 Consultar [arquitectura, permisos y prueba completa de las tablets y colocación](docs/g6-tablets.md).
 
