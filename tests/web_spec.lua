@@ -54,8 +54,12 @@ local function fixture(files)
             local receipt = web.receipts[key]
             if receipt then assert(receipt.body == body, 'retry reuses the same body'); data = receipt.data
             else
-                for _, item in ipairs(request.data.items) do table.insert(request.action == 'events' and web.events or web.acks, item) end
-                data = { done = #request.data.items }
+                local results = {}
+                for _, item in ipairs(request.data.items) do
+                    table.insert(request.action == 'events' and web.events or web.acks, item)
+                    results[#results + 1] = { event_id = item.event_id, status = web.eventStatus or 'accepted' }
+                end
+                data = { done = #request.data.items, results = results }
                 web.receipts[key] = { body = body, data = data }
             end
             if web.loseResponse then web.loseResponse = false; return callback(0, '', {}) end
@@ -142,4 +146,60 @@ test('Web bridge: a corrupt queue file blocks the bridge without being overwritt
     local bridge = c.bridge()
     local ok, err = bridge.start()
     assert(not ok and err:find('corrupta', 1, true) and c.files['data/web_bridge.json'] == '{corrupt' and #c.timers == 0)
+end)
+
+-- /g6web: personajes simulados por jugador y mensajes privados capturados.
+local function linksFixture(c)
+    c.characters, c.told = { [5] = { id = 'oschar_0000000002', label = 'Oscar Vega' } }, {}
+    c.bridgeInstance = c.bridge()
+    c.links = OSSecurity.WebLinks.new({ bridge = c.bridgeInstance, now = function() return c.now end,
+        encode = OSSecurity.JsonCodec.encode, decode = OSSecurity.JsonCodec.decode, path = 'data/web_links.json',
+        files = { read = function(path) return c.files[path] end, write = function(path, content) c.files[path] = content; return true end },
+        character = function(source) return c.characters[source] end,
+        tell = function(source, text) c.told[#c.told + 1] = { source, text } end,
+        sourceOf = function(id) for source, character in pairs(c.characters) do if character.id == id then return source end end end })
+    assert(c.links.load())
+    assert(c.bridgeInstance.start())
+    return c
+end
+
+test('/g6web gives the player a private one-use code only after the web accepts it, and rate-limits new codes', function()
+    local c = linksFixture(fixture()); c.run()
+    c.links.offer(5); c.run()
+    local offer = c.web.events[#c.web.events]
+    assert(offer.type == 'link.offer' and offer.data.character == 'oschar_0000000002' and offer.data.label == 'Oscar Vega')
+    assert(#offer.data.code == 8 and offer.data.code:match('^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]+$') and offer.data.expires_at == c.now + 600)
+    local message = c.told[#c.told]
+    assert(message[1] == 5 and message[2]:find(offer.data.code:sub(1, 4) .. '-' .. offer.data.code:sub(5, 8), 1, true))
+    assert(c.bridgeInstance.status().queued == 0) -- el codigo no se guarda en la cola persistente
+    assert(not (c.files['data/web_bridge.json'] or ''):find(offer.data.code, 1, true))
+    c.links.offer(5); assert(c.told[#c.told][2]:find('Espera', 1, true) and #c.web.events == 1)
+    c.now = c.now + 61; c.web.down = true
+    c.links.offer(5); c.run(1)
+    assert(c.told[#c.told][2]:find('No se ha podido conectar', 1, true))
+    c.web.down = false; c.web.eventStatus = 'rejected'
+    c.links.offer(5); c.run(1) -- sin esperar: el intento fallido no cuenta para el limite
+    assert(c.told[#c.told][2]:find('No se ha podido conectar', 1, true))
+    c.characters[5] = nil; c.links.offer(5)
+    assert(c.told[#c.told][2]:find('personaje activo', 1, true))
+end)
+
+test('/g6web: the web confirms the link, it survives a restart, and unlinking in game tells the web', function()
+    local c = linksFixture(fixture())
+    c.web.commands = { { id = 1, type = 'link.created', data = { character = 'oschar_0000000002', account = 'Cliente Uno', kind = 'extranet' } } }
+    c.run()
+    assert(c.links.linked('oschar_0000000002').account == 'Cliente Uno' and c.told[#c.told][2]:find('Cliente Uno', 1, true))
+    c.bridgeInstance.stop()
+    local restarted = linksFixture(c); c.run()
+    restarted.links.status(5); assert(c.told[#c.told][2]:find('vinculado a la cuenta Cliente Uno', 1, true))
+    restarted.links.unlink(5); c.run()
+    assert(not restarted.links.linked('oschar_0000000002') and c.web.events[#c.web.events].type == 'link.revoke'
+        and c.web.events[#c.web.events].data.character == 'oschar_0000000002')
+    c.web.commands[2] = { id = 2, type = 'link.created', data = { character = 'oschar_0000000002', account = 'Otra' } }
+    c.web.commands[3] = { id = 3, type = 'link.revoked', data = { character = 'oschar_0000000002' } }
+    c.web.commands[4] = { id = 4, type = 'link.created', data = { character = 'bad id!', account = 'x' } }
+    c.now = c.now + 10; c.run()
+    assert(not restarted.links.linked('oschar_0000000002') and c.told[#c.told][2]:find('desvinculado', 1, true))
+    assert(c.web.acks[#c.web.acks].result == 'rejected' and c.web.acks[#c.web.acks].detail == 'invalid_payload')
+    assert(OSSecurity.WebLinks.label('oscar_vega') == 'Oscar Vega' and OSSecurity.WebLinks.label(nil) == nil)
 end)

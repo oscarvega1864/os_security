@@ -80,5 +80,6 @@ server_scripts {
     'server/gameplay.lua',
     'server/web/crypto.lua',
     'server/web/bridge.lua',
+    'server/web/links.lua',
     'server/main.lua'
 }

@@ -207,9 +207,9 @@ disponible» y todo lo demás funciona igual (sigue siendo un script independien
 
 ## 11. Plan por fases
 
-1. **Puente y seguridad**: endpoint, firma, nonces, recibos, límites, log; HMAC y cola en os_security.
-   Pruebas con MariaDB temporal (como el resto de fases) y vectores HMAC en Lua.
-2. **Vinculación** `/g6web` + Extranet → Cuenta.
+1. **Puente y seguridad** — hecho (os_security 0.13.0; web: rama `claude/fivem-bridge-fase1`).
+2. **Vinculación** `/g6web` — hecho (os_security 0.14.0; web: rama `claude/fivem-link-fase2`). La sección
+   está en Configuración (página común de Extranet e Intranet), con su CSRF y la sesión ya verificada con 2FA.
 3. **Solicitudes web → tablet** y reflejo de las del juego.
 4. **Estados ampliados** en la tablet (asignada, en camino, en el lugar, en curso, finalizada) y
    seguimiento en la web.

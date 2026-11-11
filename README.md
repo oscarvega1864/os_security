@@ -299,6 +299,16 @@ set ossecurity_web_key_version 1            # opcional, para rotar el secreto
   misma clave, así que un reintento nunca duplica. Los comandos de la web se aplican una sola vez (cursor).
 - `g6bridge` (consola) muestra el estado. Si la cola está corrupta no se sobrescribe: el puente se bloquea.
 
+### Vincular el personaje con gruppe6.es
+
+- `/g6web`: código de 8 caracteres (sin 0/O ni 1/I/L) que solo ve el jugador. Caduca en 10 minutos, sirve
+  una vez y se introduce en gruppe6.es → Configuración → Personaje de FiveM (cuentas Extranet e Intranet).
+  Solo se entrega si la web lo ha recibido; uno nuevo anula el anterior; como mucho uno por minuto.
+- `/g6web estado` muestra la cuenta vinculada; `/g6web desvincular` lo deshace y avisa a la web.
+- El vínculo es del **personaje** (no de la licencia). La web es la fuente de verdad y avisa de cada cambio;
+  aquí solo se guarda para mostrarlo (`data/web_links.json`).
+- Necesita el puente activo y `os_devtools` (personaje activo y nombre).
+
 ## Arquitectura
 
 | Archivo o directorio | Responsabilidad |

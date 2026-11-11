@@ -213,8 +213,26 @@ function OSSecurity.WebBridge.new(options)
         options.schedule(delay, function() if mine == timer then tick() end end)
     end
 
-    -- API para los modulos (fases siguientes).
+    -- API para los modulos.
     function bridge.on(commandType, handler) handlers[commandType] = handler end
+    -- 64 hex impredecibles (semilla de bcrypt + contador): codigos y identificadores efimeros.
+    function bridge.random()
+        counter = counter + 1
+        return crypto.hmac(options.seed, ('random:%d:%d'):format(counter, options.now()))
+    end
+    -- Evento inmediato que no se guarda en la cola (p. ej. un codigo de vinculacion: si la web no lo
+    -- recibe ahora no sirve). callback(ok, resultado del evento | error).
+    function bridge.send(eventType, data, callback)
+        if not loaded or stopped then return callback(false, 'Puente web no disponible.') end
+        local event = { event_id = crypto.sha256(options.client .. ':direct:' .. bridge.random()), type = eventType, at = options.now(), data = data }
+        local body = options.encode({ action = 'events', data = { items = { event } } })
+        request('events', nil, { body = body, key = crypto.sha256('direct:' .. event.event_id) }, function(ok, result)
+            if not ok then return callback(false, result) end
+            local item = type(result) == 'table' and type(result.results) == 'table' and result.results[1]
+            if type(item) ~= 'table' or item.event_id ~= event.event_id then return callback(false, 'respuesta inesperada') end
+            callback(item.status == 'accepted', item.status == 'accepted' and item or tostring(item.error or item.status))
+        end)
+    end
     function bridge.emit(eventType, data)
         if not loaded or type(eventType) ~= 'string' or not eventType:match('^[a-z]+%.[a-z_%.]+$') or #eventType > 40 then return false end
         state.seq = state.seq + 1

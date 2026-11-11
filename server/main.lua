@@ -689,6 +689,44 @@ local function createWebBridge()
     })
 end
 
+-- Personaje activo para la vinculacion web: id estable y nombre visible.
+local function webCharacter(player)
+    if GetResourceState(identityResource) ~= 'started' then return nil end
+    local ok, dto = pcall(function() return exports[identityResource]:GetActiveCharacter(player) end)
+    if not ok or type(dto) ~= 'table' or type(dto.characterId) ~= 'string' then return nil end
+    return { id = dto.characterId, label = OSSecurity.WebLinks.label(dto.alias) or dto.characterId }
+end
+local function tellPlayer(player, message)
+    TriggerClientEvent('chat:addMessage', player, { args = { constants.CHAT_TITLE, message } })
+end
+local function createWebLinks(web)
+    local links = OSSecurity.WebLinks.new({
+        bridge = web, now = os.time, encode = OSSecurity.JsonCodec.encode, decode = OSSecurity.JsonCodec.decode,
+        files = resourceFiles, path = 'data/web_links.json', character = webCharacter, tell = tellPlayer,
+        sourceOf = function(id)
+            for _, player in ipairs(GetPlayers()) do
+                local character = webCharacter(tonumber(player))
+                if character and character.id == id then return tonumber(player) end
+            end
+        end,
+        log = function(message) print(('%s %s'):format(constants.LOG_PREFIX, message)) end
+    })
+    local ok, err = links.load()
+    if not ok then print(('%s %s'):format(constants.LOG_PREFIX, err)) end
+    return ok and links or nil
+end
+
+-- Vincular el personaje con una cuenta de gruppe6.es: /g6web, /g6web estado, /g6web desvincular.
+RegisterCommand('g6web', function(source, args)
+    if source <= 0 then return end
+    if not OSSecurity.WebLinks.active then return tellPlayer(source, 'La conexión con gruppe6.es no está activa en este servidor.') end
+    local action = args[1] and args[1]:lower() or ''
+    if action == '' then OSSecurity.WebLinks.active.offer(source)
+    elseif action == 'estado' then OSSecurity.WebLinks.active.status(source)
+    elseif action == 'desvincular' then OSSecurity.WebLinks.active.unlink(source)
+    else tellPlayer(source, 'Uso: /g6web (código), /g6web estado o /g6web desvincular.') end
+end, false)
+
 -- Estado del puente web (solo consola).
 RegisterCommand('g6bridge', function(source)
     if source ~= 0 then return end
@@ -734,8 +772,10 @@ AddEventHandler('onResourceStart', function(startedResource)
     if not gameLoaded then storageLog('Flujo Gruppe Sechs bloqueado: ' .. tostring(gameError)) end
     local web, webStatus = createWebBridge()
     if web then
+        OSSecurity.WebLinks.active = createWebLinks(web)
         local started, startError = web.start()
         OSSecurity.Web = started and web or nil
+        if not started then OSSecurity.WebLinks.active = nil end
         webStatus = started and 'activo' or ('bloqueado: ' .. tostring(startError))
     end
     print(('%s Puente web: %s'):format(constants.LOG_PREFIX, webStatus))
@@ -755,6 +795,7 @@ AddEventHandler('onResourceStop', function(stoppedResource)
 
     gameplay.clear()
     if OSSecurity.Web then OSSecurity.Web.stop(); OSSecurity.Web = nil end
+    OSSecurity.WebLinks.active = nil
 
     print(('%s Recurso detenido. Version: %s'):format(constants.LOG_PREFIX, config.Version))
 end)

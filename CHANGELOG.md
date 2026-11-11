@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.14.0 — Vincular el personaje con gruppe6.es (fase 2)
+
+- `/g6web`: código de un solo uso (8 caracteres, 10 minutos) que solo ve el jugador, para vincular su
+  personaje con su cuenta de gruppe6.es (Extranet o Intranet) desde Configuración → Personaje de FiveM.
+  Solo se muestra si la web lo ha recibido; no se guarda en disco ni en los registros; uno por minuto.
+- `/g6web estado` y `/g6web desvincular` (avisa a la web). La web confirma cada vínculo o desvinculación y
+  el jugador recibe un aviso si está conectado.
+- Puente web: envío inmediato de eventos que no deben esperar en la cola y generador de valores aleatorios
+  para códigos.
+
 ## 0.13.0 — Puente con la web de Gruppe Sechs (fase 1)
 
 - Conexión opcional y firmada con gruppe6.es (`ossecurity_web_url`, `ossecurity_web_secret`): sin configurar
