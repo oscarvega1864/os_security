@@ -158,6 +158,30 @@ OSSecurity.Brand = {
             sounding = 'ALARMA SONANDO', gps = 'Marcar en el GPS', away = 'Guardado o fuera de alcance' },
         incidents = { title = 'Historial de incidencias', help = 'Ultimos sucesos de todas tus alarmas, del mas reciente al mas antiguo.',
             empty = 'Sin incidencias registradas.' },
+        dispatch = {
+            kinds = { panic = 'Boton de panico', alarm = 'Salto de alarma', tamper = 'Manipulacion de teclado' },
+            status = { open = 'Sin asignar', assigned = 'En camino', resolved = 'Resuelto', cancelled = 'Cancelado' },
+            here = 'Donde estoy ahora', clientPlace = 'Ubicacion del cliente',
+            -- Avisos (servidor)
+            newCall = 'Central G6: %s en %s.', newPanic = 'Central G6: BOTON DE PANICO de %s en %s.',
+            repeated = 'Central G6: %s otra vez en %s (x%d).', assignedYou = 'Central G6: te asignan %s en %s (%s).',
+            onTheWay = 'Gruppe Sechs: %s va de camino.', resolvedClient = 'Gruppe Sechs ha cerrado tu aviso (%s): %s',
+            cancelledTech = 'El cliente ha cancelado el aviso %s.', falseAlarm = 'Cancelado por el cliente (falsa alarma).',
+            panicSent = 'Aviso enviado: %d agentes de Gruppe Sechs de servicio lo han recibido.',
+            panicNobody = 'Aviso registrado. Ahora mismo no hay agentes de servicio; lo veran al entrar.',
+            cancelled = 'Aviso cancelado.', taken = 'Aviso %s asignado a ti. Marcado en el GPS.',
+            assigned = 'Aviso %s asignado a %s.', released = 'Aviso devuelto a la central.', resolved = 'Aviso %s cerrado.',
+            -- Tablet Client > Emergencias
+            clientTitle = 'Emergencias', clientHelp = 'Si estas en peligro pulsa el boton: el aviso llega al momento a todo el personal de Gruppe Sechs de servicio.',
+            panic = 'BOTON DE PANICO', place = 'Donde', note = 'Que pasa (opcional, %d caracteres)', wait = 'Podras enviar otro aviso en %d s.',
+            activeNote = 'Tienes un aviso en curso: Gruppe Sechs ya esta avisado.', cancel = 'Cancelar (falsa alarma)',
+            history = 'Tus avisos', empty = 'No has enviado avisos.',
+            -- Tablet Operations > Central de operaciones
+            staffTitle = 'Central de operaciones', staffHelp = 'Avisos en curso por prioridad: panico, saltos de alarma y manipulaciones. Asignate uno, ve con el GPS y cierralo con lo que ha pasado.',
+            staffEmpty = 'Sin avisos. Todo en calma.', take = 'Me lo asigno', gps = 'GPS', release = 'Devolver', resolve = 'Cerrar aviso',
+            resolveNote = 'Que ha pasado (obligatorio)', assignTo = 'Asignar a', assign = 'Asignar', tech = 'Agente', client = 'Cliente',
+            times = 'x%d', distance = 'a %s m', mine = 'Tuyo', nobody = 'Nadie de servicio', resolution = 'Resolucion'
+        },
         profileAbilities = 'Funciones de su perfil',
         abilities = { view = 'Consultar', inspect = 'Inspeccionar', repair = 'Reparar', replace = 'Sustituir piezas',
             provision = 'Equipar registros', beginMaintenance = 'Abrir mantenimiento', install = 'Instalar CCTV' },
@@ -170,7 +194,7 @@ OSSecurity.Brand = {
             { id = 'alarms', name = 'Alarmas residenciales y comerciales', implemented = true },
             { id = 'locks', name = 'Cerraduras', implemented = true },
             { id = 'trackers', name = 'Localizadores de vehiculos', implemented = true },
-            { id = 'emergencies', name = 'Emergencias', implemented = false },
+            { id = 'emergencies', name = 'Emergencias', implemented = true },
             { id = 'contracts', name = 'Contratos', implemented = false },
             { id = 'requests', name = 'Solicitudes de mantenimiento', implemented = true },
             { id = 'incidents', name = 'Historial de incidencias', implemented = true }
@@ -187,7 +211,7 @@ OSSecurity.Brand = {
             { id = 'access', name = 'Control de accesos', implemented = false },
             { id = 'trackers', name = 'Localizadores', implemented = false },
             { id = 'patrols', name = 'Rondas', implemented = false },
-            { id = 'dispatch', name = 'Central de operaciones', implemented = false },
+            { id = 'dispatch', name = 'Central de operaciones', implemented = true },
             { id = 'cash_transport', name = 'Transporte de fondos', implemented = false }
         }
     }

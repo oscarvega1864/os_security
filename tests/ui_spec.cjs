@@ -67,13 +67,20 @@ async function main() {
             items:[{id:'ot_000002',kind:'repair',status:'billed',note:'Camara sin imagen',place:'Propiedad 200',techName:'oscar_vega',price:1250,createdAt:1762700000},{id:'ot_000001',kind:'cctv',status:'open',note:'Dos camaras',place:'Propiedad 200',createdAt:1762600000}]};
           else if(body.action==='orders') result.data={canWork:true,share:0.6,maxPrice:25000,items:[{id:'ot_000003',kind:'alarm',status:'open',note:'Alarma en el local',place:'Negocio 4',clientName:'segundo · amigo',distance:120,position:{x:1,y:2,z:3},createdAt:1762700000},
             {id:'ot_000002',kind:'repair',status:'accepted',mine:true,note:'Camara sin imagen',place:'Propiedad 200',clientName:'oscar',distance:3,position:{x:4,y:5,z:6},createdAt:1762600000}]};
+          else if(body.action==='emergencies') result.data={places:[{value:'here',label:'Donde estoy ahora'},{value:'site:property:200',label:'Propiedad 200'}],noteLength:140,cooldown:0,active:false,
+            items:[{id:'av_000002',kind:'panic',status:'assigned',note:'Ruido en el garaje',place:'Propiedad 200',techName:'oscar_vega',count:1,createdAt:1762700000,updatedAt:1762700100},
+              {id:'av_000001',kind:'alarm',status:'resolved',place:'Propiedad 200',resolution:'Falsa alarma: el gato',count:2,createdAt:1762600000,updatedAt:1762600100}]};
+          else if(body.action==='dispatch') result.data={canTake:window.__mode==='operations'&&window.__role!=='supervisor',canAssign:window.__role==='supervisor',noteLength:140,
+            crew:window.__role==='supervisor'?[{id:1,name:'oscar_vega'},{id:3,name:'jefa',self:true}]:[],
+            items:[{id:'av_000003',kind:'panic',status:'open',priority:1,note:'Me siguen',place:'Ubicacion del cliente',clientName:'segundo · amigo',distance:340,count:1,position:{x:7,y:8,z:9},createdAt:1762700000,updatedAt:1762700000},
+              {id:'av_000001',kind:'alarm',status:'assigned',priority:2,mine:window.__role!=='supervisor',place:'Propiedad 200',clientName:'oscar',techName:'oscar_vega',distance:12,count:3,position:{x:1,y:2,z:3},createdAt:1762600000,updatedAt:1762600000}]};
           else if(body.action==='doors') result.data={items:[{id:'p200_1',site:'Propiedad 200',tier:'Bombin de serie',level:1,locked:true}]};
           else if(body.action==='trackers') result.data={items:[{plate:'OS000012',lock:true,alarm:true,locked:true,sounding:false,position:{x:10.4,y:-20.2,z:30}}]};
           else if(body.action==='incidents') result.data={items:[{at:1762700000,kind:'triggered',device:'G6-D · osd_0000000009',deviceId:'osd_0000000009',site:'Propiedad 200'}]};
         }
         return new Response(JSON.stringify(result),{status:200,headers:{'Content-Type':'application/json'}});
       };
-      window.__open = (kind, role) => { window.__mode=kind; window.__device.actions=kind==='operations'?{inspect:true,repair:true,replace:true}:{};
+      window.__open = (kind, role) => { window.__mode=kind; window.__role=role||(kind==='operations'?'technician':'client'); window.__device.actions=kind==='operations'?{inspect:true,repair:true,replace:true}:{};
         const supervisor=role==='supervisor';
         window.postMessage({type:'open',session:{kind,role:kind==='operations'?(role||'technician'):'client',profile:kind==='operations'?(supervisor?'Supervisor':'Tecnico'):'Cliente',
           abilities:kind==='operations'?(supervisor?['view','inspect','beginMaintenance']:['view','inspect','repair','replace','provision','install']):[],
@@ -111,6 +118,19 @@ async function main() {
     await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent.includes('Mis dispositivos')).click()`);
     await until(`document.querySelectorAll('.card').length===1`);
     console.log('PASS Client maintenance requests: form, list with status and pay button');
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent.includes('Emergencias')).click()`);
+    await until(`document.querySelector('.panic-button') && document.querySelectorAll('.call-card').length===2`);
+    assert(await evaluate(`(() => { const cards=document.querySelectorAll('.call-card'); return cards[0].textContent.includes('En camino') && cards[0].textContent.includes('oscar_vega')
+      && cards[1].textContent.includes('el gato') && cards[1].textContent.includes('x2') && !document.querySelector('.panic-button').disabled
+      && cards[0].querySelector('button.danger') && !cards[1].querySelector('button'); })()`), 'Emergencies show call status, agent, outcome and cancel only for active panic calls');
+    await evaluate(`window.__calls.length=0; document.querySelector('.panic-panel select').value='site:property:200'; document.querySelector('.panic-panel textarea').value='Hay alguien'; document.querySelector('.panic-button').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='panic' && x.body.args.place==='site:property:200' && x.body.args.note==='Hay alguien')`);
+    await evaluate(`document.querySelector('.call-card button.danger').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='panic_cancel' && x.body.args.callId==='av_000002')`);
+    fs.writeFileSync(path.join(output, 'emergencies.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent.includes('Mis dispositivos')).click()`);
+    await until(`document.querySelectorAll('.card').length===1`);
+    console.log('PASS Client emergencies: panic button with place and note, call status and false-alarm cancel');
     await evaluate(`window.__device.displayId='<img src=x onerror="window.__xss=true">'; document.getElementById('refresh').click()`);
     await until(`document.getElementById('content').textContent.includes('<img src=x')`);
     assert(await evaluate(`document.querySelector('img')===null && window.__xss!==true`));
@@ -167,11 +187,28 @@ async function main() {
     await until(`window.__calls.some(x=>x.body.action==='order_accept' && x.body.args.orderId==='ot_000003')`);
     fs.writeFileSync(path.join(output, 'orders.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
     console.log('PASS Work orders: accept open orders, bill own accepted orders');
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Central de operaciones').click()`);
+    await until(`document.querySelectorAll('.call-card').length===2`);
+    assert(await evaluate(`(() => { const [panic, mine]=document.querySelectorAll('.call-card'); return panic.classList.contains('call-panic') && panic.textContent.includes('Me siguen')
+      && Array.from(panic.querySelectorAll('button')).some(b=>b.textContent==='Me lo asigno') && !panic.querySelector('select')
+      && mine.querySelector('.badge.here') && mine.textContent.includes('x3') && mine.querySelector('.call-note'); })()`), 'Technician sees calls by priority, can take open ones and close own ones');
+    await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('.call-card')[0].querySelectorAll('button')).find(b=>b.textContent==='Me lo asigno').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='call_take' && x.body.args.callId==='av_000003') && window.__calls.some(x=>x.endpoint==='waypoint' && x.body.x===7)`);
+    await evaluate(`document.querySelector('.call-note').value='Cristal roto, sin intrusos'; Array.from(document.querySelectorAll('.call-card')[1].querySelectorAll('button')).find(b=>b.textContent==='Cerrar aviso').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='call_resolve' && x.body.args.callId==='av_000001' && x.body.args.note==='Cristal roto, sin intrusos')`);
+    fs.writeFileSync(path.join(output, 'dispatch.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    console.log('PASS Central: take a call with GPS and close own calls with a note');
     await evaluate(`window.__open('operations','supervisor')`);
     await until(`document.querySelector('.profile.role-supervisor') && document.querySelectorAll('.ability').length===3`);
     assert(await evaluate(`!Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent==='Instalaciones') && document.querySelector('.abilities').textContent.includes('Abrir mantenimiento')`));
     fs.writeFileSync(path.join(output, 'supervisor.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
     console.log('PASS profile badge, profile functions and modules limited by the session profile');
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Central de operaciones').click()`);
+    await until(`document.querySelectorAll('.call-card select').length===2`);
+    assert(await evaluate(`!Array.from(document.querySelectorAll('.call-card button')).some(b=>b.textContent==='Me lo asigno') && document.querySelector('.call-card select').options.length===2`), 'Supervisor assigns instead of taking');
+    await evaluate(`window.__calls.length=0; document.querySelector('.call-card select').value='1'; Array.from(document.querySelectorAll('.call-card')[0].querySelectorAll('button')).find(b=>b.textContent==='Asignar').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='call_assign' && x.body.args.callId==='av_000003' && x.body.args.target===1)`);
+    console.log('PASS Central (supervisor): assign a call to an on-duty colleague');
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
     await until(`document.getElementById('app').hidden && window.__calls.some(x=>x.endpoint==='close')`);
     console.log('PASS Escape closes the browser view and invokes the native close callback');

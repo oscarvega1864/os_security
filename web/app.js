@@ -41,7 +41,7 @@
     post('close', {}).catch(() => {}); state.session = null;
   }
   // Secciones con vista propia (no son listas paginadas de dispositivos).
-  const OWN_VIEWS = ['inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders'];
+  const OWN_VIEWS = ['inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
   function pagination() {
     const enabled = !state.selected && !OWN_VIEWS.includes(state.module);
     byId('previous').disabled = !enabled || state.offset === 0;
@@ -335,7 +335,94 @@
     }
     content.append(grid);
   }
-  const VIEWS = { locks: doorsView, trackers: trackersView, incidents: incidentsView, installations: zonesView, requests: requestsView, work_orders: ordersView };
+  // Ficha de un aviso de la central (cliente o personal): tipo, estado, lugar, nota, agente y resolucion.
+  function callCard(call, D) {
+    const status = /^[a-z]+$/.test(call.status) ? call.status : 'open';
+    const kind = /^[a-z]+$/.test(call.kind) ? call.kind : 'alarm';
+    const card = el('article', null, `card call-card call-${kind} status-${status}`);
+    const head = el('div', null, 'card-head');
+    head.append(el('strong', D.kinds?.[call.kind] || call.kind), el('span', D.status?.[call.status] || call.status, `badge call-status-${status}`));
+    card.append(head, el('div', `${call.id} · ${date(call.createdAt)}${call.count > 1 ? ' · ' + format(D.times, call.count) : ''}`, 'subtle'));
+    if (call.note) card.append(el('p', call.note, 'order-note'));
+    const facts = [call.place, call.distance != null ? format(D.distance, call.distance) : null, call.techName ? `${D.tech}: ${call.techName}` : null,
+      call.clientName && state.session.kind === 'operations' ? `${D.client}: ${call.clientName}` : null].filter(Boolean).join(' · ');
+    if (facts) card.append(el('div', facts, 'subtle'));
+    if (call.resolution) card.append(el('div', `${D.resolution}: ${call.resolution}`, 'call-resolution'));
+    return card;
+  }
+  // G6 Client > Emergencias: boton de panico (aqui o en una propiedad) y estado de los avisos.
+  async function emergenciesView(content) {
+    const D = group('dispatch'); const data = await request('emergencies'); if (!data) return;
+    simpleHero(content, D.clientTitle, D.clientHelp);
+    const panel = el('section', null, 'zone-new panic-panel');
+    const form = el('div', null, 'order-form');
+    const place = el('select'); place.setAttribute('aria-label', D.place);
+    for (const option of data.places) { const node = el('option', option.label); node.value = option.value; place.append(node); }
+    const note = el('textarea'); note.maxLength = data.noteLength; note.rows = 2; note.placeholder = format(D.note, data.noteLength);
+    const blocked = data.active || data.cooldown > 0;
+    const panic = button(D.panic, async () => {
+      const result = await request('panic', { place: place.value, note: note.value });
+      if (result) { await refresh(); message(result.message); }
+    }, blocked, 'panic-button');
+    form.append(place, note);
+    panel.append(panic, form);
+    if (data.active) panel.append(el('p', D.activeNote, 'notice'));
+    else if (data.cooldown > 0) panel.append(el('p', format(D.wait, data.cooldown), 'subtle'));
+    content.append(panel);
+    content.append(el('h3', D.history, 'section-title'));
+    if (!data.items.length) { content.append(el('div', D.empty, 'empty')); return; }
+    const grid = el('div', null, 'grid');
+    for (const call of data.items) {
+      const card = callCard(call, D);
+      if (call.kind === 'panic' && (call.status === 'open' || call.status === 'assigned')) {
+        const actions = el('div', null, 'zone-actions');
+        actions.append(button(D.cancel, async () => { if (await request('panic_cancel', { callId: call.id })) refresh(); }, false, 'danger'));
+        card.append(actions);
+      }
+      grid.append(card);
+    }
+    content.append(grid);
+  }
+  // G6 Operations > Central de operaciones: avisos por prioridad; asignarse, asignar, GPS y cerrar.
+  async function dispatchView(content) {
+    const D = group('dispatch'); const data = await request('dispatch'); if (!data) return;
+    simpleHero(content, D.staffTitle, D.staffHelp);
+    if (!data.items.length) { content.append(el('div', D.staffEmpty, 'empty')); return; }
+    const grid = el('div', null, 'grid');
+    for (const call of data.items) {
+      const card = callCard(call, D);
+      if (call.mine) card.querySelector('.card-head').append(el('span', D.mine, 'badge here'));
+      const active = call.status === 'open' || call.status === 'assigned';
+      const gps = () => post('waypoint', { x: call.position.x, y: call.position.y }).catch(() => {});
+      const actions = el('div', null, 'zone-actions');
+      if (active) {
+        actions.append(button(D.gps, gps));
+        if (data.canTake && !call.mine) actions.append(button(D.take, async () => {
+          const result = await request('call_take', { callId: call.id }); if (result) { gps(); await refresh(); message(result.message); }
+        }, false, 'primary'));
+        if (data.canAssign) {
+          const who = el('select'); who.setAttribute('aria-label', D.assignTo);
+          for (const member of data.crew) { const node = el('option', member.self ? `${member.name} (${D.mine})` : member.name); node.value = String(member.id); who.append(node); }
+          if (!data.crew.length) { const node = el('option', D.nobody); node.value = ''; who.append(node); who.disabled = true; }
+          actions.append(who, button(D.assign, async () => {
+            const result = await request('call_assign', { callId: call.id, target: Number(who.value) }); if (result) { await refresh(); message(result.message); }
+          }, !data.crew.length));
+        }
+        if (call.status === 'assigned' && (call.mine || data.canAssign)) actions.append(button(D.release, async () => { if (await request('call_release', { callId: call.id })) refresh(); }));
+        if (call.mine || data.canAssign) {
+          const note = el('input'); note.type = 'text'; note.maxLength = data.noteLength; note.placeholder = D.resolveNote; note.className = 'call-note';
+          actions.append(note, button(D.resolve, async () => {
+            const result = await request('call_resolve', { callId: call.id, note: note.value }); if (result) { await refresh(); message(result.message); }
+          }, false, 'primary'));
+        }
+      }
+      if (actions.childElementCount) card.append(actions);
+      grid.append(card);
+    }
+    content.append(grid);
+  }
+  const VIEWS = { locks: doorsView, trackers: trackersView, incidents: incidentsView, installations: zonesView, requests: requestsView, work_orders: ordersView,
+    emergencies: emergenciesView, dispatch: dispatchView };
   async function refresh() {
     if (!state.session || state.busy) return;
     if (state.selected) { await showDevice(state.selected); return; }

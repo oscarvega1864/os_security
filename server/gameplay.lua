@@ -73,13 +73,15 @@ function OSSecurity.Gameplay.new(options)
         return { principal = principal, holder = holdings.external() and holdings.holder(source) or nil, role = 'client', kind = 'client', source = source }
     end
     local effects = options.alarmEffects or {}
+    local function siteLabel(deviceId)
+        local site = inventory.site(deviceId)
+        if not site then return nil end
+        return options.sites and options.sites.label(site) or (OSSecurity.Sites.Labels[site.kind] .. ' ' .. site.id)
+    end
+    local dispatchRef, staffRef -- central de operaciones y "es personal G6" (se crean mas abajo)
     local alarms = OSSecurity.AlarmService.new({
         inventory = inventory, registry = options.registry, now = options.now, world = options.world,
-        site = function(deviceId)
-            local site = inventory.site(deviceId)
-            if not site then return nil end
-            return options.sites and options.sites.label(site) or (OSSecurity.Sites.Labels[site.kind] .. ' ' .. site.id)
-        end,
+        site = siteLabel,
         authorized = function(actor, device) return actor ~= nil and auth.access(actor, device, 'view') == true end,
         actorOf = actorOf,
         players = effects.players or function() return {} end,
@@ -101,17 +103,25 @@ function OSSecurity.Gameplay.new(options)
         entry = effects.entry or function() end,
         entryStop = effects.entryStop or function() end,
         siren = effects.siren or function() end,
-        alert = function(device, text, kind)
-            if not effects.notify then return end
-            local notified = {}
-            for _, player in ipairs((effects.players or function() return {} end)()) do
-                local actor = actorOf(player.source)
-                local owner = actor and auth.access(actor, device, 'view')
-                local staff = options.employment and options.employment(player.source) ~= nil
-                if (owner or staff) and not notified[player.source] then
-                    notified[player.source] = true
-                    effects.notify(player.source, text, kind, device.position)
+        alert = function(device, text, kind, reason)
+            -- Con central de operaciones (salto o manipulacion), el personal G6 recibe el aviso de la central
+            -- (queda guardado y se puede asignar); aqui solo se avisa al titular. Sin ella, a todos como antes.
+            local central = reason ~= nil and dispatchRef ~= nil and staffRef ~= nil
+            if effects.notify then
+                local notified = {}
+                for _, player in ipairs((effects.players or function() return {} end)()) do
+                    local actor = actorOf(player.source)
+                    local owner = actor and auth.access(actor, device, 'view')
+                    local staff = options.employment and options.employment(player.source) ~= nil
+                    if central and staffRef(player.source) then owner, staff = false, false end
+                    if (owner or staff) and not notified[player.source] then
+                        notified[player.source] = true
+                        effects.notify(player.source, text, kind, device.position)
+                    end
                 end
+            end
+            if central then
+                dispatchRef.raise(device, reason, ownerOf(device), siteLabel(device.id) or (OSSecurity.Brand.DevicePrefix .. ' · ' .. device.id))
             end
         end
     })
@@ -150,6 +160,11 @@ function OSSecurity.Gameplay.new(options)
         money = options.money or { available = function() return false end, charge = noop, refund = noop }, isStaff = isStaff,
         notify = options.notifyPlayer,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    local dispatch = OSSecurity.DispatchService.new({ inventory = inventory, identity = identity, world = options.world, now = options.now,
+        sites = options.sites, alias = (options.vehicles or {}).alias, playerName = options.playerName, players = options.players,
+        isStaff = isStaff, notify = options.notifyPlayer or effects.notify,
+        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    dispatchRef, staffRef = dispatch, isStaff
     local zones = OSSecurity.ZoneService.new({ inventory = inventory, holdings = holdings, identity = identity, world = options.world, now = options.now,
         sites = options.sites, players = options.players, playerName = options.playerName,
         alias = (options.vehicles or {}).alias, productOfModel = placement.productOfModel,
@@ -159,9 +174,9 @@ function OSSecurity.Gameplay.new(options)
         sites = options.sites, alarms = alarms, locks = locks, cars = cars,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
-        sessions = sessions, service = service, placement = placement, zones = zones, orders = orders, audit = options.audit })
+        sessions = sessions, service = service, placement = placement, zones = zones, orders = orders, dispatch = dispatch, audit = options.audit })
     local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks, cars = cars,
-        lockpick = lockpick, zones = zones, shop = shop, orders = orders }
+        lockpick = lockpick, zones = zones, shop = shop, orders = orders, dispatch = dispatch }
     function gameplay.status() return ready and inventory.status() and options.registry.status() end
     -- Datos antiguos por cuenta (license): pasan al unico personaje que hizo sus instalaciones.
     -- Si una cuenta instalo con varios personajes no se adivina: se avisa y se deja como estaba.

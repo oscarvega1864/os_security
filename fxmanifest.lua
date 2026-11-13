@@ -74,6 +74,7 @@ server_scripts {
     'server/lockpick/service.lua',
     'server/shop/service.lua',
     'server/orders/service.lua',
+    'server/dispatch/service.lua',
     'server/tablet/service.lua',
     'server/tablet/controller.lua',
     'server/commands/gameplay.lua',

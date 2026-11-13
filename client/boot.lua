@@ -130,7 +130,9 @@ RegisterNUICallback('request', function(body, callback)
     elseif body.action == 'live' and type(body.args.deviceId) == 'string' then controller.live(body.args.deviceId, callback)
     elseif ({ inventory = true, devices = true, device = true, maintain = true, alarm = true, doors = true, trackers = true, incidents = true,
         zones = true, zone_delete = true, requests = true, request_create = true, request_cancel = true, request_pay = true,
-        orders = true, order_accept = true, order_release = true, order_bill = true })[body.action] then controller.request(body.action, body.args, callback)
+        orders = true, order_accept = true, order_release = true, order_bill = true,
+        emergencies = true, panic = true, panic_cancel = true, dispatch = true, call_take = true, call_assign = true,
+        call_release = true, call_resolve = true })[body.action] then controller.request(body.action, body.args, callback)
     else callback({ ok = false, error = OSSecurity.Brand.Text.unavailable }) end
 end)
 

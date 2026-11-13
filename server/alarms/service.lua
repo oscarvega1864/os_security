@@ -104,7 +104,7 @@ function OSSecurity.AlarmService.new(options)
             if lock.count >= config.MaxPinAttempts then
                 lock.count, lock.lockedUntil = 0, options.now() + config.LockoutSeconds
                 save(device.id, alarm, 'lockout', options.who(source))
-                options.alert(device, ('Manipulacion del teclado en %s: bloqueado por intentos fallidos.'):format(label(device)), 'warning')
+                options.alert(device, ('Manipulacion del teclado en %s: bloqueado por intentos fallidos.'):format(label(device)), 'warning', 'tamper')
                 return nil, ('Codigo incorrecto. Teclado bloqueado %d s.'):format(config.LockoutSeconds)
             end
             save(device.id, alarm, 'wrong_pin', options.who(source))
@@ -240,7 +240,7 @@ function OSSecurity.AlarmService.new(options)
                             local current = options.inventory.alarm(deviceId)
                             if current then save(deviceId, current, 'triggered') end
                             options.siren(deviceId, device)
-                            options.alert(device, ('¡Salto de alarma en %s!'):format(label(device)), 'error')
+                            options.alert(device, ('¡Salto de alarma en %s!'):format(label(device)), 'error', 'alarm')
                         end
                     end
                 end

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.15.0 — Central de operaciones y Emergencias
+
+- Avisos guardados de la central: salto de alarma, manipulación de un teclado (bloqueo por códigos fallidos) y
+  botón de pánico. Un salto repetido de la misma central con su aviso abierto suma al mismo aviso (x2, x3…).
+  Los cerrados se borran pasados 7 días.
+- G6 Client → **Emergencias**: botón de pánico donde estás o en una de tus propiedades, con nota opcional. Llega al
+  momento a todo el personal G6 de servicio, con punto en el mapa. Un aviso activo por cliente y 60 s entre avisos;
+  el cliente ve quién acude y la resolución, y puede cancelarlo si fue una falsa alarma.
+- G6 Operations → **Central de operaciones**: avisos por prioridad (pánico, alarma, manipulación). El técnico se
+  asigna un aviso (GPS) o lo devuelve; el supervisor lo asigna a un compañero de servicio; se cierra con una nota
+  obligatoria que le llega al cliente.
+- Al saltar una alarma, el titular recibe su aviso de siempre y el personal G6 solo el de la central (sin duplicados).
+
 ## 0.14.0 — Vincular el personaje con gruppe6.es (fase 2)
 
 - `/g6web`: código de un solo uso (8 caracteres, 10 minutos) que solo ve el jugador, para vincular su

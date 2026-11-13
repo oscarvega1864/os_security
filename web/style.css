@@ -94,3 +94,10 @@ select{font:inherit;font-size:11px;color:var(--ink);background:var(--surface);bo
 .order-card{display:flex;flex-direction:column;gap:6px}.order-note{font-size:12px;line-height:1.5;margin:4px 0;overflow-wrap:anywhere}.order-price{font-size:14px;font-weight:700;color:var(--accent)}
 .badge.order-accepted{color:#8fc4e0;border-color:#8fc4e077}.badge.order-billed{color:#d8b45a;border-color:#d8b45a77}.badge.order-cancelled{opacity:.6}.order-card.status-cancelled,.order-card.status-paid{opacity:.75}
 .order-amount{width:110px;font:inherit;font-size:11px;color:var(--ink);background:var(--surface);border:1px solid color-mix(in srgb,var(--muted) 30%,transparent);border-radius:7px;padding:8px 10px}
+/* Central de operaciones y Emergencias */
+.call-card{display:flex;flex-direction:column;gap:6px}.call-card.call-panic.status-open,.call-card.call-panic.status-assigned{border-color:#c4674c;box-shadow:0 0 0 1px #c4674c}
+.call-card.status-resolved,.call-card.status-cancelled{opacity:.75}.call-resolution{font-size:11px;line-height:1.5;color:var(--accent);overflow-wrap:anywhere}
+.badge.call-status-open{color:#e0866a;border-color:#e0866a77}.badge.call-status-assigned{color:#8fc4e0;border-color:#8fc4e077}.badge.call-status-cancelled{opacity:.6}
+.call-note{flex:1;min-width:140px;font:inherit;font-size:11px;color:var(--ink);background:var(--surface);border:1px solid color-mix(in srgb,var(--muted) 30%,transparent);border-radius:7px;padding:8px 10px}
+.panic-panel{align-items:stretch}.panic-button{background:#b9412b;border-color:#b9412b;color:#fff;font-weight:800;font-size:15px;letter-spacing:1.5px;padding:18px;border-radius:12px}
+.panic-button:hover:not(:disabled){background:#d04f36;border-color:#d04f36}.section-title{margin:6px 0 12px;font-size:13px;letter-spacing:.4px;color:var(--muted)}

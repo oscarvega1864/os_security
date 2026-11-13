@@ -28,6 +28,10 @@ OSSecurity.GameplayConfig = {
     -- Las cerradas (pagadas o canceladas) se borran pasados KeepDays.
     Orders = { MaxOrders = 400, MaxOpenPerClient = 3, MaxPrice = 25000, TechShare = 0.6, NoteLength = 140, KeepDays = 30,
         PayAccount = 'bank' },
+    -- Central de operaciones: avisos (salto de alarma, manipulacion de teclado, boton de panico).
+    -- Un salto repetido de la misma central con su aviso abierto suma al mismo aviso (Repeat). Los cerrados
+    -- se borran pasados KeepDays. Panico: un aviso activo por cliente y PanicCooldown s entre avisos.
+    Dispatch = { MaxCalls = 300, NoteLength = 140, KeepDays = 7, PanicCooldown = 60, MaxRepeat = 99 },
     -- Alarmas (central con teclado). Zona: esfera alrededor del teclado.
     Alarm = {
         Radius = 10.0, InteractDistance = 2.0, ExitDelay = 30, EntryDelay = 30, SirenSeconds = 90,

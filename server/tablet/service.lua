@@ -112,7 +112,8 @@ function OSSecurity.TabletService.new(options)
         return accessible
     end
     -- Modulos que no son listas de dispositivos: tienen su propia accion.
-    local OWN_ACTION = { locks = true, trackers = true, incidents = true, installations = true, inventory = true, requests = true, work_orders = true }
+    local OWN_ACTION = { locks = true, trackers = true, incidents = true, installations = true, inventory = true, requests = true, work_orders = true,
+        emergencies = true, dispatch = true }
     function service.list(actor, args)
         if not util.object(args, { offset = true, module = true })
             or (args.offset ~= nil and not util.integer(args.offset, 0, OSSecurity.ServerConfig.MaxDevices)) then

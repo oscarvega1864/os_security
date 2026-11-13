@@ -1566,6 +1566,91 @@ test('Work orders: offline technicians are paid later, clients cancel their own 
         note = 'x', place = 'y', position = { x = 0, y = 0, z = 0 }, createdAt = 1, updatedAt = 1 })) -- facturada sin tecnico ni precio
 end)
 
+-- Central de operaciones y Emergencias -----------------------------------------------------------------
+local function alerts(c)
+    local found = {}
+    for _, entry in ipairs(c.alarmLog) do if entry[1] == 'alert' then found[#found + 1] = entry end end
+    return found
+end
+test('Emergencies: the panic button alerts on-duty G6, a supervisor assigns it, the technician closes it and the client sees the outcome', function()
+    local c = fixture(); assert(c.loaded, c.loadError)
+    grant(c, 2, 'g6_client_tablet'); grant(c, 1, 'g6_operations_tablet'); grant(c, 3, 'g6_operations_tablet')
+    c.players[2].point = { x = 120, y = 40, z = 30 }
+    local client = open(c, 2, 'client')
+    local list = call(c, 2, client, 'emergencies'); assert(list.ok, list.error)
+    assert(#list.data.items == 0 and list.data.places[1].value == 'here' and list.data.cooldown == 0 and not list.data.active)
+    assert(not call(c, 2, client, 'panic', { place = 'site:property:9', note = '' }).ok) -- no es suya
+    local sent = call(c, 2, client, 'panic', { place = 'here', note = 'Hay alguien <script> en casa' }); assert(sent.ok, sent.error)
+    assert(sent.data.id == 'av_000001' and sent.data.message:find('3')) -- tecnico, supervisor y admin de servicio
+    local stored = c.game.inventory.calls().av_000001
+    assert(stored.kind == 'panic' and stored.status == 'open' and stored.position.x == 120 and not stored.note:find('[<>]'))
+    local alerted = {}; for _, entry in ipairs(alerts(c)) do alerted[entry[2]] = true end
+    assert(alerted[1] and alerted[3] and alerted[4] and not alerted[2] and not alerted[5])
+    assert(not call(c, 2, client, 'panic', { place = 'here', note = '' }).ok) -- ya tiene uno en curso
+    local supervisor = open(c, 3, 'operations')
+    local central = call(c, 3, supervisor, 'dispatch'); assert(central.ok, central.error)
+    assert(central.data.canAssign and not central.data.canTake and #central.data.items == 1 and central.data.items[1].priority == 1)
+    assert(#central.data.crew == 3) -- personal de servicio para asignar
+    assert(not call(c, 3, supervisor, 'call_take', { callId = 'av_000001' }).ok) -- el supervisor no sale a la calle
+    assert(not call(c, 3, supervisor, 'call_assign', { callId = 'av_000001', target = 5 }).ok) -- 5 no es personal
+    assert(not call(c, 3, supervisor, 'call_assign', { callId = 'av_000001', target = 2 }).ok) -- ni el propio cliente
+    local assigned = call(c, 3, supervisor, 'call_assign', { callId = 'av_000001', target = 1 }); assert(assigned.ok, assigned.error)
+    assert(c.game.inventory.calls().av_000001.status == 'assigned' and c.game.inventory.calls().av_000001.techName == 'Jugador1')
+    local tech = open(c, 1, 'operations')
+    local mine = call(c, 1, tech, 'dispatch'); assert(mine.ok and mine.data.canTake and mine.data.items[1].mine and not mine.data.canAssign and #mine.data.crew == 0)
+    assert(not call(c, 1, tech, 'call_resolve', { callId = 'av_000001', note = '   ' }).ok) -- hay que contar que ha pasado
+    assert(call(c, 1, tech, 'call_resolve', { callId = 'av_000001', note = 'Falsa alarma: el gato' }).ok)
+    assert(not call(c, 1, tech, 'call_resolve', { callId = 'av_000001', note = 'Otra vez' }).ok) -- ya cerrado
+    list = call(c, 2, client, 'emergencies'); assert(list.ok)
+    assert(list.data.items[1].status == 'resolved' and list.data.items[1].resolution:find('gato') and list.data.cooldown > 0)
+    assert(not call(c, 2, client, 'panic_cancel', { callId = 'av_000001' }).ok) -- cerrado: ya no se cancela
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Dispatch.PanicCooldown + 1
+    local again = call(c, 2, client, 'panic', { place = 'here', note = '' }); assert(again.ok and again.data.id == 'av_000002')
+    assert(call(c, 2, client, 'panic_cancel', { callId = 'av_000002' }).ok and c.game.inventory.calls().av_000002.status == 'cancelled')
+end)
+
+test('Central: alarm triggers and keypad tampering become calls; repeats add up, technicians take and release them, data survives a restart', function()
+    local c = fixture(); local panel = alarmPanel(c, 2)
+    grant(c, 2, 'g6_client_tablet'); grant(c, 1, 'g6_operations_tablet')
+    c.players[2].point = { x = 1, y = 0, z = 1 }
+    local client = open(c, 2, 'client')
+    assert(call(c, 2, client, 'alarm', { deviceId = panel.id, action = 'pin', pin = '4321' }).ok)
+    assert(c.game.alarms.keypad(2, panel.id, 'arm', '4321'))
+    c.players[2].point = { x = 400, y = 0, z = 1 }
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Alarm.ExitDelay + 1
+    c.players[5].point = { x = 2, y = 0, z = 1 }
+    local function trigger()
+        c.game.alarms.tick(); c.core.time = c.core.time + OSSecurity.GameplayConfig.Alarm.EntryDelay + 1; c.game.alarms.tick()
+    end
+    trigger()
+    local calls = c.game.inventory.calls(); local first = calls.av_000001
+    assert(first and first.kind == 'alarm' and first.deviceId == panel.id and first.client == c.players[2].principal and first.count == 1)
+    -- El titular recibe el aviso de la alarma; el personal, el de la central (sin duplicar).
+    local toTech = 0; for _, entry in ipairs(alerts(c)) do if entry[2] == 1 then toTech = toTech + 1 end end
+    assert(toTech == 1)
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Alarm.SirenSeconds + 1; c.game.alarms.tick() -- se apaga la sirena y se rearma
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Alarm.ExitDelay + 1
+    trigger()
+    calls = c.game.inventory.calls(); assert(calls.av_000002 == nil and calls.av_000001.count == 2) -- mismo aviso, x2
+    c.players[5].point = { x = 1, y = 1, z = 1 }
+    client = open(c, 2, 'client') -- la sesion caduca a los 90 s sin uso
+    assert(call(c, 2, client, 'alarm', { deviceId = panel.id, action = 'disarm' }).ok)
+    for _ = 1, OSSecurity.GameplayConfig.Alarm.MaxPinAttempts do c.game.alarms.keypad(5, panel.id, 'arm', '0000') end
+    calls = c.game.inventory.calls(); assert(calls.av_000002 and calls.av_000002.kind == 'tamper')
+    local tech = open(c, 1, 'operations')
+    local central = call(c, 1, tech, 'dispatch'); assert(central.ok)
+    assert(central.data.items[1].kind == 'alarm' and central.data.items[2].kind == 'tamper') -- por prioridad
+    local taken = call(c, 1, tech, 'call_take', { callId = 'av_000001' }); assert(taken.ok and taken.data.position.x == 0)
+    assert(not call(c, 2, client, 'panic_cancel', { callId = 'av_000001' }).ok) -- solo se cancelan los de panico
+    assert(call(c, 1, tech, 'call_release', { callId = 'av_000001' }).ok and c.game.inventory.calls().av_000001.status == 'open')
+    local restarted = fixture(c.core.files); assert(restarted.loaded, restarted.loadError)
+    assert(restarted.game.inventory.calls().av_000001.count == 2 and restarted.game.inventory.calls().av_000002.kind == 'tamper')
+    assert(not OSSecurity.InventoryState.call({ id = 'av_000009', kind = 'alarm', status = 'assigned', position = { x = 0, y = 0, z = 0 },
+        count = 1, createdAt = 1, updatedAt = 1 })) -- asignado sin tecnico
+    assert(not OSSecurity.InventoryState.call({ id = 'av_000009', kind = 'panic', status = 'open', position = { x = 0, y = 0, z = 0 },
+        count = 1, createdAt = 1, updatedAt = 1 })) -- panico sin cliente
+end)
+
 test('Character ownership: devices belong to the active character, so another character of the same account sees nothing', function()
     local e = externalItems(); e.characters = true
     local c = fixture(nil, e); assert(c.loaded, c.loadError)

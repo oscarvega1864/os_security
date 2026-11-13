@@ -48,6 +48,10 @@ function OSSecurity.StandaloneInventory.new(options)
         if not inventory.status() then return nil end
         return OSSecurity.Util.copy(data.orders or {})
     end
+    function inventory.calls()
+        if not inventory.status() then return nil end
+        return OSSecurity.Util.copy(data.calls or {})
+    end
     function inventory.doors()
         if not inventory.status() then return nil end
         return OSSecurity.Util.copy(data.doors or {})

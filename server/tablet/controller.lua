@@ -78,6 +78,22 @@ function OSSecurity.TabletController.new(options)
             result, reason = options.orders.release(actor, request.args)
         elseif actor.kind == 'operations' and request.action == 'order_bill' then
             result, reason = options.orders.bill(actor, request.args)
+        elseif actor.kind == 'client' and request.action == 'emergencies' and next(request.args) == nil then
+            result, reason = options.dispatch.clientList(actor)
+        elseif actor.kind == 'client' and request.action == 'panic' then
+            result, reason = options.dispatch.panic(actor, request.args)
+        elseif actor.kind == 'client' and request.action == 'panic_cancel' then
+            result, reason = options.dispatch.cancel(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'dispatch' and next(request.args) == nil then
+            result, reason = options.dispatch.staffList(actor)
+        elseif actor.kind == 'operations' and request.action == 'call_take' then
+            result, reason = options.dispatch.take(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'call_assign' then
+            result, reason = options.dispatch.assign(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'call_release' then
+            result, reason = options.dispatch.release(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'call_resolve' then
+            result, reason = options.dispatch.resolve(actor, request.args)
         elseif actor.kind == 'client' and request.action == 'doors' and next(request.args) == nil then
             result, reason = options.service.doors(actor)
         elseif actor.kind == 'client' and request.action == 'trackers' and next(request.args) == nil then

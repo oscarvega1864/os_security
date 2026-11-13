@@ -80,6 +80,24 @@ se muestran deshabilitados. No se crean tickets, contratos o vídeo ficticios.
 El historial mostrado en el detalle es la última intervención de componentes;
 el historial paginado completo sigue disponible en `osmaint history`.
 
+## Central de operaciones y Emergencias (0.15.0)
+
+`server/dispatch/service.lua` guarda los avisos en el inventario (`calls`, IDs `av_000001`), validados por
+`InventoryState.call`. Origen: salto de alarma (`alarm`), bloqueo del teclado por códigos (`tamper`) y botón de
+pánico (`panic`). Un salto repetido de la misma central con su aviso abierto incrementa `count`.
+
+| Acción | Tablet / perfil | Regla |
+| --- | --- | --- |
+| `emergencies`, `panic`, `panic_cancel` | Client | Aquí o en una propiedad propia; un pánico activo por cliente, `PanicCooldown` s entre avisos; solo cancela sus pánicos activos. |
+| `dispatch` | Operations | Activos por prioridad y cerrados de las últimas 24 h propios (supervisor/admin: todos). |
+| `call_take`, `call_release` | Técnico / admin | No se asigna su propio aviso; devolver solo si es suyo (o supervisor). |
+| `call_assign` | Supervisor / admin | Solo a personal G6 de servicio conectado y nunca al propio cliente. |
+| `call_resolve` | Asignado, supervisor o admin | Nota obligatoria; se notifica al cliente. |
+
+Los avisos llegan al personal de servicio (ACE profesional o empleo `gruppe6` de servicio) con punto en el mapa.
+El titular de la alarma recibe su aviso de siempre; el personal solo el de la central. Límites en
+`GameplayConfig.Dispatch`.
+
 ## Inventario standalone y persistencia
 
 Ítems distintos de tablet: `g6_client_tablet`, `g6_operations_tablet`.

@@ -131,6 +131,29 @@ function state.order(value)
     return true
 end
 
+-- Aviso de la central de operaciones (ver server/dispatch/service.lua).
+state.CallKinds = { alarm = true, tamper = true, panic = true }
+state.CallStatus = { open = true, assigned = true, resolved = true, cancelled = true }
+function state.callId(id)
+    return type(id) == 'string' and id:match('^av_%d%d%d%d%d%d$') ~= nil
+end
+function state.call(value)
+    local limits = OSSecurity.GameplayConfig.Dispatch
+    if not util.object(value, { id = true, kind = true, status = true, client = true, clientName = true, technician = true, techName = true,
+        deviceId = true, place = true, position = true, note = true, resolution = true, count = true, createdAt = true, updatedAt = true })
+        or not state.callId(value.id) or not state.CallKinds[value.kind] or not state.CallStatus[value.status]
+        or (value.client ~= nil and not identity.valid(value.client)) or (value.technician ~= nil and not identity.valid(value.technician))
+        or (value.deviceId ~= nil and not OSSecurity.DeviceValidation.id(value.deviceId))
+        or not shortText(value.clientName, 64) or not shortText(value.techName, 64) or not shortText(value.place, 80)
+        or not shortText(value.note, limits.NoteLength) or not shortText(value.resolution, limits.NoteLength)
+        or not state.vector(value.position, 1000000) or not util.integer(value.count, 1, limits.MaxRepeat)
+        or not util.integer(value.createdAt, 0, 253402300799) or not util.integer(value.updatedAt, 0, 253402300799) then return false end
+    -- Asignado exige tecnico; un panico siempre tiene cliente.
+    if value.status == 'assigned' and not value.technician then return false end
+    if value.kind == 'panic' and not value.client then return false end
+    return true
+end
+
 local function placement(value)
     return util.object(value, { id = true, anchorId = true, owner = true, installer = true, position = true,
         rotation = true, bucket = true, model = true, status = true, createdAt = true, updatedAt = true, deviceId = true, reason = true,
@@ -172,7 +195,8 @@ end
 local function operation(op, limits)
     if not util.object(op, { kind = true, at = true, principal = true, item = true, amount = true,
         deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true, site = true, alarm = true,
-        doorId = true, door = true, carId = true, car = true, anchorId = true, orderId = true, order = true, target = true })
+        doorId = true, door = true, carId = true, car = true, anchorId = true, orderId = true, order = true, target = true,
+        callId = true, call = true })
         or not util.integer(op.at, 0, 253402300799) then return false end
     local fields = { kind = true, at = true }
     if op.kind == 'grant' or op.kind == 'migrate' then
@@ -204,6 +228,10 @@ local function operation(op, limits)
         -- Sin 'order' se borra (limpieza de ordenes cerradas antiguas).
         fields.orderId, fields.order = true, true
         if not state.orderId(op.orderId) or (op.order ~= nil and (not state.order(op.order) or op.order.id ~= op.orderId)) then return false end
+    elseif op.kind == 'call' then
+        -- Sin 'call' se borra (limpieza de avisos cerrados antiguos).
+        fields.callId, fields.call = true, true
+        if not state.callId(op.callId) or (op.call ~= nil and (not state.call(op.call) or op.call.id ~= op.callId)) then return false end
     elseif op.kind == 'rehome' then
         -- Paso de datos de una cuenta (license) al personaje que los creo (char:...).
         fields.principal, fields.target = true, true
@@ -247,13 +275,14 @@ end
 function state.snapshot(snapshot, limits)
     if not util.object(snapshot, { schemaVersion = true, revision = true, nextInstallation = true,
         accounts = true, anchors = true, installations = true, lastOperation = true, sites = true, alarms = true, doors = true, cars = true, orders = true,
-        owners = true })
+        owners = true, calls = true })
         or snapshot.schemaVersion ~= 1 or not util.integer(snapshot.revision, 0, 9007199254740000)
         or not util.integer(snapshot.nextInstallation, 1, limits.MaxInstallations + 1)
         or not util.object(snapshot.accounts) or not util.object(snapshot.anchors) or not util.object(snapshot.installations)
         or (snapshot.sites ~= nil and not util.object(snapshot.sites)) or (snapshot.alarms ~= nil and not util.object(snapshot.alarms))
         or (snapshot.doors ~= nil and not util.object(snapshot.doors)) or (snapshot.cars ~= nil and not util.object(snapshot.cars))
         or (snapshot.orders ~= nil and not util.object(snapshot.orders)) or (snapshot.owners ~= nil and not util.object(snapshot.owners))
+        or (snapshot.calls ~= nil and not util.object(snapshot.calls))
         or (snapshot.revision == 0 and snapshot.lastOperation ~= nil)
         or (snapshot.revision > 0 and not operation(snapshot.lastOperation, limits)) then return nil, 'Formato de inventario incompatible.' end
     local count, deviceIds = 0, {}
@@ -334,6 +363,11 @@ function state.snapshot(snapshot, limits)
         orders = orders + 1
         if orders > OSSecurity.GameplayConfig.Orders.MaxOrders or not state.order(order) or order.id ~= orderId then return nil, 'Orden de trabajo invalida.' end
     end
+    local calls = 0
+    for callId, call in pairs(snapshot.calls or {}) do
+        calls = calls + 1
+        if calls > OSSecurity.GameplayConfig.Dispatch.MaxCalls or not state.call(call) or call.id ~= callId then return nil, 'Aviso de la central invalido.' end
+    end
     for doorId, door in pairs(snapshot.doors or {}) do
         count = count + 1
         if count > OSSecurity.GameplayConfig.Locks.MaxDoors or not state.door(door) or door.id ~= doorId then return nil, 'Puerta con cerradura invalida.' end
@@ -383,6 +417,15 @@ function state.apply(snapshot, op, limits)
         end
         nextState.orders[op.orderId] = op.order and util.copy(op.order) or nil
         if next(nextState.orders) == nil then nextState.orders = nil end
+    elseif op.kind == 'call' then
+        nextState.calls = nextState.calls or {}
+        if op.call and not nextState.calls[op.callId] then
+            local count = 0
+            for _ in pairs(nextState.calls) do count = count + 1 end
+            if count >= OSSecurity.GameplayConfig.Dispatch.MaxCalls then return nil, 'Limite de avisos de la central alcanzado.' end
+        end
+        nextState.calls[op.callId] = op.call and util.copy(op.call) or nil
+        if next(nextState.calls) == nil then nextState.calls = nil end
     elseif op.kind == 'rehome' then
         -- Todo lo de la cuenta pasa al personaje: objetos locales, concesiones, zonas, instalaciones y
         -- solicitudes. Los dispositivos del registro no cambian (es historico); su titular nuevo queda en 'owners'.
@@ -417,6 +460,10 @@ function state.apply(snapshot, op, limits)
         for _, order in pairs(nextState.orders or {}) do
             if order.client == from then order.client = to end
             if order.technician == from then order.technician = to end
+        end
+        for _, call in pairs(nextState.calls or {}) do
+            if call.client == from then call.client = to end
+            if call.technician == from then call.technician = to end
         end
     elseif op.kind == 'door' then
         nextState.doors = nextState.doors or {}
