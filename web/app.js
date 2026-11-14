@@ -412,6 +412,7 @@
     const card = el('article', null, `card call-card call-${kind} status-${status}`);
     const head = el('div', null, 'card-head');
     head.append(el('strong', D.kinds?.[call.kind] || call.kind), el('span', D.status?.[call.status] || call.status, `badge call-status-${status}`));
+    if (call.contract === true) head.append(el('span', group('contracts').contractBadge || 'Contrato', 'badge contract-badge'));
     card.append(head, el('div', `${call.id} · ${date(call.createdAt)}${call.count > 1 ? ' · ' + format(D.times, call.count) : ''}`, 'subtle'));
     if (call.note) card.append(el('p', call.note, 'order-note'));
     const facts = [call.place, call.distance != null ? format(D.distance, call.distance) : null, call.techName ? `${D.tech}: ${call.techName}` : null,

@@ -222,3 +222,4 @@ select{font:inherit;font-size:11px;color:var(--ink);background:var(--surface);bo
 .cp-entry.kind-weapon .cp-entry-name{color:#e0866a;font-weight:700}.cp-entry.metal .cp-entry-name::after{content:' ⚙';color:#d8b45a}
 .cp-retain{font-size:10px;color:#a2b1a6}.cp-status{font-size:11px;color:#d8b45a;min-height:14px;margin-bottom:8px}
 .cp-retain-list{margin:0 0 12px;padding:8px 12px 8px 26px;max-height:180px;overflow:auto;border-radius:8px;background:#0b1210;border:1px solid #2c3d33;font-size:13px;line-height:1.6;color:#edf3e8}
+.badge.contract-badge{color:#5aa0d8;border-color:#5aa0d877}

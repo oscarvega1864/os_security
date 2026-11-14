@@ -72,7 +72,7 @@ async function main() {
               {id:'av_000001',kind:'alarm',status:'resolved',place:'Propiedad 200',resolution:'Falsa alarma: el gato',count:2,createdAt:1762600000,updatedAt:1762600100}]};
           else if(body.action==='dispatch') result.data={canTake:window.__mode==='operations'&&window.__role!=='supervisor',canAssign:window.__role==='supervisor',noteLength:140,
             crew:window.__role==='supervisor'?[{id:1,name:'oscar_vega'},{id:3,name:'jefa',self:true}]:[],
-            items:[{id:'av_000003',kind:'panic',status:'open',priority:1,note:'Me siguen',place:'Ubicacion del cliente',clientName:'segundo · amigo',distance:340,count:1,position:{x:7,y:8,z:9},createdAt:1762700000,updatedAt:1762700000},
+            items:[{id:'av_000003',kind:'panic',status:'open',priority:1,contract:true,note:'Me siguen',place:'Ubicacion del cliente',clientName:'segundo · amigo',distance:340,count:1,position:{x:7,y:8,z:9},createdAt:1762700000,updatedAt:1762700000},
               {id:'av_000001',kind:'alarm',status:'assigned',priority:2,mine:window.__role!=='supervisor',place:'Propiedad 200',clientName:'oscar',techName:'oscar_vega',distance:12,count:3,position:{x:1,y:2,z:3},createdAt:1762600000,updatedAt:1762600000}]};
           else if(body.action==='doors') result.data={items:[{id:'p200_1',site:'Propiedad 200',tier:'Bombin de serie',level:1,locked:true}]};
           else if(body.action==='trackers') result.data={items:[{plate:'OS000012',lock:true,alarm:true,locked:true,sounding:false,position:{x:10.4,y:-20.2,z:30}}]};
@@ -273,6 +273,7 @@ async function main() {
     await evaluate(`document.querySelector('.call-note').value='Cristal roto, sin intrusos'; Array.from(document.querySelectorAll('.call-card')[1].querySelectorAll('button')).find(b=>b.textContent==='Cerrar aviso').click()`);
     await until(`window.__calls.some(x=>x.body.action==='call_resolve' && x.body.args.callId==='av_000001' && x.body.args.note==='Cristal roto, sin intrusos')`);
     fs.writeFileSync(path.join(output, 'dispatch.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    assert(await evaluate(`document.querySelector('.call-card .contract-badge')?.textContent === 'Contrato'`), 'Contract calls are marked in the Central');
     console.log('PASS Central: take a call with GPS and close own calls with a note');
     await evaluate(`window.__open('operations','supervisor')`);
     await until(`document.querySelector('.profile.role-supervisor') && document.querySelectorAll('.ability').length===3`);
