@@ -113,6 +113,19 @@ inventario, validados por `InventoryState.detector/custody`. Requiere el inventa
   `Retainable` (más armas) → custodia. `/custodia`: el dueño, a `PickupDistance` del sitio, mismo personaje.
 - Armas: informadas por el cliente del propio jugador y filtradas por `shared/weapons.lua`.
 
+## Sistema de la tablet: inicio, buscador, mapa y avisos (0.17.0)
+
+- `web/os.js` dibuja el sistema (barra de estado, inicio, widgets, dock, buscador, mapa y centro de avisos);
+  `web/app.js` sigue llevando la sesion, las peticiones y cada seccion (que ahora se abre como app).
+- `server/tablet/home.lua` responde a dos acciones nuevas de la tablet (Client y Operations, no Inventario):
+  - `home` (sin argumentos): recuentos, lista «Requiere atencion» (maximo 8) y puntos del mapa (maximo 200).
+  - `search` (`query` de 2 a 40 caracteres): hasta 25 resultados.
+  Ambas reutilizan los listados que ya filtran por perfil: dispositivos accesibles (`service.accessible`), ordenes y
+  avisos del actor y vehiculos propios. No dan acceso a nada que la tablet no mostrase ya en su seccion.
+- Avisos en vivo: el cliente reenvia a la tablet abierta cada `os_security:alarm:alert` (mensaje NUI `notice`).
+  Cada segundo envia `status` con la hora del juego y la posicion del jugador (marcador del mapa).
+- El mapa es esquematico (contorno dibujado a mano, sin imagenes del juego); la posicion exacta la da el GPS.
+
 ## Inventario standalone y persistencia
 
 Ítems distintos de tablet: `g6_client_tablet`, `g6_operations_tablet`.

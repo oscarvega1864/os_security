@@ -76,19 +76,50 @@ async function main() {
               {id:'av_000001',kind:'alarm',status:'assigned',priority:2,mine:window.__role!=='supervisor',place:'Propiedad 200',clientName:'oscar',techName:'oscar_vega',distance:12,count:3,position:{x:1,y:2,z:3},createdAt:1762600000,updatedAt:1762600000}]};
           else if(body.action==='doors') result.data={items:[{id:'p200_1',site:'Propiedad 200',tier:'Bombin de serie',level:1,locked:true}]};
           else if(body.action==='trackers') result.data={items:[{plate:'OS000012',lock:true,alarm:true,locked:true,sounding:false,position:{x:10.4,y:-20.2,z:30}}]};
+          else if(body.action==='home') result.data={counts:{devices:3,ok:2,attention:1,live:1,armed:1,triggered:1,orders:2,ordersOpen:1,ordersMine:1,calls:1,callsMine:0,cars:1,carsAlarm:0},
+            attention:[{kind:'device',id:'osd_0000000001',title:'G6-D · osd_0000000001',subtitle:'<img src=x onerror="window.__xss=true">',reason:'triggered'},{kind:'call',id:'av_000003',title:'av_000003',subtitle:'Vinewood',reason:'panic'}],
+            points:[{kind:'device',id:'osd_0000000001',x:-620,y:240,label:'G6-D · osd_0000000001',subtitle:'Propiedad 200',state:'triggered'},{kind:'call',id:'av_000003',x:-400,y:1000,label:'av_000003',subtitle:'Vinewood',state:'panic'}]};
+          else if(body.action==='search') result.data={query:body.args.query,items:[{kind:'device',id:'osd_0000000001',title:'G6-D · osd_0000000001',subtitle:'Propiedad 200',type:'cctv_camera',state:'active'},{kind:'call',id:'av_000003',title:'av_000003',subtitle:'Vinewood',state:'open'}]};
           else if(body.action==='incidents') result.data={items:[{at:1762700000,kind:'triggered',device:'G6-D · osd_0000000009',deviceId:'osd_0000000009',site:'Propiedad 200'}]};
         }
         return new Response(JSON.stringify(result),{status:200,headers:{'Content-Type':'application/json'}});
       };
-      window.__open = (kind, role) => { window.__mode=kind; window.__role=role||(kind==='operations'?'technician':'client'); window.__device.actions=kind==='operations'?{inspect:true,repair:true,replace:true}:{};
+      window.__open = (kind, role, module = 'overview') => { window.__mode=kind; window.__role=role||(kind==='operations'?'technician':'client'); window.__device.actions=kind==='operations'?{inspect:true,repair:true,replace:true}:{};
         const supervisor=role==='supervisor';
         window.postMessage({type:'open',session:{kind,role:kind==='operations'?(role||'technician'):'client',profile:kind==='operations'?(supervisor?'Supervisor':'Tecnico'):'Cliente',
           abilities:kind==='operations'?(supervisor?['view','inspect','beginMaintenance']:['view','inspect','repair','replace','provision','install']):[],
-          employeeId:kind==='operations'?'G6-E-TEST':null,canInstall:kind==='operations'&&!supervisor,expires:Math.floor(Date.now()/1000)+90,brand:window.__brand}},'*'); };
+          employeeId:kind==='operations'?'G6-E-TEST':null,module:module||undefined,canInstall:kind==='operations'&&!supervisor,expires:Math.floor(Date.now()/1000)+90,brand:window.__brand}},'*'); };
     ` });
     await send('Page.navigate', { url: pathToFileURL(path.join(root, 'web/index.html')).href });
     await until(`document.readyState==='complete' && document.getElementById('app')?.hidden===true && typeof window.__open==='function'`);
     console.log('PASS UI remains hidden before an authorized session message');
+    // Pantalla de inicio: widgets, apps, dock, buscador, mapa y avisos en vivo.
+    await evaluate(`window.__open('client', null, null)`);
+    await until(`!document.getElementById('home').hidden && document.querySelectorAll('.widget-value').length>=4 && document.querySelector('.widget-value').textContent==='3'`);
+    assert(await evaluate(`document.getElementById('window').hidden && document.querySelectorAll('#dock .dock-app').length===4 && Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent==='Mapa')`));
+    assert(await evaluate(`document.querySelectorAll('.attention-row').length===2 && document.querySelector('.attention-row').textContent.includes('Alarma sonando') && document.querySelector('img')===null && window.__xss!==true`));
+    await evaluate(`document.getElementById('search-open').click(); const i=document.getElementById('search-input'); i.value='osd'; i.dispatchEvent(new Event('input'))`);
+    await until(`document.querySelectorAll('.search-result').length===2`);
+    assert(await evaluate(`window.__calls.some(x=>x.body.action==='search' && x.body.args.query==='osd')`));
+    await evaluate(`document.querySelector('.search-result').click()`);
+    await until(`document.getElementById('spotlight').hidden && !document.getElementById('window').hidden && window.__calls.some(x=>x.body.action==='device' && x.body.args.deviceId==='osd_0000000001')`);
+    console.log('PASS home: widgets and attention from the server, search opens the device found');
+    await evaluate(`document.getElementById('home-bar').click()`); await until(`!document.getElementById('home').hidden && document.getElementById('window').hidden`);
+    await evaluate(`window.postMessage({type:'notice',text:'<b>Salta la alarma</b>',kind:'error',position:{x:1,y:2}},'*')`);
+    await until(`document.querySelector('.toast.kind-error') && !document.getElementById('bell-count').hidden`);
+    assert(await evaluate(`document.querySelector('.toast').textContent.includes('<b>Salta la alarma</b>') && !document.querySelector('.toast b')`));
+    await evaluate(`document.getElementById('bell').click()`); await until(`!document.getElementById('notice-center').hidden && document.querySelectorAll('.nc-item').length===1 && document.getElementById('bell-count').hidden`);
+    await evaluate(`window.__calls.length=0; document.querySelector('.nc-item button').click()`); await until(`window.__calls.some(x=>x.endpoint==='waypoint' && x.body.x===1 && x.body.y===2)`);
+    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`); await until(`document.getElementById('notice-center').hidden && !document.getElementById('app').hidden`);
+    console.log('PASS live notices: toast, unread badge, notice center with GPS; Escape closes the overlay first');
+    await evaluate(`window.postMessage({type:'status',clock:{h:7,m:5},position:{x:-500,y:300}},'*')`); await until(`document.getElementById('clock').textContent==='07:05'`);
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Mapa').click()`);
+    await until(`document.querySelectorAll('.map-point').length===2 && document.querySelector('.map-you').style.display!=='none'`);
+    await evaluate(`window.__calls.length=0; document.querySelector('.map-point.kind-call').dispatchEvent(new MouseEvent('click',{bubbles:true}))`);
+    await until(`!document.querySelector('.map-popup').hidden`);
+    await evaluate(`document.querySelector('.map-popup .primary').click()`); await until(`window.__calls.some(x=>x.endpoint==='waypoint' && x.body.x===-400 && x.body.y===1000)`);
+    fs.writeFileSync(path.join(output, 'map.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    console.log('PASS map: status bar clock, player marker and points that mark the GPS');
     await evaluate(`window.__open('client')`);
     await until(`document.querySelectorAll('.card').length===1`);
     assert(await evaluate(`document.getElementById('edition').textContent==='G6 Client' && !document.querySelector('.tablet.operations')`));

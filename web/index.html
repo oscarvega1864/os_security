@@ -6,6 +6,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://*; img-src 'self'; base-uri 'none'; object-src 'none'">
   <title>Gruppe Sechs</title>
   <link rel="stylesheet" href="style.css">
+  <script src="os.js" defer></script>
   <script src="app.js" defer></script>
   <script src="minigame.js" defer></script>
   <script src="pinpad.js" defer></script>
@@ -19,18 +20,39 @@
 </head>
 <body>
   <main id="app" class="tablet" hidden aria-label="Gruppe Sechs">
-    <aside class="sidebar">
-      <div class="brand-lockup"><div id="monogram" class="monogram"></div><div><div id="brand" class="brand-name"></div><div id="edition" class="edition"></div></div></div>
-      <div id="profile" class="profile"></div>
-      <nav id="navigation" aria-label="Modulos"></nav>
-      <div class="sidebar-footer"><span class="status-dot"></span><span id="session-label"></span><small id="expiry"></small></div>
-    </aside>
-    <section class="workspace">
-      <header class="toolbar"><div><span id="overline" class="overline"></span><h1 id="heading"></h1></div><div class="toolbar-actions"><button id="refresh" class="quiet" type="button"></button><button id="close" class="close" type="button"></button></div></header>
-      <div id="message" class="message" role="status" hidden></div>
-      <div id="content" class="content"></div>
-      <footer class="page-footer"><span id="footer-label"></span><div><button id="previous" type="button"></button><span id="page-label"></span><button id="next" type="button"></button></div></footer>
-    </section>
+    <div class="screen">
+      <header class="statusbar">
+        <span id="clock" class="sb-clock"></span>
+        <span class="sb-brand"><span id="monogram" class="monogram"></span><span id="brand" class="brand-name"></span><span id="edition" class="edition"></span></span>
+        <span class="sb-right">
+          <button id="bell" class="sb-bell" type="button" aria-label="Avisos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4zM10 20a2 2 0 004 0"/></svg><span id="bell-count" class="sb-badge" hidden></span></button>
+          <span class="sb-signal" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span class="sb-battery" aria-hidden="true"><i></i></span>
+          <button id="close" class="close" type="button"></button>
+        </span>
+      </header>
+      <section id="home" class="home">
+        <div class="home-head">
+          <div><div id="greeting" class="greeting"></div><div id="profile" class="profile"></div><div class="session-line"><span class="status-dot"></span><span id="session-label"></span> <small id="expiry"></small></div></div>
+          <button id="search-open" class="search-pill" type="button"></button>
+        </div>
+        <div id="widgets" class="widgets"></div>
+        <div id="apps-title" class="overline apps-title"></div>
+        <nav id="navigation" class="springboard" aria-label="Aplicaciones"></nav>
+        <div id="attention" class="attention-box"></div>
+      </section>
+      <section id="window" class="workspace" hidden>
+        <header class="toolbar"><button id="home-button" class="back" type="button"></button><div class="titles"><span id="overline" class="overline"></span><h1 id="heading"></h1></div><div class="toolbar-actions"><button id="refresh" class="quiet" type="button"></button></div></header>
+        <div id="message" class="message" role="status" hidden></div>
+        <div id="content" class="content"></div>
+        <footer class="page-footer"><span id="footer-label"></span><div><button id="previous" type="button"></button><span id="page-label"></span><button id="next" type="button"></button></div></footer>
+      </section>
+      <div id="dock" class="dock"></div>
+      <div id="spotlight" class="spotlight" hidden><div class="spotlight-box"><div class="spotlight-bar"><input id="search-input" type="search" maxlength="40" autocomplete="off"><button id="search-close" type="button"></button></div><div id="search-results" class="search-results"></div></div></div>
+      <aside id="notice-center" class="notice-center" hidden><div class="nc-head"><strong id="notice-title"></strong><button id="notice-clear" class="quiet" type="button"></button></div><div id="notice-list" class="nc-list"></div></aside>
+      <div id="toasts" class="toasts" aria-live="polite"></div>
+      <button id="home-bar" class="home-bar" type="button" aria-label="Inicio"></button>
+    </div>
   </main>
   <div id="minigame" class="minigame" hidden aria-live="polite"></div>
   <div id="cylinder" class="minigame" hidden aria-live="polite"></div>

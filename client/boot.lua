@@ -117,7 +117,7 @@ RegisterNUICallback('waypoint', function(body, callback)
     callback({ ok = true })
     if type(body) == 'table' and type(body.x) == 'number' and type(body.y) == 'number' then
         SetNewWaypoint(body.x + 0.0, body.y + 0.0)
-        OSSecurity.Notify('Vehiculo marcado en el GPS.', 'info')
+        OSSecurity.Notify(OSSecurity.Brand.Text.home and OSSecurity.Brand.Text.home.gpsMarked or 'Marcado en el GPS.', 'info')
     end
 end)
 
@@ -132,7 +132,7 @@ RegisterNUICallback('request', function(body, callback)
     elseif ({ inventory = true, devices = true, device = true, maintain = true, alarm = true, doors = true, trackers = true, incidents = true,
         zones = true, zone_delete = true, requests = true, request_create = true, request_cancel = true, request_pay = true,
         orders = true, order_accept = true, order_release = true, order_bill = true,
-        emergencies = true, panic = true, panic_cancel = true, dispatch = true, call_take = true, call_assign = true,
+        home = true, search = true, emergencies = true, panic = true, panic_cancel = true, dispatch = true, call_take = true, call_assign = true,
         call_release = true, call_resolve = true })[body.action] then controller.request(body.action, body.args, callback)
     else callback({ ok = false, error = OSSecurity.Brand.Text.unavailable }) end
 end)
@@ -144,7 +144,12 @@ CreateThread(function()
         if (controller.visible or controller.placing) and IsEntityDead(PlayerPedId()) then minigame.cancel(); controller.close() end
         if controller.visible then
             if GetGameTimer() - lastUiAlive > 12000 then controller.close()
-            else SendNUIMessage({ type = 'ping' }) end
+            else
+                SendNUIMessage({ type = 'ping' })
+                -- Barra de estado (hora del juego) y "estas aqui" del mapa.
+                local here = GetEntityCoords(PlayerPedId())
+                SendNUIMessage({ type = 'status', clock = { h = GetClockHours(), m = GetClockMinutes() }, position = { x = here.x, y = here.y } })
+            end
         end
         if GetGameTimer() - lastHeartbeat >= 30000 then lastHeartbeat = GetGameTimer(); controller.heartbeat() end
     end
@@ -163,7 +168,15 @@ RegisterNetEvent('os_security:alarm:panelData', function(data, err) if source ==
 RegisterNetEvent('os_security:alarm:result', function(result, err, panel) if source == 65535 then alarms.result(result, err, panel) end end)
 RegisterNetEvent('os_security:alarm:entry', function(deviceId, seconds) if source == 65535 and type(seconds) == 'number' then alarms.entry(deviceId, seconds) end end)
 RegisterNetEvent('os_security:alarm:siren', function(deviceId, position) if source == 65535 then alarms.siren(deviceId, position) end end)
-RegisterNetEvent('os_security:alarm:alert', function(text, kind, position) if source == 65535 and type(text) == 'string' then alarms.alert(text, kind, position) end end)
+RegisterNetEvent('os_security:alarm:alert', function(text, kind, position)
+    if source ~= 65535 or type(text) ~= 'string' then return end
+    alarms.alert(text, kind, position)
+    -- Con la tablet abierta el aviso aparece tambien dentro (centro de avisos y resumen al dia).
+    if controller.visible then
+        local at = type(position) == 'table' and type(position.x) == 'number' and type(position.y) == 'number' and { x = position.x, y = position.y } or nil
+        SendNUIMessage({ type = 'notice', text = text, kind = type(kind) == 'string' and kind or 'info', position = at })
+    end
+end)
 RegisterNUICallback('pinpad', function(body, callback)
     callback({ ok = true })
     if not alarms.open or type(body) ~= 'table' then return end

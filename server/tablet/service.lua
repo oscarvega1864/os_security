@@ -111,6 +111,26 @@ function OSSecurity.TabletService.new(options)
         end
         return accessible
     end
+    service.accessible = accessibleDevices
+    -- Ficha ligera para la pantalla de inicio, el buscador y el mapa (sin historial de servicio).
+    function service.brief(device, snapshot)
+        local site = options.inventory.site(device.id)
+        local installationId = device.metadata and device.metadata.installationId
+        local installation = installationId and snapshot and snapshot.installations[installationId]
+        local physical = installation ~= nil and installation.status == 'committed' and installation.deviceId == device.id
+        local alarm = device.type == 'alarm_panel' and options.alarms and options.alarms.summary(device) or nil
+        return { id = device.id, displayId = OSSecurity.Brand.DevicePrefix .. ' · ' .. device.id, type = device.type, model = device.model,
+            state = device.state, health = OSSecurity.ComponentLifecycle.diagnose(device).health,
+            site = site and (options.sites and options.sites.label(site) or OSSecurity.Sites.Labels[site.kind] .. ' ' .. site.id) or nil,
+            position = physical and util.copy(installation.position) or nil,
+            alarmMode = alarm and alarm.mode or nil, triggered = alarm and alarm.triggered or nil,
+            live = device.type == 'cctv_camera' and signal(device, snapshot) ~= nil or nil }
+    end
+    -- Vehiculos del cliente con equipo G6 (para el resumen y el mapa).
+    function service.cars(actor)
+        if actor.kind ~= 'client' or not options.cars or not options.cars.owned then return {} end
+        return options.cars.owned(actor.source) or {}
+    end
     -- Modulos que no son listas de dispositivos: tienen su propia accion.
     local OWN_ACTION = { locks = true, trackers = true, incidents = true, installations = true, inventory = true, requests = true, work_orders = true,
         emergencies = true, dispatch = true }

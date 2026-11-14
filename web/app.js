@@ -1,12 +1,13 @@
 (() => {
   'use strict';
-  const state = { session: null, module: 'overview', offset: 0, total: 0, limit: 12, selected: null, epoch: 0, busy: false };
+  const state = { session: null, module: 'overview', offset: 0, total: 0, limit: 12, selected: null, epoch: 0, busy: false, view: 'home', modules: [] };
   const byId = id => document.getElementById(id);
   const app = byId('app');
   const text = key => state.session?.brand?.Text?.[key] || key;
   const el = (tag, value, className) => { const node = document.createElement(tag); if (value != null) node.textContent = String(value); if (className) node.className = className; return node; };
   const labelState = value => state.session?.brand?.Text?.states?.[value] || value;
   const date = value => Number.isFinite(value) ? new Date(value * 1000).toLocaleString('es-ES') : '—';
+  const typeLabel = value => state.session?.brand?.Text?.deviceTypes?.[value] || value;
   const health = value => Number.isFinite(value) ? `${value.toFixed(1)}%` : '—';
   const resource = () => typeof GetParentResourceName === 'function' ? GetParentResourceName() : 'os_security';
 
@@ -40,8 +41,10 @@
     state.epoch++; state.busy = false; app.hidden = true;
     post('close', {}).catch(() => {}); state.session = null;
   }
+  // Sistema de la tablet (web/os.js): inicio, dock, buscador, mapa y avisos.
+  const os = window.G6OS({ state, byId, el, button, request, post, text, openApp, goHome, goto, modules: () => state.modules });
   // Secciones con vista propia (no son listas paginadas de dispositivos).
-  const OWN_VIEWS = ['inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
+  const OWN_VIEWS = ['map', 'inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
   function pagination() {
     const enabled = !state.selected && !OWN_VIEWS.includes(state.module);
     byId('previous').disabled = !enabled || state.offset === 0;
@@ -94,7 +97,7 @@
     const device = await request('device', { deviceId: id }); if (!device) return;
     state.selected = id;
     const content = byId('content'); content.replaceChildren(button(text('back'), () => { state.selected = null; refresh(); }));
-    content.append(el('h2', device.displayId, 'detail-title'), el('div', device.type, 'subtle'));
+    content.append(el('h2', device.displayId, 'detail-title'), el('div', typeLabel(device.type), 'subtle'));
     if (typeof device.site === 'string') content.append(el('div', device.site, 'site'));
     const meta = el('div', null, 'detail-meta');
     for (const [title, value] of [[text('state'), labelState(device.state)], [text('model'), device.model], [text('health'), health(device.health)], [text('history'), device.lastIntervention ? `${device.lastIntervention.kind} · ${date(device.lastIntervention.at)}` : text('noHistory')]]) {
@@ -426,9 +429,11 @@
   async function refresh() {
     if (!state.session || state.busy) return;
     if (state.selected) { await showDevice(state.selected); return; }
+    if (state.view === 'home') { await os.renderHome(); return; }
     const content = byId('content'); content.replaceChildren();
     const module = (state.session.brand.Modules[state.session.kind] || []).find(item => item.id === state.module);
-    byId('heading').textContent = module?.name || text('inventory');
+    byId('heading').textContent = state.module === 'map' ? (state.session.brand.Text.home?.map || 'Mapa') : module?.name || text('inventory');
+    if (state.module === 'map') { await os.mapView(content); pagination(); return; }
     if (state.session.kind === 'inventory' || state.module === 'inventory') {
       await inventory(content); pagination(); return;
     }
@@ -441,7 +446,7 @@
     for (const device of data.items) {
       const card = el('article', null, 'card'); const head = el('div', null, 'card-head');
       head.append(el('span', null, 'device-symbol'), el('span', labelState(device.state), 'badge'));
-      card.append(head, el('h3', device.displayId), el('div', `${device.type} · ${device.model}`, 'subtle'), el('div', text(device.physical ? 'installed' : 'logical'), 'subtle'));
+      card.append(head, el('h3', device.displayId), el('div', `${typeLabel(device.type)} · ${device.model}`, 'subtle'), el('div', text(device.physical ? 'installed' : 'logical'), 'subtle'));
       if (typeof device.site === 'string') card.append(el('div', device.site, 'site'));
       const bar = el('div', null, 'health-line'); const fill = el('span'); fill.style.width = `${Number.isFinite(device.health) ? Math.min(100, Math.max(0, device.health)) : 0}%`; bar.append(fill); card.append(bar);
       const footer = el('div', null, 'card-footer'); footer.append(el('span', `${text('health')} ${health(device.health)}`, 'subtle'));
@@ -451,6 +456,28 @@
       footer.append(buttons); card.append(footer); grid.append(card);
     }
     content.append(data.items.length ? grid : el('div', text('empty'), 'empty')); pagination();
+  }
+  // Pantalla de inicio y apps a pantalla completa.
+  function show(view) {
+    state.view = view; byId('home').hidden = view !== 'home'; byId('window').hidden = view === 'home';
+    for (const child of byId('navigation').children) child.classList.toggle('selected', view !== 'home' && child.dataset.app === state.module);
+  }
+  function openApp(id, selected = null) {
+    if (!state.session || state.busy) return;
+    state.module = id; state.offset = 0; state.selected = selected; message(''); show('app');
+    byId('content').scrollTop = 0; refresh();
+  }
+  function goHome() {
+    if (!state.session || state.busy || state.session.kind === 'inventory') return;
+    state.selected = null; message(''); show('home'); refresh();
+  }
+  // Ir a un resultado del buscador, del mapa o de "Requiere atencion".
+  function goto(item) {
+    const client = state.session?.kind === 'client';
+    if (item.kind === 'device') openApp('overview', item.id);
+    else if (item.kind === 'order') openApp(client ? 'requests' : 'work_orders');
+    else if (item.kind === 'call') openApp(client ? 'emergencies' : 'dispatch');
+    else if (item.kind === 'car') openApp('trackers');
   }
   function open(session) {
     if (!session?.brand || !['client', 'operations', 'inventory'].includes(session.kind)) return;
@@ -467,19 +494,21 @@
     if (session.employeeId) profile.append(el('span', ` · ${session.employeeId}`));
     profile.className = `profile role-${/^[a-z]+$/.test(session.role || '') ? session.role : 'none'}`;
     for (const id of ['refresh', 'close', 'previous', 'next']) byId(id).textContent = text(id);
-    byId('session-label').textContent = text('session'); byId('footer-label').textContent = brand.Name;
+    byId('home-button').replaceChildren(os.icon('home'), el('span', brand.Text.home?.back || text('back')));
+    byId('session-label').textContent = brand.Text.home?.session || text('session'); byId('footer-label').textContent = brand.Name;
     byId('expiry').textContent = date(session.expires);
     const navigation = byId('navigation'); navigation.replaceChildren();
     const abilities = new Set(Array.isArray(session.abilities) ? session.abilities : []);
     const modules = session.kind === 'inventory' ? [{ id: 'inventory', name: text('inventory'), implemented: true }]
       : (brand.Modules[session.kind] || []).filter(module => module.implemented && (!module.requires || abilities.has(module.requires)));
-    if (typeof session.module === 'string' && modules.some(module => module.id === session.module)) state.module = session.module;
-    for (const module of modules) {
-      const nav = button(module.name, () => { state.module = module.id; state.offset = 0; state.selected = null; for (const child of navigation.children) child.classList.remove('selected'); nav.classList.add('selected'); refresh(); });
-      if (module.id === state.module) nav.classList.add('selected');
-      navigation.append(nav);
-    }
-    refresh();
+    state.modules = modules;
+    for (const module of modules) navigation.append(os.appButton(module.id, module.name, () => openApp(module.id)));
+    if (session.kind !== 'inventory') navigation.append(os.appButton('map', brand.Text.home?.map || 'Mapa', () => openApp('map')));
+    os.reset(session);
+    const wanted = typeof session.module === 'string' && (modules.some(module => module.id === session.module) || (session.module === 'map' && session.kind !== 'inventory')) ? session.module : null;
+    if (session.kind === 'inventory') { state.module = 'inventory'; show('app'); refresh(); }
+    else if (wanted) { state.module = wanted; show('app'); refresh(); }
+    else { show('home'); refresh(); }
   }
   // Visor de camara para marcar zonas: encuadre, REC, datos de la zona y destello al hacer la foto.
   let viewfinderTimer = null;
@@ -510,13 +539,16 @@
   byId('close').addEventListener('click', close); byId('refresh').addEventListener('click', refresh);
   byId('previous').addEventListener('click', () => { if (!state.busy && state.offset) { state.offset = Math.max(0, state.offset - state.limit); refresh(); } });
   byId('next').addEventListener('click', () => { if (!state.busy && state.offset + state.limit < state.total) { state.offset += state.limit; refresh(); } });
-  window.addEventListener('keydown', event => { if (event.key === 'Escape' && !app.hidden) close(); });
+  window.addEventListener('keydown', event => { if (event.key === 'Escape' && !app.hidden && !os.closeOverlays()) close(); });
+  os.mount();
   window.addEventListener('message', event => {
     if (event.data?.type === 'open') open(event.data.session);
     else if (event.data?.type === 'close') { state.epoch++; state.busy = false; state.session = null; app.hidden = true; }
     else if (event.data?.type === 'expiry') byId('expiry').textContent = date(event.data.expires);
     else if (event.data?.type === 'ping') post('alive', { visible: !app.hidden }).catch(() => {});
     else if (event.data?.type === 'viewfinder') viewfinder(event.data);
+    else if (event.data?.type === 'notice' && !app.hidden) os.notice(event.data);
+    else if (event.data?.type === 'status' && !app.hidden) os.status(event.data);
   });
   window.addEventListener('error', () => { if (!app.hidden) close(); });
 })();

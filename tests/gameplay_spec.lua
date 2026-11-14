@@ -1793,3 +1793,36 @@ test('Character ownership: on start, account data moves to the only character th
     e.holders[1] = 'oschar_0000000009'; e.give(1, 'g6_client_tablet'); again.aces[1][config.Ace.client] = true
     assert(call(again, 1, open(again, 1, 'client'), 'devices', { offset = 0 }).data.total == 0)
 end)
+
+-- Inicio de la tablet: resumen, mapa y buscador ---------------------------------------------------------
+test('Tablet home: the summary and the map show only what each profile can see, calls need attention, search finds devices and calls', function()
+    local c = fixture(); assert(c.loaded, c.loadError); kit(c); anchor(c)
+    local tech = open(c, 1, 'operations')
+    assert(call(c, 1, tech, 'place_begin').ok)
+    local placed = call(c, 1, tech, 'place_confirm', proposal()); assert(placed.ok, placed.error)
+    local home = call(c, 1, tech, 'home'); assert(home.ok, home.error)
+    assert(home.data.counts.devices == 1 and home.data.counts.ok == 1 and home.data.counts.attention == 0 and #home.data.attention == 0)
+    assert(#home.data.points == 1 and home.data.points[1].kind == 'device' and home.data.points[1].id == placed.data.id and home.data.points[1].x == 1)
+    assert(not call(c, 1, tech, 'home', { extra = true }).ok) -- sin argumentos
+    -- El cliente titular ve su dispositivo; quien no tiene acceso no ve nada.
+    grant(c, 2, 'g6_client_tablet'); grant(c, 5, 'g6_client_tablet'); c.aces[5][config.Ace.client] = true
+    c.players[2].point = { x = 120, y = 40, z = 30 }
+    local client = open(c, 2, 'client')
+    local mine = call(c, 2, client, 'home'); assert(mine.ok and mine.data.counts.devices == 1)
+    local stranger = call(c, 5, open(c, 5, 'client'), 'home'); assert(stranger.ok and stranger.data.counts.devices == 0 and #stranger.data.points == 0)
+    -- Un aviso de panico: aparece en el resumen y en el mapa de la central.
+    assert(call(c, 2, client, 'panic', { place = 'here', note = 'Ruido en el garaje' }).ok)
+    home = call(c, 1, tech, 'home'); assert(home.ok)
+    assert(home.data.counts.calls == 1 and home.data.attention[1].kind == 'call' and home.data.attention[1].reason == 'panic')
+    local onMap = false; for _, point in ipairs(home.data.points) do if point.kind == 'call' and point.x == 120 then onMap = true end end
+    assert(onMap)
+    assert(call(c, 2, client, 'home').data.counts.calls == 1) -- el cliente ve su propio aviso en curso
+    -- Buscador: dispositivo por identificador o tipo, aviso por nota; limites de la consulta.
+    local found = call(c, 1, tech, 'search', { query = placed.data.id }); assert(found.ok, found.error)
+    assert(#found.data.items == 1 and found.data.items[1].kind == 'device' and found.data.items[1].position.x == 1)
+    assert(call(c, 1, tech, 'search', { query = 'CAMARA' }).data.items[1].id == placed.data.id) -- por tipo, sin distinguir mayusculas
+    local byNote = call(c, 1, tech, 'search', { query = 'garaje' }); assert(byNote.ok and byNote.data.items[1].kind == 'call')
+    assert(not call(c, 1, tech, 'search', { query = 'a' }).ok and not call(c, 1, tech, 'search', { query = ('x'):rep(41) }).ok)
+    assert(not call(c, 1, tech, 'search', { query = 7 }).ok and not call(c, 1, tech, 'search', { query = 'ab', other = 1 }).ok)
+    assert(#call(c, 5, open(c, 5, 'client'), 'search', { query = 'camara' }).data.items == 0) -- no encuentra lo ajeno
+end)

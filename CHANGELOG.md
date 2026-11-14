@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.17.0 — Tablets con sistema propio: inicio, buscador, mapa y avisos
+
+- Las tablets G6 Client y G6 Operations pasan a ser un **sistema de tablet**: marco con barra de estado (hora del
+  juego, cobertura, batería, avisos y Cerrar), **pantalla de inicio** con saludo, widgets e iconos de apps, **dock**
+  (Buscar, Mapa, Avisos y la primera app) y barra inferior para volver al inicio. Cada sección se abre como una app a
+  pantalla completa con botón «Inicio».
+- **Resumen** en el inicio (nueva acción `home`): dispositivos (operativos / con incidencias), alarmas armadas y
+  sonando, solicitudes u órdenes, emergencias o avisos de la central, cámaras con señal y vehículos con alarma.
+  Lista «Requiere atención» (alarmas sonando, averías, salud baja, avisos activos); tocar una fila abre lo que toca.
+- **Buscador** (acción `search`, 2–40 caracteres): dispositivos por identificador, tipo, modelo o dirección; órdenes y
+  avisos por número, lugar, nombre o nota; matrículas propias. Solo busca en lo que el perfil ya puede ver.
+- **Mapa táctico** (app Mapa): contorno esquemático de la isla con dispositivos instalados, órdenes, avisos y
+  vehículos propios, y tu posición. Rueda o botones para acercar, arrastrar para mover; tocar un punto permite
+  marcarlo en el GPS o abrirlo.
+- **Avisos en vivo**: con la tablet abierta, los avisos del servidor (alarmas, emergencias, órdenes asignadas…)
+  aparecen como notificación dentro de la tablet, con contador en la campana y centro de avisos (con GPS si el aviso
+  tiene posición). Escape cierra primero el buscador o el centro de avisos.
+- Las tarjetas muestran el tipo de dispositivo traducido.
+
 ## 0.16.1 — Montaje del arco con herramientas y minijuego
 
 - Montar y desmontar el arco detector exige **taladro y destornillador** (se conservan), como alarmas y cámaras.

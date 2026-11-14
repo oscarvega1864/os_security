@@ -93,7 +93,7 @@ test('Manifest paths, loading order, version and Lua 5.4 syntax', function()
     equal(declarations, { fx_version = 'cerulean', game = 'gta5' })
     for _, file in ipairs(__luaFiles) do assert(loadfile(root .. file)) end
     for _, file in ipairs(clientScripts) do assert(loadfile(root .. file)) end
-    assert(OSSecurity.Config.Version == '0.16.1')
+    assert(OSSecurity.Config.Version == '0.17.0')
     assert(nuiPage == 'web/index.html' and strictMode == 'true')
     for _, file in ipairs(nuiFiles) do local handle = assert(io.open(root .. file, 'rb')); handle:close() end
     assert(#scripts > 0 and scripts[#scripts] == 'server/main.lua')

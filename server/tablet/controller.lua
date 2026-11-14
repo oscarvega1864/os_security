@@ -49,6 +49,10 @@ function OSSecurity.TabletController.new(options)
                 if not placement then options.sessions.close(source); return failure(placementError, true) end
                 return { ok = true, session = options.service.session(opened), placement = placement }
             else return failure('Este articulo no tiene una funcion implementada.') end
+        elseif actor.kind ~= 'inventory' and request.action == 'home' and next(request.args) == nil and options.home then
+            result, reason = options.home.summary(actor)
+        elseif actor.kind ~= 'inventory' and request.action == 'search' and options.home then
+            result, reason = options.home.search(actor, request.args)
         elseif actor.kind ~= 'inventory' and request.action == 'devices' then
             result, reason = options.service.list(actor, request.args)
         elseif actor.kind ~= 'inventory' and request.action == 'device' then
