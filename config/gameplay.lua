@@ -32,6 +32,19 @@ OSSecurity.GameplayConfig = {
     -- Un salto repetido de la misma central con su aviso abierto suma al mismo aviso (Repeat). Los cerrados
     -- se borran pasados KeepDays. Panico: un aviso activo por cliente y PanicCooldown s entre avisos.
     Dispatch = { MaxCalls = 300, NoteLength = 140, KeepDays = 7, PanicCooldown = 60, MaxRepeat = 99 },
+    -- Control de acceso: arcos detectores de metales y cacheo. Los coloca y los atiende cualquier empleado
+    -- de servicio de una empresa (os_devtools); el arco es de su empresa. Metal: objetos del inventario que
+    -- hacen pitar el arco (las armas de shared/weapons.lua con metal = true tambien). Cacheo con permiso del
+    -- cacheado; lo retenido queda en custodia y su dueno lo recoge en el mismo sitio (PickupDistance).
+    Checkpoint = {
+        MaxDetectors = 200, PlaceDistance = 3.0, PickupDistance = 3.0, PassRadius = 1.2, PassCooldown = 4, AlertRadius = 40.0,
+        Metal = { telefono = true, herramienta = true, os_lockpick = true, os_drill = true, os_screwdriver = true, os_battery = true,
+            os_cctv_kit = true, os_cctv_kit_mini = true, os_cctv_kit_dome = true, os_alarm_kit = true, os_alarm_kit_panel = true,
+            os_lock_kit = true, os_lock_kit_high = true, os_car_lock_kit = true, os_car_alarm_kit = true, os_tracker_kit = true },
+        -- Se pueden retener (ademas de las armas): objetos peligrosos o de robo.
+        Retainable = { herramienta = true, os_lockpick = true, os_drill = true, os_screwdriver = true },
+        FriskDistance = 2.0, RequestSeconds = 20, FriskSeconds = 120, MaxCustody = 300, MaxWeapons = 40, MaxItems = 60
+    },
     -- Alarmas (central con teclado). Zona: esfera alrededor del teclado.
     Alarm = {
         Radius = 10.0, InteractDistance = 2.0, ExitDelay = 30, EntryDelay = 30, SirenSeconds = 90,

@@ -154,6 +154,40 @@ function state.call(value)
     return true
 end
 
+-- Control de acceso (ver server/checkpoint/service.lua): arcos detectores y objetos en custodia.
+function state.detectorId(id) return type(id) == 'string' and id:match('^md_%d%d%d%d%d%d$') ~= nil end
+function state.custodyId(id) return type(id) == 'string' and id:match('^cu_%d%d%d%d%d%d$') ~= nil end
+function state.company(value) return type(value) == 'string' and #value >= 1 and #value <= 32 and value:match('^[%w_%-]+$') ~= nil end
+local function itemName(value) return type(value) == 'string' and #value <= 64 and value:match('^[%w_]+$') ~= nil end
+function state.detector(value)
+    return util.object(value, { id = true, company = true, placedBy = true, position = true, heading = true, bucket = true, createdAt = true })
+        and state.detectorId(value.id) and state.company(value.company) and identity.valid(value.placedBy)
+        and state.vector(value.position, 1000000) and type(value.heading) == 'number' and value.heading >= 0 and value.heading < 360
+        and util.integer(value.bucket, 0, 2147483647) and util.integer(value.createdAt, 0, 253402300799)
+end
+function state.custody(value)
+    local limits = OSSecurity.GameplayConfig.Checkpoint
+    if not util.object(value, { id = true, owner = true, holder = true, ownerName = true, company = true, guardName = true,
+        items = true, weapons = true, position = true, bucket = true, createdAt = true })
+        or not state.custodyId(value.id) or not identity.valid(value.owner) or (value.holder ~= nil and not state.holder(value.holder))
+        or not shortText(value.ownerName, 64) or not shortText(value.guardName, 64) or not state.company(value.company)
+        or not util.object(value.items) or not util.array(value.weapons, limits.MaxWeapons)
+        or not state.vector(value.position, 1000000) or not util.integer(value.bucket, 0, 2147483647)
+        or not util.integer(value.createdAt, 0, 253402300799) then return false end
+    local count = 0
+    for name, amount in pairs(value.items) do
+        count = count + 1
+        if count > limits.MaxItems or not itemName(name) or not util.integer(amount, 1, 100000) then return false end
+    end
+    for _, weapon in ipairs(value.weapons) do
+        if not util.object(weapon, { name = true, ammo = true }) or not OSSecurity.Weapons.List[weapon.name]
+            or not util.integer(weapon.ammo, 0, 9999) then return false end
+    end
+    -- Objetos de inventario solo con personaje (holder) al que devolverlos; algo que guardar siempre.
+    if next(value.items) and not value.holder then return false end
+    return next(value.items) ~= nil or #value.weapons > 0
+end
+
 local function placement(value)
     return util.object(value, { id = true, anchorId = true, owner = true, installer = true, position = true,
         rotation = true, bucket = true, model = true, status = true, createdAt = true, updatedAt = true, deviceId = true, reason = true,
@@ -196,7 +230,7 @@ local function operation(op, limits)
     if not util.object(op, { kind = true, at = true, principal = true, item = true, amount = true,
         deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true, site = true, alarm = true,
         doorId = true, door = true, carId = true, car = true, anchorId = true, orderId = true, order = true, target = true,
-        callId = true, call = true })
+        callId = true, call = true, detectorId = true, detector = true, custodyId = true, custody = true })
         or not util.integer(op.at, 0, 253402300799) then return false end
     local fields = { kind = true, at = true }
     if op.kind == 'grant' or op.kind == 'migrate' then
@@ -232,6 +266,14 @@ local function operation(op, limits)
         -- Sin 'call' se borra (limpieza de avisos cerrados antiguos).
         fields.callId, fields.call = true, true
         if not state.callId(op.callId) or (op.call ~= nil and (not state.call(op.call) or op.call.id ~= op.callId)) then return false end
+    elseif op.kind == 'detector' then
+        -- Sin 'detector' se retira el arco.
+        fields.detectorId, fields.detector = true, true
+        if not state.detectorId(op.detectorId) or (op.detector ~= nil and (not state.detector(op.detector) or op.detector.id ~= op.detectorId)) then return false end
+    elseif op.kind == 'custody' then
+        -- Sin 'custody' se cierra (devuelto a su dueno).
+        fields.custodyId, fields.custody = true, true
+        if not state.custodyId(op.custodyId) or (op.custody ~= nil and (not state.custody(op.custody) or op.custody.id ~= op.custodyId)) then return false end
     elseif op.kind == 'rehome' then
         -- Paso de datos de una cuenta (license) al personaje que los creo (char:...).
         fields.principal, fields.target = true, true
@@ -275,7 +317,7 @@ end
 function state.snapshot(snapshot, limits)
     if not util.object(snapshot, { schemaVersion = true, revision = true, nextInstallation = true,
         accounts = true, anchors = true, installations = true, lastOperation = true, sites = true, alarms = true, doors = true, cars = true, orders = true,
-        owners = true, calls = true })
+        owners = true, calls = true, detectors = true, custody = true })
         or snapshot.schemaVersion ~= 1 or not util.integer(snapshot.revision, 0, 9007199254740000)
         or not util.integer(snapshot.nextInstallation, 1, limits.MaxInstallations + 1)
         or not util.object(snapshot.accounts) or not util.object(snapshot.anchors) or not util.object(snapshot.installations)
@@ -283,6 +325,7 @@ function state.snapshot(snapshot, limits)
         or (snapshot.doors ~= nil and not util.object(snapshot.doors)) or (snapshot.cars ~= nil and not util.object(snapshot.cars))
         or (snapshot.orders ~= nil and not util.object(snapshot.orders)) or (snapshot.owners ~= nil and not util.object(snapshot.owners))
         or (snapshot.calls ~= nil and not util.object(snapshot.calls))
+        or (snapshot.detectors ~= nil and not util.object(snapshot.detectors)) or (snapshot.custody ~= nil and not util.object(snapshot.custody))
         or (snapshot.revision == 0 and snapshot.lastOperation ~= nil)
         or (snapshot.revision > 0 and not operation(snapshot.lastOperation, limits)) then return nil, 'Formato de inventario incompatible.' end
     local count, deviceIds = 0, {}
@@ -368,6 +411,15 @@ function state.snapshot(snapshot, limits)
         calls = calls + 1
         if calls > OSSecurity.GameplayConfig.Dispatch.MaxCalls or not state.call(call) or call.id ~= callId then return nil, 'Aviso de la central invalido.' end
     end
+    local detectors, custody = 0, 0
+    for detectorId, detector in pairs(snapshot.detectors or {}) do
+        detectors = detectors + 1
+        if detectors > OSSecurity.GameplayConfig.Checkpoint.MaxDetectors or not state.detector(detector) or detector.id ~= detectorId then return nil, 'Arco detector invalido.' end
+    end
+    for custodyId, record in pairs(snapshot.custody or {}) do
+        custody = custody + 1
+        if custody > OSSecurity.GameplayConfig.Checkpoint.MaxCustody or not state.custody(record) or record.id ~= custodyId then return nil, 'Custodia invalida.' end
+    end
     for doorId, door in pairs(snapshot.doors or {}) do
         count = count + 1
         if count > OSSecurity.GameplayConfig.Locks.MaxDoors or not state.door(door) or door.id ~= doorId then return nil, 'Puerta con cerradura invalida.' end
@@ -426,6 +478,17 @@ function state.apply(snapshot, op, limits)
         end
         nextState.calls[op.callId] = op.call and util.copy(op.call) or nil
         if next(nextState.calls) == nil then nextState.calls = nil end
+    elseif op.kind == 'detector' or op.kind == 'custody' then
+        local key, id, value, limit, label = 'detectors', op.detectorId, op.detector, OSSecurity.GameplayConfig.Checkpoint.MaxDetectors, 'arcos detectores'
+        if op.kind == 'custody' then key, id, value, limit, label = 'custody', op.custodyId, op.custody, OSSecurity.GameplayConfig.Checkpoint.MaxCustody, 'custodias' end
+        nextState[key] = nextState[key] or {}
+        if value and not nextState[key][id] then
+            local count = 0
+            for _ in pairs(nextState[key]) do count = count + 1 end
+            if count >= limit then return nil, 'Limite de ' .. label .. ' alcanzado.' end
+        end
+        nextState[key][id] = value and util.copy(value) or nil
+        if next(nextState[key]) == nil then nextState[key] = nil end
     elseif op.kind == 'rehome' then
         -- Todo lo de la cuenta pasa al personaje: objetos locales, concesiones, zonas, instalaciones y
         -- solicitudes. Los dispositivos del registro no cambian (es historico); su titular nuevo queda en 'owners'.
@@ -464,6 +527,12 @@ function state.apply(snapshot, op, limits)
         for _, call in pairs(nextState.calls or {}) do
             if call.client == from then call.client = to end
             if call.technician == from then call.technician = to end
+        end
+        for _, detector in pairs(nextState.detectors or {}) do
+            if detector.placedBy == from then detector.placedBy = to end
+        end
+        for _, record in pairs(nextState.custody or {}) do
+            if record.owner == from then record.owner = to end
         end
     elseif op.kind == 'door' then
         nextState.doors = nextState.doors or {}

@@ -52,6 +52,14 @@ function OSSecurity.StandaloneInventory.new(options)
         if not inventory.status() then return nil end
         return OSSecurity.Util.copy(data.calls or {})
     end
+    function inventory.detectors()
+        if not inventory.status() then return nil end
+        return OSSecurity.Util.copy(data.detectors or {})
+    end
+    function inventory.custody()
+        if not inventory.status() then return nil end
+        return OSSecurity.Util.copy(data.custody or {})
+    end
     function inventory.doors()
         if not inventory.status() then return nil end
         return OSSecurity.Util.copy(data.doors or {})

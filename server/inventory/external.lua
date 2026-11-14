@@ -74,6 +74,35 @@ function OSSecurity.ExternalItems.new(api)
         end
         return true
     end
+    -- Control de acceso: todo lo que lleva un personaje (nombre -> { count, label }), para el arco y el cacheo.
+    function items.contents(holder)
+        local result = {}
+        if not OSSecurity.InventoryState.holder(holder) or not api.inventory then return result end
+        local inventory = safe(api.inventory, holder)
+        if type(inventory) ~= 'table' or type(inventory.slots) ~= 'table' then return result end
+        for _, entry in pairs(inventory.slots) do
+            if type(entry) == 'table' and type(entry.name) == 'string' and entry.name:match('^[%w_]+$') and #entry.name <= 64
+                and util.integer(entry.count, 1, 100000) then
+                local current = result[entry.name] or { count = 0, label = type(entry.label) == 'string' and entry.label:sub(1, 64) or entry.name }
+                current.count = current.count + entry.count
+                result[entry.name] = current
+            end
+        end
+        return result
+    end
+    -- Retener y devolver objetos de cualquier tipo (custodia). Mismo identificador = mismo efecto una sola vez.
+    function items.takeAny(holder, item, amount, operationId)
+        if not OSSecurity.InventoryState.holder(holder) or type(item) ~= 'string' or not item:match('^[%w_]+$') then return nil, 'Objeto no valido.' end
+        local ok, err = safe(api.remove, holder, item, amount, operationId)
+        if ok ~= true then return nil, err or 'No se pudo retener.' end
+        return true
+    end
+    function items.giveAny(holder, item, amount, operationId)
+        if not OSSecurity.InventoryState.holder(holder) or type(item) ~= 'string' or not item:match('^[%w_]+$') then return nil, 'Objeto no valido.' end
+        local ok, err = safe(api.add, holder, item, amount, operationId)
+        if ok ~= true then return nil, err or 'No se pudo devolver.' end
+        return true
+    end
     -- Chapas de alarma: objeto g6_alarm_tag con metadatos { reference = dispositivo, serial }.
     function items.tagSerials(holder, deviceId)
         local list = {}

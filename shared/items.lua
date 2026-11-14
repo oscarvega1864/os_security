@@ -17,6 +17,7 @@ OSSecurity.ItemCatalog = {
     os_lockpick = { name = prefix .. 'Ganzua', category = 'tool', weight = 0, usable = 'lockpick' },
     os_drill = { name = prefix .. 'Taladro', category = 'tool', weight = 2 },
     os_screwdriver = { name = prefix .. 'Destornillador', category = 'tool', weight = 1 },
-    os_battery = { name = prefix .. 'Bateria', category = 'material', weight = 1 }
+    os_battery = { name = prefix .. 'Bateria', category = 'material', weight = 1 },
+    os_metal_detector = { name = 'Arco detector de metales', category = 'kit', weight = 8, usable = 'detector' }
 }
 for _, definition in pairs(OSSecurity.ItemCatalog) do definition.metadataSchema = {} end

@@ -5,7 +5,8 @@ local bootNumber = 0
 local function fixture(files, external)
     bootNumber = bootNumber + 1
     local core = coreFixture(files)
-    local c = { core = core, wallet = {}, players = {}, aces = {}, jobs = {}, alarmLog = {}, assets = { properties = {}, businesses = {} }, active = {}, commands = {}, audit = {}, replies = {}, invWrites = 0, timers = {} }
+    local c = { core = core, wallet = {}, players = {}, aces = {}, jobs = {}, alarmLog = {}, assets = { properties = {}, businesses = {} }, active = {}, commands = {}, audit = {}, replies = {}, invWrites = 0, timers = {},
+        companies = {}, sent = {} }
     local prefix = 'boot-' .. bootNumber
     for id = 1, 5 do
         c.players[id] = { principal = 'license:' .. string.rep(string.char(96 + id), 40), alive = true, connected = true,
@@ -72,6 +73,9 @@ local function fixture(files, external)
         items = external and external.items or nil,
         characterOwnership = external and external.characters or nil,
         locksChanged = function(list) c.doorBroadcasts = (c.doorBroadcasts or 0) + 1; c.lastDoors = list end,
+        company = function(source) return c.companies[source] end,
+        checkpointSend = function(player, event, payload) c.sent[#c.sent + 1] = { player, event, payload } end,
+        detectorsChanged = function(list) c.detectorList = list end,
         alarmEffects = {
             players = function()
                 local list = {}
@@ -784,7 +788,7 @@ test('Native server wiring keeps replies private, normalizes ACE and creates uni
     local handlers, commands, files, replies, hashes = {}, {}, {}, {}, 0
     local ok, err = pcall(function()
         stub('RegisterNetEvent', function(name, callback)
-            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name == 'os_security:g6:zoneAim' or name:match('^os_security:shop:') or name:match('^os_security:alarm:') or name:match('^os_security:locks:') or name:match('^os_security:car:') or name:match('^os_security:lockpick:'))
+            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name == 'os_security:g6:zoneAim' or name:match('^os_security:shop:') or name:match('^os_security:alarm:') or name:match('^os_security:locks:') or name:match('^os_security:car:') or name:match('^os_security:lockpick:') or name:match('^os_security:checkpoint:'))
             if name == 'os_security:g6:request' then handlers.request = callback else handlers.anchorAim = callback end
         end)
         stub('RegisterCommand', function(name, callback) commands[name] = callback end)
@@ -853,6 +857,11 @@ local function externalItems()
             bag(holder)[item] = bag(holder)[item] - amount
             if operationId then e.receipts[operationId] = true end
             return true
+        end,
+        inventory = function(holder)
+            local slots = {}
+            for name, amount in pairs(bag(holder)) do if amount > 0 then slots[#slots + 1] = { name = name, count = amount, label = 'L:' .. name } end end
+            return { slots = slots }
         end
     })
     function e.give(source, item, amount) bag(e.holders[source])[item] = (bag(e.holders[source])[item] or 0) + (amount or 1) end
@@ -1649,6 +1658,87 @@ test('Central: alarm triggers and keypad tampering become calls; repeats add up,
         count = 1, createdAt = 1, updatedAt = 1 })) -- asignado sin tecnico
     assert(not OSSecurity.InventoryState.call({ id = 'av_000009', kind = 'panic', status = 'open', position = { x = 0, y = 0, z = 0 },
         count = 1, createdAt = 1, updatedAt = 1 })) -- panico sin cliente
+end)
+
+-- Control de acceso: arcos detectores, cacheo y custodia --------------------------------------------------
+local function sentTo(c, player, event)
+    local found = {}
+    for _, entry in ipairs(c.sent) do if entry[1] == player and entry[2] == event then found[#found + 1] = entry[3] end end
+    return found
+end
+test('Metal detector: any on-duty company places it with the item, it beeps for metal items and metal weapons and alerts that company', function()
+    local e = externalItems(); local c = fixture(nil, e); assert(c.loaded, c.loadError)
+    local cp = c.game.checkpoint
+    for id = 1, 5 do c.players[id].point = { x = 500 + id * 50, y = 0, z = 1 } end
+    c.players[1].point = { x = 0, y = 0, z = 1 }
+    local args = { x = 2, y = 0, z = 1, h = 90 }
+    assert(not cp.place(1, args)) -- sin empresa de servicio
+    c.companies[1] = 'police'
+    local _, why = cp.place(1, args); assert(why:find('arco')) -- sin el objeto
+    e.give(1, 'os_metal_detector')
+    assert(not cp.place(1, { x = 40, y = 0, z = 1, h = 0 })) -- demasiado lejos
+    local placed = assert(cp.place(1, args)); assert(placed.id == 'md_000001' and e.count(1, 'os_metal_detector') == 0)
+    assert(#c.detectorList == 1 and c.detectorList[1].company == 'police' and c.detectorList[1].h == 90)
+    e.give(1, 'os_metal_detector'); assert(not cp.place(1, { x = 2.5, y = 0.2, z = 1, h = 0 })) -- pegado a otro
+    -- Cruza alguien con un telefono: pita y avisa al policia cercano.
+    c.players[5].point = { x = 2, y = 0.3, z = 1 }; e.give(5, 'telefono')
+    local pass = assert(cp.pass(5, 'md_000001', {})); assert(pass.alarm)
+    assert(#sentTo(c, 5, 'detector') == 1 and sentTo(c, 5, 'detector')[1].alarm and #sentTo(c, 1, 'detector') == 1)
+    local alerted = false; for _, entry in ipairs(c.alarmLog) do if entry[1] == 'alert' and entry[2] == 1 and entry[3]:find('Jugador5') then alerted = true end end
+    assert(alerted)
+    assert(cp.pass(5, 'md_000001', {}) == nil) -- repeticion inmediata ignorada
+    c.players[4].point = { x = 2, y = -0.3, z = 1 }
+    assert(cp.pass(4, 'md_000001', { { name = 'weapon_ball', ammo = 1 } }).alarm == false) -- sin metal ni arma de lista
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Checkpoint.PassCooldown + 1
+    assert(cp.pass(4, 'md_000001', { { name = 'weapon_knife', ammo = 0 } }).alarm) -- cuchillo: metal
+    assert(cp.pass(4, 'md_000001', {}) == nil) -- cooldown
+    c.players[3].point = { x = 30, y = 0, z = 1 }
+    assert(cp.pass(3, 'md_000001', {}) == nil) -- lejos del arco
+    local restarted = fixture(c.core.files, e); assert(restarted.loaded, restarted.loadError)
+    assert(#restarted.game.checkpoint.list() == 1)
+    -- Solo su empresa lo recoge.
+    c.companies[2] = 'ambulance'; c.players[2].point = { x = 1, y = 0, z = 1 }
+    assert(not cp.pickup(2))
+    c.players[1].point = { x = 1, y = 0, z = 1 }
+    assert(cp.pickup(1)); assert(#c.detectorList == 0 and e.count(1, 'os_metal_detector') == 2)
+end)
+
+test('Frisk: needs consent, reveals what is carried by zone, retains only dangerous things and the owner picks them up at the same place', function()
+    local e = externalItems(); local c = fixture(nil, e); assert(c.loaded, c.loadError)
+    local cp = c.game.checkpoint
+    for id = 1, 5 do c.players[id].point = { x = 500 + id * 50, y = 0, z = 1 } end
+    c.players[1].point = { x = 0, y = 0, z = 1 }; c.players[5].point = { x = 1, y = 0, z = 1 }; c.players[2].point = { x = 1, y = 1, z = 1 }
+    assert(not cp.request(2, 5)) -- sin empleo de servicio ni perfil G6
+    c.companies[1] = 'gruppe6'
+    assert(not cp.request(1, 1)) -- a uno mismo no
+    assert(cp.request(1, 5)); assert(#sentTo(c, 5, 'friskAsk') == 1)
+    assert(cp.answer(5, false)); assert(not cp.finish(1, {})) -- rechazado: no hay cacheo
+    e.give(5, 'herramienta', 2); e.give(5, 'telefono'); e.give(5, 'os_lockpick')
+    assert(cp.request(1, 5)); assert(cp.answer(5, true, { { name = 'weapon_pistol', ammo = 30 }, { name = 'no_existe', ammo = 1 } }))
+    local opened = sentTo(c, 1, 'friskOpen')[1]
+    assert(opened and opened.target == 'Jugador5' and #sentTo(c, 5, 'friskBegin') == 1)
+    local waist = {}; for _, entry in ipairs(opened.zones.waist) do waist[entry.name] = entry end
+    assert(waist.weapon_pistol and waist.weapon_pistol.retainable and waist.herramienta.count == 2 and waist.herramienta.label == 'L:herramienta')
+    assert(opened.zones.rightLeg[1].name == 'telefono' and not opened.zones.rightLeg[1].retainable)
+    local done = assert(cp.finish(1, { items = { herramienta = 2, telefono = 1, os_lockpick = 5 }, weapons = { 'weapon_pistol', 'weapon_rpg' } }))
+    assert(done.message:find('cu_000001'))
+    local record = c.game.inventory.custody().cu_000001
+    assert(record.items.herramienta == 2 and record.items.telefono == nil and record.items.os_lockpick == nil) -- telefono no se retiene; ganzua: cantidad falsa
+    assert(#record.weapons == 1 and record.weapons[1].name == 'weapon_pistol' and record.weapons[1].ammo == 30 and record.company == 'gruppe6')
+    assert(e.count(5, 'herramienta') == 0 and e.count(5, 'telefono') == 1)
+    assert(sentTo(c, 5, 'removeWeapons')[1][1] == 'weapon_pistol' and #sentTo(c, 5, 'friskEnd') == 1)
+    local restarted = fixture(c.core.files, e); assert(restarted.loaded and restarted.game.inventory.custody().cu_000001)
+    c.players[5].point = { x = 200, y = 0, z = 1 }
+    local _, why = cp.reclaim(5); assert(why:find('gruppe6')) -- lejos: vuelve al sitio
+    assert(not cp.reclaim(4)) -- no es suyo
+    c.players[5].point = { x = 1, y = 1, z = 1 }
+    assert(cp.reclaim(5)); assert(e.count(5, 'herramienta') == 2 and sentTo(c, 5, 'giveWeapons')[1][1].name == 'weapon_pistol')
+    assert(c.game.inventory.custody().cu_000001 == nil and not cp.reclaim(5))
+    -- Sin nada que retener, el cacheo acaba limpio y sin custodia.
+    assert(cp.request(1, 5) and cp.answer(5, true, {}) and cp.finish(1, { items = {}, weapons = {} }).message:find('sin retener'))
+    -- La peticion caduca sin respuesta.
+    assert(cp.request(1, 5)); c.core.time = c.core.time + OSSecurity.GameplayConfig.Checkpoint.RequestSeconds + 1; cp.tick()
+    assert(not cp.answer(5, true, {}))
 end)
 
 test('Character ownership: devices belong to the active character, so another character of the same account sees nothing', function()

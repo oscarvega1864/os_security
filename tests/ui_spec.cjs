@@ -425,6 +425,37 @@ async function main() {
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
     await until(`document.getElementById('pinpad').hidden && window.__calls.some(x => x.endpoint === 'pinpadClose')`);
     console.log('PASS alarm pinpad: masked code, disarm and tag requests, errors and Escape');
+    // Control de acceso: permiso de cacheo y panel por zonas.
+    await evaluate(`window.__cpText = window.__brand.Text.checkpoint; window.__calls.length = 0;
+      window.postMessage({ type: 'friskAsk', text: window.__cpText, data: { from: 'Agente <b>Ruiz</b>', company: 'gruppe6', seconds: 20 } }, '*')`);
+    await until(`!document.getElementById('checkpoint').hidden && document.querySelector('.cp-ask')`);
+    assert(await evaluate(`document.querySelector('.cp-ask-text').textContent.includes('<b>Ruiz</b>') && document.querySelector('#checkpoint b') === null`), 'Frisk request names render as text');
+    await evaluate(`document.querySelector('.cp-ask .cp-yes').click()`);
+    await until(`document.getElementById('checkpoint').hidden && window.__calls.some(x => x.endpoint === 'friskConsent' && x.body.accept === true)`);
+    await evaluate(`window.postMessage({ type: 'friskOpen', text: window.__cpText, data: { target: 'Jugador5', order: ['chest','back','waist','leftArm','rightArm','leftLeg','rightLeg','ankles'],
+      zones: { chest: [], back: [], leftArm: [], rightArm: [], leftLeg: [], ankles: [],
+        waist: [{ kind: 'weapon', name: 'weapon_pistol', label: 'Pistola', count: 1, retainable: true, metal: true }, { kind: 'item', name: 'herramienta', label: 'Herramienta', count: 2, retainable: true, metal: true }],
+        rightLeg: [{ kind: 'item', name: 'telefono', label: 'Telefono', count: 1, retainable: false, metal: true }] } } }, '*')`);
+    await until(`document.querySelectorAll('.cp-zone').length === 8 && document.querySelector('.cp-frisk .cp-yes').disabled`);
+    assert(await evaluate(`document.querySelector('.zone-waist .cp-found').children.length === 0`), 'Zones stay hidden until patted');
+    await evaluate(`document.querySelector('.zone-waist').dispatchEvent(new MouseEvent('mouseenter'))`);
+    await until(`document.querySelector('.zone-waist.done') && document.querySelectorAll('.zone-waist .cp-entry').length === 2`);
+    await evaluate(`document.querySelector('.zone-rightLeg').dispatchEvent(new MouseEvent('mouseenter')); document.querySelector('.zone-chest').dispatchEvent(new MouseEvent('mouseenter'));
+      setTimeout(() => document.querySelector('.zone-chest').dispatchEvent(new MouseEvent('mouseleave')), 100)`);
+    await until(`document.querySelector('.zone-rightLeg.done')`);
+    assert(await evaluate(`!document.querySelector('.zone-chest.done') && !document.querySelector('.zone-rightLeg input') && document.querySelector('.cp-status').textContent.includes('6')`), 'Leaving a zone early does not pat it; phones cannot be retained');
+    await evaluate(`for (const zone of document.querySelectorAll('.cp-zone:not(.done)')) zone.dispatchEvent(new MouseEvent('mouseenter'))`);
+    await until(`document.querySelectorAll('.cp-zone.done').length === 8 && !document.querySelector('.cp-frisk .cp-yes').disabled`);
+    await evaluate(`for (const box of document.querySelectorAll('.zone-waist input')) box.click()`);
+    fs.writeFileSync(path.join(output, 'frisk.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await evaluate(`document.querySelector('.cp-frisk .cp-yes').click()`);
+    await until(`window.__calls.some(x => x.endpoint === 'friskFinish' && x.body.retain.items.herramienta === 2 && x.body.retain.weapons[0] === 'weapon_pistol')`);
+    assert(await evaluate(`document.getElementById('checkpoint').hidden`));
+    await evaluate(`window.postMessage({ type: 'friskOpen', text: window.__cpText, data: { target: 'X', order: ['chest'], zones: { chest: [] } } }, '*')`);
+    await until(`document.querySelector('.cp-frisk')`);
+    await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
+    await until(`document.getElementById('checkpoint').hidden && window.__calls.some(x => x.endpoint === 'friskCancel')`);
+    console.log('PASS frisk: consent card, zones revealed by patting, retain only allowed finds, Escape cancels');
     await evaluate(`window.postMessage({ type: 'siren', volume: 0.6 }, '*')`); await until(`window.__osSiren.active()`);
     await evaluate(`window.postMessage({ type: 'siren', volume: 0 }, '*')`); await until(`!window.__osSiren.active()`);
     console.log('PASS generated siren starts with a volume and stops at zero');

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.16.0 — Arco detector de metales y cacheo
+
+- Objeto **Arco detector de metales** (tienda G6, 4.800 $). Lo coloca cualquier empleado de servicio de una empresa
+  (os_devtools): fantasma delante, rueda para girar, E para colocar. El arco es de su empresa y solo ella lo recoge
+  (`/arco recoger`). Se usa el modelo de arco del juego si existe; si no, se dibuja con marcadores (`/arcomodelo` lo dice).
+- Al cruzarlo pita (tres pitidos y luz roja) si se lleva metal: objetos de metal del inventario o armas con metal
+  (lista en `shared/weapons.lua`); si no, un pitido y luz verde. Avisa a los empleados de esa empresa cercanos.
+- **Cacheo** (`/cacheo` a quien tienes delante): lo pide un empleado de servicio de cualquier empresa o personal G6;
+  el cacheado acepta o rechaza y, si acepta, pone las manos en alto. El vigilante palpa 8 zonas del cuerpo y ve lo que
+  hay en cada una; puede retener armas y objetos peligrosos (herramienta, ganzúa, taladro, destornillador).
+- Lo retenido queda en **custodia** de su empresa; el dueño lo recoge en el mismo sitio con `/custodia` (mismo
+  personaje). Las armas del ped se quitan y se devuelven con su munición.
+- Limitación: las armas las informa el cliente del jugador (no hay inventario de armas en el servidor todavía).
+
 ## 0.15.0 — Central de operaciones y Emergencias
 
 - Avisos guardados de la central: salto de alarma, manipulación de un teclado (bloqueo por códigos fallidos) y

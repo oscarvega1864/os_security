@@ -11,6 +11,7 @@ shared_scripts {
     'shared/geometry.lua',
     'config/config.lua',
     'shared/items.lua',
+    'shared/weapons.lua',
     'config/shop.lua'
 }
 
@@ -29,12 +30,13 @@ client_scripts {
     'client/cars.lua',
     'client/shop.lua',
     'client/live.lua',
+    'client/checkpoint.lua',
     'client/boot.lua'
 }
 
 ui_page 'web/index.html'
 nui_callback_strict_mode 'true'
-files { 'web/index.html', 'web/style.css', 'web/app.js', 'web/minigame.js', 'web/pinpad.js', 'web/siren.js', 'web/cylinder.js', 'web/carwire.js', 'web/lockpick.js', 'web/shop.js', 'web/live.js' }
+files { 'web/index.html', 'web/style.css', 'web/app.js', 'web/minigame.js', 'web/pinpad.js', 'web/siren.js', 'web/cylinder.js', 'web/carwire.js', 'web/lockpick.js', 'web/shop.js', 'web/live.js', 'web/checkpoint.js' }
 server_scripts {
     'config/server.lua',
     'config/components.lua',
@@ -75,6 +77,7 @@ server_scripts {
     'server/shop/service.lua',
     'server/orders/service.lua',
     'server/dispatch/service.lua',
+    'server/checkpoint/service.lua',
     'server/tablet/service.lua',
     'server/tablet/controller.lua',
     'server/commands/gameplay.lua',

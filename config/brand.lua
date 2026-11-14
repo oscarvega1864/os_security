@@ -158,6 +158,26 @@ OSSecurity.Brand = {
             sounding = 'ALARMA SONANDO', gps = 'Marcar en el GPS', away = 'Guardado o fuera de alcance' },
         incidents = { title = 'Historial de incidencias', help = 'Ultimos sucesos de todas tus alarmas, del mas reciente al mas antiguo.',
             empty = 'Sin incidencias registradas.' },
+        checkpoint = {
+            needJob = 'Tienes que estar de servicio en una empresa.', needInventory = 'Requiere el inventario de personajes.',
+            needItem = 'Necesitas un arco detector de metales.', badPlace = 'Posicion no valida.', tooFar = 'Demasiado lejos para colocarlo.',
+            tooClose = 'Ya hay un arco ahi mismo.', placed = 'Arco detector colocado para %s.', noOwnNear = 'No hay un arco de tu empresa a tu lado.',
+            pickedUp = 'Arco recogido: vuelve a tu inventario.', alarm = 'Arco detector: metal detectado en %s.',
+            noTarget = 'No hay nadie delante para cachear.', busy = 'Ya estas cacheando a alguien.', targetBusy = 'Esa persona ya tiene una peticion de cacheo.',
+            asked = 'Pides permiso a %s para cachearle...', refused = '%s no acepta el cacheo.', youRefused = 'Has rechazado el cacheo.',
+            accepted = 'Has aceptado el cacheo: no te muevas.', expired = 'La peticion de cacheo ha caducado.', noAnswer = 'No ha respondido al cacheo.',
+            noFrisk = 'No estas cacheando a nadie.', cancelled = 'Cacheo cancelado.', clean = 'Cacheo terminado: puedes continuar.',
+            nothingRetained = 'Cacheo terminado sin retener nada.', retained = 'Objetos en custodia (%s).',
+            retainedOwner = 'Te han retenido objetos (custodia de %s). Recogelos aqui mismo con /custodia.',
+            noCustody = 'No tienes objetos en custodia.', goBack = 'Tus objetos estan en custodia de %s: vuelve al sitio donde te los retuvieron.',
+            otherCharacter = 'Esos objetos son de otro personaje.', returned = 'Te devuelven tus objetos.',
+            -- Cliente
+            placeHelp = 'Rueda: girar · E: colocar · Retroceso: cancelar', askTitle = 'Peticion de cacheo', ask = '%s (%s) quiere cachearte.',
+            accept = 'Aceptar', refuse = 'Rechazar', friskTitle = 'Cacheo de %s', friskHelp = 'Pasa las manos por cada zona (mantén el raton encima) para palpar.',
+            zones = { chest = 'Pecho', back = 'Espalda', waist = 'Cintura', leftArm = 'Brazo izq.', rightArm = 'Brazo der.', leftLeg = 'Pierna izq.', rightLeg = 'Pierna der.', ankles = 'Tobillos' },
+            found = 'Encontrado', nothing = 'Nada', retain = 'Retener', finish = 'Terminar cacheo', cancel = 'Cancelar', pending = 'Faltan zonas por palpar (%d).',
+            metal = 'metal', weapon = 'arma', item = 'objeto'
+        },
         dispatch = {
             kinds = { panic = 'Boton de panico', alarm = 'Salto de alarma', tamper = 'Manipulacion de teclado' },
             status = { open = 'Sin asignar', assigned = 'En camino', resolved = 'Resuelto', cancelled = 'Cancelado' },

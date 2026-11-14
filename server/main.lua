@@ -365,6 +365,15 @@ local gameplay = OSSecurity.Gameplay.new({
     shopMoved = function(list) TriggerClientEvent('os_security:shop:locations', -1, list) end,
     -- Avisos de ordenes de trabajo (mismo aviso que las alarmas: texto y, si hay, punto en el mapa).
     notifyPlayer = function(player, text, kind, position) TriggerClientEvent('os_security:alarm:alert', player, text, kind, position) end,
+    -- Control de acceso: empresa de servicio (cualquier empleo de os_devtools) y eventos al cliente.
+    company = function(player)
+        if employmentResource == 'none' or GetResourceState(employmentResource) ~= 'started' then return nil end
+        local ok, job = pcall(function() return exports[employmentResource]:GetActiveEmployment(player) end)
+        if not ok or type(job) ~= 'table' or job.duty ~= true or type(job.job) ~= 'string' then return nil end
+        return job.job
+    end,
+    checkpointSend = function(player, event, payload) TriggerClientEvent('os_security:checkpoint:' .. event, player, payload) end,
+    detectorsChanged = function(list) TriggerClientEvent('os_security:checkpoint:detectors', -1, list) end,
     audit = function(action, source, deviceId)
         local safeId = OSSecurity.DeviceValidation.id(deviceId) and deviceId or '-'
         print(('%s [G6 AUDIT] action=%s source=%d device=%s'):format(constants.LOG_PREFIX, action, source, safeId))
@@ -574,6 +583,66 @@ RegisterNetEvent('os_security:lockpick:finish', function(result)
     TriggerClientEvent('os_security:lockpick:result', player, outcome ~= nil and outcome.ok == true, outcome and outcome.message or err, outcome and outcome.broken == true)
 end)
 
+-- Control de acceso: arcos detectores, cacheo y custodia (server/checkpoint/service.lua).
+local function checkpointReply(player, result, err)
+    if result and result.message then TriggerClientEvent('os_security:alarm:alert', player, result.message, 'success')
+    elseif err then TriggerClientEvent('os_security:alarm:alert', player, err, 'warning') end
+end
+RegisterNetEvent('os_security:checkpoint:list', function()
+    local player = source
+    if not lockAllowed(player) then return end
+    local ok, list = pcall(gameplay.checkpoint.list)
+    if ok then TriggerClientEvent('os_security:checkpoint:detectors', player, list) end
+end)
+RegisterNetEvent('os_security:checkpoint:place', function(args)
+    local player = source
+    if not lockAllowed(player) then return end
+    checkpointReply(player, lockCall(function() return gameplay.checkpoint.place(player, args) end))
+end)
+RegisterNetEvent('os_security:checkpoint:pass', function(detectorId, weapons)
+    local player = source
+    if not lockAllowed(player) then return end
+    lockCall(function() return gameplay.checkpoint.pass(player, detectorId, weapons) end)
+end)
+RegisterNetEvent('os_security:checkpoint:frisk', function(target)
+    local player = source
+    if not lockAllowed(player) then return end
+    checkpointReply(player, lockCall(function() return gameplay.checkpoint.request(player, tonumber(target)) end))
+end)
+RegisterNetEvent('os_security:checkpoint:answer', function(accept, weapons)
+    local player = source
+    if not lockAllowed(player) then return end
+    checkpointReply(player, lockCall(function() return gameplay.checkpoint.answer(player, accept == true, weapons) end))
+end)
+RegisterNetEvent('os_security:checkpoint:finish', function(retain)
+    local player = source
+    if not lockAllowed(player) then return end
+    local result, err = lockCall(function() return gameplay.checkpoint.finish(player, retain) end)
+    checkpointReply(player, result, err)
+end)
+RegisterNetEvent('os_security:checkpoint:cancel', function()
+    local player = source
+    if not lockAllowed(player) then return end
+    checkpointReply(player, lockCall(function() return gameplay.checkpoint.cancel(player) end))
+end)
+-- /cacheo: pide permiso a la persona que tienes delante (el cliente elige a quien mira). /custodia: recoger.
+-- /arco recoger: retira el arco de tu empresa que tengas al lado.
+RegisterCommand('custodia', function(player)
+    if player == 0 or not lockAllowed(player) then return end
+    checkpointReply(player, lockCall(function() return gameplay.checkpoint.reclaim(player) end))
+end, false)
+RegisterCommand('arco', function(player, args)
+    if player == 0 or not lockAllowed(player) then return end
+    if args[1] == 'recoger' then checkpointReply(player, lockCall(function() return gameplay.checkpoint.pickup(player) end))
+    else TriggerClientEvent('os_security:alarm:alert', player, 'Uso: /arco recoger (junto a un arco de tu empresa). Para colocarlo, usa el objeto.', 'info') end
+end, false)
+CreateThread(function()
+    while true do
+        Wait(1000)
+        if gameplay.status() then pcall(gameplay.checkpoint.tick) end
+    end
+end)
+
 -- Las entidades nacen abiertas: cada pocos segundos se les aplica el estado guardado (puertas y state bag).
 CreateThread(function()
     while true do
@@ -617,7 +686,7 @@ end)
 local function registerUsableTablets()
     if not externalItems or GetResourceState(inventoryResource) ~= 'started' then return end
     for item, definition in pairs(OSSecurity.ItemCatalog) do
-        if definition.tablet or ({ placement = true, tag = true, cylinder = true, car = true, lockpick = true })[definition.usable] then
+        if definition.tablet or ({ placement = true, tag = true, cylinder = true, car = true, lockpick = true, detector = true })[definition.usable] then
             local ok, registered = pcall(function()
                 return exports[inventoryResource]:RegisterUsableItem(item, function(player)
                     TriggerClientEvent('osinventory:forceClose', player)
@@ -637,6 +706,8 @@ local function registerUsableTablets()
                         local data, err = lockCall(function() return gameplay.locks.changeBegin(player, item) end)
                         if data then TriggerClientEvent('os_security:locks:change', player, data)
                         else TriggerClientEvent('os_security:locks:result', player, false, err) end
+                    elseif definition.usable == 'detector' then
+                        TriggerClientEvent('os_security:checkpoint:placeBegin', player, OSSecurity.GameplayConfig.Checkpoint.PlaceDistance)
                     elseif definition.usable == 'tag' then
                         local result, err = gameplay.alarms.tagNearest(player)
                         TriggerClientEvent('os_security:alarm:result', player, result, err, nil)

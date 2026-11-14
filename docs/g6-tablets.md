@@ -98,6 +98,19 @@ Los avisos llegan al personal de servicio (ACE profesional o empleo `gruppe6` de
 El titular de la alarma recibe su aviso de siempre; el personal solo el de la central. Límites en
 `GameplayConfig.Dispatch`.
 
+## Control de acceso: arco detector y cacheo (0.16.0)
+
+`server/checkpoint/service.lua`; arcos (`detectors`, `md_000001`) y custodias (`custody`, `cu_000001`) en el
+inventario, validados por `InventoryState.detector/custody`. Requiere el inventario por personaje (os_inventory).
+
+- Colocar: objeto `os_metal_detector` + empleo de servicio (`options.company`, cualquier `job` de os_devtools); a
+  `PlaceDistance` del jugador y a más de 1,5 m de otro arco. Recoger: misma empresa, `/arco recoger`.
+- Paso: el cliente informa al cruzar el hueco; el servidor exige estar en el arco (`PassRadius`), mismo bucket y
+  `PassCooldown`. Pita con objetos `Checkpoint.Metal` o armas con `metal = true`. Avisa a la empresa (`AlertRadius`).
+- Cacheo: `/cacheo` → consentimiento del cacheado (`RequestSeconds`) → zonas → retener solo lo encontrado y
+  `Retainable` (más armas) → custodia. `/custodia`: el dueño, a `PickupDistance` del sitio, mismo personaje.
+- Armas: informadas por el cliente del propio jugador y filtradas por `shared/weapons.lua`.
+
 ## Inventario standalone y persistencia
 
 Ítems distintos de tablet: `g6_client_tablet`, `g6_operations_tablet`.
