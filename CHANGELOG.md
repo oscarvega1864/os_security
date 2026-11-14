@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.18.2 — Textos nítidos en los minijuegos, un desmontaje a la vez y entrega aceptada en el cacheo
+
+- **Arreglo:** los textos de los minijuegos (código de colores y bornes) se veían emborronados desde 0.17.0: el
+  estilo de los iconos de la tablet se aplicaba a todos los dibujos. Ahora solo afecta a los iconos.
+- Un desmontaje a la vez: mientras alguien desmonta un arco (o un dispositivo instalado), nadie más puede empezar a
+  desmontarlo ni recogerlo. El arco se libera al terminar, al cancelar el minijuego, al desconectarse o a los 150 s.
+- Retener en el cacheo pide permiso: al terminar, el cacheado ve la lista de lo que se le quiere retener y elige
+  **Entregar** o **Negarme**. Si se niega o no responde a tiempo, no se retiene nada y se avisa al vigilante.
+
 ## 0.18.1 — Cacheo: objeto real y retención que sí quita del inventario
 
 - **Arreglo:** retener en un cacheo no quitaba el objeto del inventario a partir de la segunda custodia. Los números

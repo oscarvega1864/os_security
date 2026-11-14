@@ -13,7 +13,7 @@ button{font:inherit;cursor:pointer;color:inherit;border:1px solid color-mix(in s
 .sb-battery{width:24px;height:11px;border:1.5px solid currentColor;border-radius:3px;padding:1px;position:relative;opacity:.9}.sb-battery:after{content:'';position:absolute;right:-4px;top:2px;width:2px;height:4px;background:currentColor;border-radius:0 1px 1px 0}.sb-battery i{display:block;height:100%;width:78%;background:currentColor;border-radius:1px}
 .sb-bell{position:relative;border:0;padding:2px;display:grid;place-items:center;border-radius:6px}.sb-bell svg{width:16px;height:16px}.sb-badge{position:absolute;right:-6px;top:-5px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#e5533d;color:#fff;font-size:9px;line-height:15px;text-align:center}
 .statusbar .close{font-size:10px;padding:3px 10px;border-radius:999px;border-color:color-mix(in srgb,var(--muted) 35%,transparent)}
-svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+svg.icon{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 /* ---- Pantalla de inicio ---- */
 .home{flex:1;min-height:0;overflow:auto;padding:14px 40px 110px;scrollbar-width:none;animation:os-in .28s ease}
 .home-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin:6px 0 18px}.greeting{font-size:30px;font-weight:300;letter-spacing:-.6px}
@@ -135,7 +135,7 @@ button.danger{border-color:#c0604a;color:#c0604a}button.danger:hover:not(:disabl
 .mg-plug.black{stroke:#8a8a8a}.mg-loose{fill:none;stroke-width:5;stroke-linecap:round;stroke:var(--wire)}
 .mg-terminal{fill:#c9c2a8;stroke:#6f6a58}.mg-terminal-label{fill:#1d1a12;font:700 11px Consolas,monospace;pointer-events:none}
 .mg-socket.linked.red{stroke:#d65a4a}.mg-socket.linked.black{stroke:#8a8a8a}.mg-socket.linked.white{stroke:#e6e6e0}.mg-socket.linked.green{stroke:#64b06b}.mg-socket.linked.yellow{stroke:#e0c049}
-.mg-wire-code{fill:#a9c66f;font:600 9px Inter,Arial,sans-serif;pointer-events:none}
+.mg-wire-code{fill:#a9c66f;font:700 11px Arial,sans-serif;pointer-events:none}
 .mg-socket:not(.linked){stroke:#5d6b62}
 .cy-channel{fill:#050807;stroke:#4a5751;stroke-width:1.5}.cy-body{fill:#8d9893;stroke:#cfd8d2;stroke-width:1.5}.cy-cylinder.fresh .cy-body{fill:#c9a24a;stroke:#f0d58a}.cy-key{fill:#5f6a65;stroke:#cfd8d2;stroke-width:2;cursor:grab}.cy-blade{fill:#cfd8d2}.cy-cam{stroke:#d65a4a;stroke-width:6;stroke-linecap:round}.cy-cam.aligned{stroke:#64b06b}.cy-hub{fill:#2a312d;stroke:#cfd8d2;stroke-width:1.5}.cy-cylinder{cursor:grab}
 .cw-trim{fill:#2b2f2e;stroke:#4a5751;stroke-width:2}.cw-column{fill:#1b1f1e;stroke:#3a4741;stroke-width:2}.cw-clip{fill:#d8d2c0;stroke:#8d8676;cursor:pointer}.cw-clip.done{fill:#64b06b;opacity:.35}.cw-clip.broken{fill:#d65a4a;opacity:.6}.mg-meter{position:relative}.cw-band{position:absolute;top:0;bottom:0;background:#64b06b55;border-left:1px solid #64b06b;border-right:1px solid #64b06b;pointer-events:none}.cw-meter{fill:#1a2a22;stroke:#a9c66f}.cw-display{fill:#a9c66f;font:700 15px Consolas,monospace}.cw-wire{stroke-width:7;stroke-linecap:round;cursor:pointer}.cw-wire.spliced{stroke-dasharray:4 3}.cw-wire.red{stroke:#d65a4a}.cw-wire.black{stroke:#222}.cw-wire.green{stroke:#64b06b}.cw-wire.white{stroke:#e8e8e8}.cw-wire.yellow{stroke:#e0c049}.cw-wire.blue{stroke:#4f8fd6}.cw-wire.brown{stroke:#8a5a3a}.cw-wire.purple{stroke:#9a6ad6}.cw-reading{fill:#cfd8d2;font:10px Consolas,monospace}.cw-module{fill:#18221e;stroke:#3a4741}.cw-lead{fill:#e0c049;stroke:#0b1210;stroke-width:3;cursor:grab}.cw-lead.done{fill:#64b06b}.cw-lead-label{fill:#edf3e8;font:11px sans-serif}.cw-lead-cable{fill:none;stroke:#e0c049;stroke-width:4}.cw-fob{fill:#2b2f2e;stroke:#5c6b63;stroke-width:2}.cw-led{fill:#3a1a18}.cw-led.on{fill:#ff5040}.cw-button{fill:#4a5751;stroke:#cfd8d2;stroke-width:2;cursor:pointer}
@@ -217,3 +217,4 @@ select{font:inherit;font-size:11px;color:var(--ink);background:var(--surface);bo
 .cp-entry{display:flex;align-items:center;gap:6px;font-size:11px}.cp-entry-name{flex:1;overflow-wrap:anywhere}
 .cp-entry.kind-weapon .cp-entry-name{color:#e0866a;font-weight:700}.cp-entry.metal .cp-entry-name::after{content:' ⚙';color:#d8b45a}
 .cp-retain{font-size:10px;color:#a2b1a6}.cp-status{font-size:11px;color:#d8b45a;min-height:14px;margin-bottom:8px}
+.cp-retain-list{margin:0 0 12px;padding:8px 12px 8px 26px;max-height:180px;overflow:auto;border-radius:8px;background:#0b1210;border:1px solid #2c3d33;font-size:13px;line-height:1.6;color:#edf3e8}

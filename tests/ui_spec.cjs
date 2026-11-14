@@ -496,6 +496,7 @@ async function main() {
     await until(`document.querySelector('.mg-head h2').textContent === window.__mgText.unplugTitle`);
     assert(await evaluate(`Array.from(document.querySelectorAll('.mg-terminal-label')).every(t => ['+12V','GND','SEN I','SEN D','ZUMB'].includes(t.textContent))
       && Array.from(document.querySelectorAll('.mg-terminal-label')).filter(t => ['SEN I','SEN D','ZUMB'].includes(t.textContent)).length >= 2`), 'Detector wiring uses its own terminal names');
+    assert(await evaluate(`Array.from(document.querySelectorAll('.mg-terminal-label')).every(t => getComputedStyle(t).stroke === 'none')`), 'Minigame text must not inherit the tablet icon stroke (blurry letters)');
     await evaluate(`window.postMessage({ type: 'minigameClose' }, '*')`); await until(`document.getElementById('minigame').hidden`);
     console.log('PASS detector minigame: own titles, floor anchors and control-unit terminals for mounting and unmounting');
     // Control de acceso: permiso de cacheo y panel por zonas.
@@ -528,7 +529,13 @@ async function main() {
     await until(`document.querySelector('.cp-frisk')`);
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
     await until(`document.getElementById('checkpoint').hidden && window.__calls.some(x => x.endpoint === 'friskCancel')`);
-    console.log('PASS frisk: consent card, zones revealed by patting, retain only allowed finds, Escape cancels');
+    // Retencion: el cacheado ve la lista y entrega o se niega.
+    await evaluate(`window.__calls.length = 0; window.postMessage({ type: 'friskAsk', text: window.__cpText, data: { from: 'Vigilante', company: 'gruppe6', seconds: 20, retain: true, items: ['Herramienta x2', '<b>Pistola</b>'] } }, '*')`);
+    await until(`document.querySelectorAll('.cp-retain-list li').length === 2`);
+    assert(await evaluate(`document.querySelector('.cp-ask').textContent.includes(window.__cpText.retainTitle) && document.querySelector('.cp-yes').textContent === window.__cpText.retainAccept
+      && !document.querySelector('.cp-retain-list b')`));
+    await evaluate(`document.querySelector('.cp-no').click()`); await until(`window.__calls.some(x => x.endpoint === 'friskConsent' && x.body.accept === false)`);
+    console.log('PASS frisk: consent card, zones revealed by patting, retain only allowed finds, Escape cancels; retention asks the frisked person');
     await evaluate(`window.postMessage({ type: 'siren', volume: 0.6 }, '*')`); await until(`window.__osSiren.active()`);
     await evaluate(`window.postMessage({ type: 'siren', volume: 0 }, '*')`); await until(`!window.__osSiren.active()`);
     console.log('PASS generated siren starts with a volume and stops at zero');

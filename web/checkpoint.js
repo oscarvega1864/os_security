@@ -17,11 +17,13 @@
   function ask(data, text) {
     hide(); mode = 'ask';
     const card = el('section', null, 'cp-ask');
-    card.append(el('span', text.askTitle, 'cp-overline'), el('p', format(text.ask, data.from || '', data.company || ''), 'cp-ask-text'));
+    const retain = data.retain === true && Array.isArray(data.items);
+    card.append(el('span', retain ? text.retainTitle : text.askTitle, 'cp-overline'), el('p', format(retain ? text.retainAsk : text.ask, data.from || '', data.company || ''), 'cp-ask-text'));
+    if (retain) { const list = el('ul', null, 'cp-retain-list'); for (const item of data.items.slice(0, 40)) list.append(el('li', String(item))); card.append(list); }
     const timer = el('div', '', 'cp-timer'); card.append(timer);
     const row = el('div', null, 'cp-row');
-    const yes = el('button', text.accept, 'cp-yes'); yes.type = 'button'; yes.addEventListener('click', () => consent(true));
-    const no = el('button', text.refuse, 'cp-no'); no.type = 'button'; no.addEventListener('click', () => consent(false));
+    const yes = el('button', retain ? text.retainAccept : text.accept, 'cp-yes'); yes.type = 'button'; yes.addEventListener('click', () => consent(true));
+    const no = el('button', retain ? text.retainRefuse : text.refuse, 'cp-no'); no.type = 'button'; no.addEventListener('click', () => consent(false));
     row.append(yes, no); card.append(row); root.append(card); root.hidden = false;
     let left = Math.max(1, Number(data.seconds) || 20);
     timer.textContent = `${left}s`;

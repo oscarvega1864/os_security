@@ -24,7 +24,7 @@ window.G6OS = function createOS(api) {
     about: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 11v5M12 8v.5'
   };
   function icon(name) {
-    const svg = document.createElementNS(svgNS, 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
+    const svg = document.createElementNS(svgNS, 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('class', 'icon');
     const path = document.createElementNS(svgNS, 'path'); path.setAttribute('d', ICONS[name] || ICONS.overview); svg.append(path); return svg;
   }
   os.icon = icon;

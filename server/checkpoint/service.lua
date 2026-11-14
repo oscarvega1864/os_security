@@ -22,7 +22,9 @@ function OSSecurity.CheckpointService.new(options)
     local service = {}
     local passes = {}   -- source..':'..detector -> instante
     local pending = {}  -- cacheado -> { guard, expires }
-    local frisks = {}   -- vigilante -> { target, holder, findings, expires, company }
+    local frisks = {}   -- vigilante -> { target, holder, findings, expires, company, offer? }
+    local unmounting = {} -- arco -> { source, expires }: quien lo esta desmontando (uno a la vez)
+    local UNMOUNT_SECONDS = 150
 
     local function detectors() return options.inventory.detectors() or {} end
     local function custody() return options.inventory.custody() or {} end
@@ -144,12 +146,29 @@ function OSSecurity.CheckpointService.new(options)
         local holder = holderOf(source)
         if not holder then return nil, T.needInventory end
         if not hasTools(holder) then return nil, T.needTools end
+        local busy = unmounting[detector.id]
+        if busy and busy.source ~= source and busy.expires >= options.now() then return nil, T.unmountBusy end
         return { detector = detector, holder = holder }
+    end
+    -- Antes del minijuego: reserva el arco para quien lo desmonta; nadie mas puede hasta que termine o cancele.
+    function service.unmountBegin(source)
+        local ready, why = service.unmountCheck(source)
+        if not ready then return nil, why end
+        service.unmountCancel(source)
+        unmounting[ready.detector.id] = { source = source, expires = options.now() + UNMOUNT_SECONDS }
+        return ready
+    end
+    function service.unmountCancel(source)
+        for id, busy in pairs(unmounting) do if busy.source == source then unmounting[id] = nil end end
+        return { cancelled = true }
     end
     function service.pickup(source)
         local ready, why = service.unmountCheck(source)
         if not ready then return nil, why end
         local detector, holder = ready.detector, ready.holder
+        local busy = unmounting[detector.id]
+        if not busy or busy.source ~= source or busy.expires < options.now() then return nil, T.notStarted end
+        unmounting[detector.id] = nil
         local saved, err = options.inventory.apply({ kind = 'detector', detectorId = detector.id })
         if not saved then return nil, err end
         options.items.giveAny(holder, 'os_metal_detector', 1, op(detector, 'pickup'))
@@ -246,16 +265,61 @@ function OSSecurity.CheckpointService.new(options)
         if frisk then options.send(frisk.target, 'friskEnd', {}) end
         return frisk
     end
-    -- Fin del cacheo: lo marcado para retener pasa a custodia de la empresa del vigilante.
+    local retainNow -- definida mas abajo (pasa lo aceptado a custodia)
+    -- Fin del cacheo: lo marcado para retener se ofrece al cacheado, que acepta o se niega a entregarlo.
     function service.finish(guard, retain)
         local frisk = frisks[guard]
         if not frisk then return nil, T.noFrisk end
+        if frisk.offer then return nil, T.waitingAnswer end
         if frisk.expires < options.now() then endFrisk(guard); return nil, T.expired end
-        local wantItems, wantWeapons = {}, {}
+        local found = {}
+        for _, entries in pairs(frisk.findings) do for _, entry in ipairs(entries) do found[entry.kind .. ':' .. entry.name] = entry end end
+        -- Solo lo que de verdad aparecio en el cacheo y se puede retener, en la cantidad encontrada.
+        local offer, labels = { items = {}, weapons = {} }, {}
         if type(retain) == 'table' then
-            if type(retain.items) == 'table' then for item, amount in pairs(retain.items) do wantItems[item] = amount end end
-            if type(retain.weapons) == 'table' then for _, weaponName in ipairs(retain.weapons) do wantWeapons[weaponName] = true end end
+            if type(retain.items) == 'table' then
+                for item, amount in pairs(retain.items) do
+                    local entry = found['item:' .. tostring(item)]
+                    amount = math.tointeger(tonumber(amount))
+                    if entry and entry.retainable and amount and amount >= 1 and amount <= entry.count and frisk.holder then
+                        offer.items[item] = amount; labels[#labels + 1] = amount > 1 and ('%s x%d'):format(entry.label, amount) or entry.label
+                    end
+                end
+            end
+            if type(retain.weapons) == 'table' then
+                for _, weaponName in ipairs(retain.weapons) do
+                    local entry = type(weaponName) == 'string' and found['weapon:' .. weaponName]
+                    if entry and not offer.weapons[weaponName] then offer.weapons[weaponName] = true; labels[#labels + 1] = entry.label end
+                end
+            end
         end
+        if #labels == 0 then
+            endFrisk(guard); notify(frisk.target, T.clean, 'success')
+            return { message = T.nothingRetained }
+        end
+        table.sort(labels)
+        frisk.offer = offer; frisk.offerExpires = options.now() + config.RequestSeconds
+        frisk.expires = math.max(frisk.expires, frisk.offerExpires)
+        options.send(frisk.target, 'retainAsk', { from = name(guard), company = frisk.company, items = labels, seconds = config.RequestSeconds })
+        return { message = T.retainAsked:format(name(frisk.target)) }
+    end
+    -- Respuesta del cacheado: si acepta, lo ofrecido pasa a custodia; si no, no se retiene nada.
+    function service.retainAnswer(target, accept)
+        local guard, frisk
+        for candidate, current in pairs(frisks) do if current.target == target and current.offer then guard, frisk = candidate, current end end
+        if not frisk then return nil, T.noFrisk end
+        if frisk.offerExpires < options.now() then endFrisk(guard); notify(guard, T.noAnswer, 'info'); return nil, T.expired end
+        if accept ~= true then
+            endFrisk(guard)
+            notify(guard, T.retainRefused:format(name(target)), 'warning')
+            return { message = T.youRefusedRetain }
+        end
+        local result, err = retainNow(guard, frisk, frisk.offer.items, frisk.offer.weapons)
+        if result then notify(guard, result.message, 'success') elseif err then notify(guard, err, 'error') end
+        if not result then return nil, err end
+        return { message = T.retainedOwner:format(frisk.company) }
+    end
+    retainNow = function(guard, frisk, wantItems, wantWeapons)
         local found = {}
         for _, entries in pairs(frisk.findings) do for _, entry in ipairs(entries) do found[entry.kind .. ':' .. entry.name] = entry end end
         local record, failed = { items = {}, weapons = {} }, {}
@@ -291,7 +355,6 @@ function OSSecurity.CheckpointService.new(options)
             return nil, err or T.noTarget
         end
         if #removed > 0 then options.send(frisk.target, 'removeWeapons', removed) end
-        notify(frisk.target, T.retainedOwner:format(entry.company), 'warning')
         options.audit('custody_created', guard, id)
         local message = T.retained:format(id)
         if #failed > 0 then message = message .. ' ' .. T.notRetained:format(table.concat(failed, ', ')) end
@@ -325,7 +388,11 @@ function OSSecurity.CheckpointService.new(options)
         for target, request in pairs(pending) do
             if request.expires < now then pending[target] = nil; notify(request.guard, T.noAnswer, 'info') end
         end
-        for guard, frisk in pairs(frisks) do if frisk.expires < now then endFrisk(guard) end end
+        for guard, frisk in pairs(frisks) do
+            if frisk.offer and frisk.offerExpires < now then endFrisk(guard); notify(guard, T.noAnswer, 'info')
+            elseif frisk.expires < now then endFrisk(guard) end
+        end
+        for id, busy in pairs(unmounting) do if busy.expires < now then unmounting[id] = nil end end
     end
     function service.forget(source)
         pending[source] = nil
@@ -333,6 +400,7 @@ function OSSecurity.CheckpointService.new(options)
         endFrisk(source)
         for guard, frisk in pairs(frisks) do if frisk.target == source then endFrisk(guard); notify(guard, T.cancelled, 'info') end end
         for key in pairs(passes) do if key:match('^' .. source .. ':') then passes[key] = nil end end
+        service.unmountCancel(source)
     end
     return service
 end

@@ -223,6 +223,11 @@ OSSecurity.Brand = {
             metal = 'metal', weapon = 'arma', item = 'objeto',
             needTools = 'Necesitas taladro y destornillador.', mountCancelled = 'Montaje cancelado: el arco sigue en tu inventario.',
             unmountCancelled = 'Desmontaje cancelado: el arco sigue en su sitio.',
+            unmountBusy = 'Otra persona ya esta desmontando este arco.', notStarted = 'Empieza el desmontaje con /arco recoger.',
+            -- Retener en el cacheo: el cacheado acepta o se niega a entregar lo que se le quiere retener.
+            retainAsked = 'Pides a %s que entregue lo que quieres retener...', waitingAnswer = 'Esperando a que acepte o rechace la retencion.',
+            retainRefused = '%s se niega a entregar los objetos: no se retiene nada.', youRefusedRetain = 'Te has negado a entregar los objetos.',
+            retainTitle = 'Retencion de objetos', retainAsk = '%s (%s) quiere retener:', retainAccept = 'Entregar', retainRefuse = 'Negarme',
             -- Minijuego de montaje y desmontaje (sustituye a los textos comunes del minijuego de instalacion).
             minigame = {
                 title = 'Montaje del arco detector', removeTitle = 'Desmontaje del arco detector',

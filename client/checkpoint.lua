@@ -199,7 +199,8 @@ end, false)
 RegisterNetEvent('os_security:checkpoint:unmountGame', function()
     if source ~= 65535 or not OSSecurity.Minigame then return end
     OSSecurity.Minigame.run(function(ok)
-        if ok then TriggerServerEvent('os_security:checkpoint:pickup') else notify(T.unmountCancelled, 'info') end
+        if ok then TriggerServerEvent('os_security:checkpoint:pickup')
+        else TriggerServerEvent('os_security:checkpoint:unmountCancel'); notify(T.unmountCancelled, 'info') end
     end, 'remove', 'detector', { prop = false })
 end)
 
@@ -231,20 +232,29 @@ TriggerEvent('chat:addSuggestion', '/cacheo', 'Pedir permiso para cachear a la p
 TriggerEvent('chat:addSuggestion', '/custodia', 'Recoger los objetos que te retuvieron (en el mismo sitio)')
 TriggerEvent('chat:addSuggestion', '/arco', 'Arco detector: /arco recoger (junto a un arco de tu empresa)')
 
-local consenting = false
+local consenting = false -- false | 'frisk' (pedir permiso para cachear) | 'retain' (entregar lo retenido)
 RegisterNetEvent('os_security:checkpoint:friskAsk', function(data)
     if source ~= 65535 or type(data) ~= 'table' then return end
-    consenting = true
+    consenting = 'frisk'
     SetNuiFocus(true, true)
     SendNUIMessage({ type = 'friskAsk', data = data, text = T })
+end)
+-- El vigilante quiere retener objetos: el cacheado ve la lista y decide si los entrega.
+RegisterNetEvent('os_security:checkpoint:retainAsk', function(data)
+    if source ~= 65535 or type(data) ~= 'table' or type(data.items) ~= 'table' then return end
+    consenting = 'retain'
+    SetNuiFocus(true, true)
+    SendNUIMessage({ type = 'friskAsk', data = { from = data.from, company = data.company, seconds = data.seconds, items = data.items, retain = true }, text = T })
 end)
 RegisterNUICallback('friskConsent', function(body, callback)
     callback({ ok = true })
     if not consenting then return end
+    local kind = consenting
     consenting = false
     SetNuiFocus(false, false)
     local accept = type(body) == 'table' and body.accept == true
-    TriggerServerEvent('os_security:checkpoint:answer', accept, accept and myWeapons() or nil)
+    if kind == 'retain' then TriggerServerEvent('os_security:checkpoint:retainAnswer', accept)
+    else TriggerServerEvent('os_security:checkpoint:answer', accept, accept and myWeapons() or nil) end
 end)
 
 -- El cacheado: manos arriba hasta que termine.
@@ -270,7 +280,12 @@ RegisterNetEvent('os_security:checkpoint:friskBegin', function()
         end
     end)
 end)
-RegisterNetEvent('os_security:checkpoint:friskEnd', function() if source == 65535 then stopHands() end end)
+RegisterNetEvent('os_security:checkpoint:friskEnd', function()
+    if source ~= 65535 then return end
+    stopHands()
+    -- Si el vigilante cancela mientras se decide la retencion, se cierra la pregunta.
+    if consenting == 'retain' then consenting = false; SetNuiFocus(false, false); SendNUIMessage({ type = 'friskClose' }) end
+end)
 
 -- El vigilante: panel de cacheo por zonas.
 local frisking = false

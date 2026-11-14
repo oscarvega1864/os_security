@@ -1710,12 +1710,21 @@ test('Metal detector: any on-duty company places it with the item, it beeps for 
     assert(not cp.pickup(1))
     e.give(1, 'os_drill')
     assert(cp.unmountCheck(1).detector.id == 'md_000001')
+    assert(not cp.pickup(1)) -- sin empezar el desmontaje (minijuego) no se recoge
+    -- Uno a la vez: mientras el jugador 1 lo desmonta, otro empleado de la empresa no puede empezar ni recogerlo.
+    assert(cp.unmountBegin(1).detector.id == 'md_000001')
+    c.companies[3] = 'police'; c.players[3].point = { x = 1, y = 0.5, z = 1 }; e.kit(3)
+    _, why = cp.unmountBegin(3); assert(why:find('Otra persona'))
+    assert(not cp.pickup(3))
+    -- Si el primero cancela, el arco queda libre.
+    cp.unmountCancel(1); assert(cp.unmountBegin(3)); cp.unmountCancel(3)
+    assert(cp.unmountBegin(1))
     assert(cp.pickup(1)); assert(#c.detectorList == 0 and e.count(1, 'os_metal_detector') == 2)
     -- Volver a colocarlo: vuelve a ser md_000001, pero el arco se gasta de verdad y al recogerlo se devuelve.
     c.core.time = c.core.time + 5
     assert(cp.place(1, args).id == 'md_000001' and e.count(1, 'os_metal_detector') == 1)
     c.core.time = c.core.time + 5
-    assert(cp.pickup(1)); assert(e.count(1, 'os_metal_detector') == 2)
+    assert(cp.unmountBegin(1) and cp.pickup(1)); assert(e.count(1, 'os_metal_detector') == 2)
 end)
 
 test('Frisk: needs consent, reveals what is carried by zone, retains only dangerous things and the owner picks them up at the same place', function()
@@ -1735,8 +1744,14 @@ test('Frisk: needs consent, reveals what is carried by zone, retains only danger
     local waist = {}; for _, entry in ipairs(opened.zones.waist) do waist[entry.name] = entry end
     assert(waist.weapon_pistol and waist.weapon_pistol.retainable and waist.herramienta.count == 2 and waist.herramienta.label == 'L:herramienta')
     assert(opened.zones.rightLeg[1].name == 'telefono' and not opened.zones.rightLeg[1].retainable)
-    local done = assert(cp.finish(1, { items = { herramienta = 2, telefono = 1, os_lockpick = 5 }, weapons = { 'weapon_pistol', 'weapon_rpg' } }))
-    assert(done.message:find('cu_000001'))
+    -- Al terminar, el cacheado ve solo lo que de verdad se puede retener y decide si lo entrega.
+    local offered = assert(cp.finish(1, { items = { herramienta = 2, telefono = 1, os_lockpick = 5 }, weapons = { 'weapon_pistol', 'weapon_rpg' } }))
+    assert(offered.message:find('Jugador5') and c.game.inventory.custody().cu_000001 == nil and e.count(5, 'herramienta') == 2)
+    local asked = sentTo(c, 5, 'retainAsk')[1]
+    assert(asked and #asked.items == 2 and table.concat(asked.items, ','):find('L:herramienta x2', 1, true) and asked.from == 'Jugador1')
+    assert(not cp.finish(1, {})) -- esperando respuesta
+    assert(not cp.retainAnswer(4, true)) -- solo responde el cacheado
+    local accepted = assert(cp.retainAnswer(5, true)); assert(accepted.message:find('custodia'))
     local record = c.game.inventory.custody().cu_000001
     assert(record.items.herramienta == 2 and record.items.telefono == nil and record.items.os_lockpick == nil) -- telefono no se retiene; ganzua: cantidad falsa
     assert(#record.weapons == 1 and record.weapons[1].name == 'weapon_pistol' and record.weapons[1].ammo == 30 and record.company == 'gruppe6')
@@ -1753,14 +1768,25 @@ test('Frisk: needs consent, reveals what is carried by zone, retains only danger
     -- (antes el inventario veia la misma operacion "ya hecha" y no quitaba nada).
     c.core.time = c.core.time + 5
     assert(cp.request(1, 5) and cp.answer(5, true, {}))
-    local again = assert(cp.finish(1, { items = { herramienta = 2 }, weapons = {} })); assert(again.message:find('cu_000001'))
+    assert(cp.finish(1, { items = { herramienta = 2 }, weapons = {} })); assert(cp.retainAnswer(5, true))
     assert(e.count(5, 'herramienta') == 0 and c.game.inventory.custody().cu_000001.items.herramienta == 2)
     c.core.time = c.core.time + 5; assert(cp.reclaim(5)); assert(e.count(5, 'herramienta') == 2)
     -- Si el inventario no deja quitar algo, se avisa al vigilante y no se apunta en custodia.
     assert(cp.request(1, 5) and cp.answer(5, true, {}))
     local before = e.count(5, 'herramienta'); e.counts[e.holders[5]].herramienta = 0
-    local _, refused = cp.finish(1, { items = { herramienta = 2 }, weapons = {} }); assert(refused and refused:find('No se pudo retener'))
+    assert(cp.finish(1, { items = { herramienta = 2 }, weapons = {} }))
+    local _, refused = cp.retainAnswer(5, true); assert(refused and refused:find('No se pudo retener'))
     e.counts[e.holders[5]].herramienta = before
+    -- Si se niega, no se retiene nada y el cacheo termina.
+    assert(cp.request(1, 5) and cp.answer(5, true, { { name = 'weapon_pistol', ammo = 12 } }))
+    assert(cp.finish(1, { items = { herramienta = 2 }, weapons = { 'weapon_pistol' } }))
+    assert(cp.retainAnswer(5, false)); assert(e.count(5, 'herramienta') == before and c.game.inventory.custody().cu_000001 == nil)
+    assert(not cp.retainAnswer(5, true)) -- ya no hay nada pendiente
+    -- Sin respuesta a tiempo, tampoco.
+    assert(cp.request(1, 5) and cp.answer(5, true, {}))
+    assert(cp.finish(1, { items = { herramienta = 1 }, weapons = {} }))
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Checkpoint.RequestSeconds + 1; cp.tick()
+    assert(not cp.retainAnswer(5, true) and e.count(5, 'herramienta') == before)
     -- Sin nada que retener, el cacheo acaba limpio y sin custodia.
     assert(cp.request(1, 5) and cp.answer(5, true, {}) and cp.finish(1, { items = {}, weapons = {} }).message:find('sin retener'))
     -- La peticion caduca sin respuesta.

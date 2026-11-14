@@ -293,6 +293,12 @@ function OSSecurity.InstallationService.new(options)
     function service.removeBegin(source, session, deviceId)
         local device, installation, point = removable(source, session, deviceId)
         if not device then return nil, installation end
+        -- Un desmontaje a la vez por dispositivo: otro tecnico no puede empezar mientras alguien lo esta quitando.
+        for other, context in pairs(removals) do
+            if other ~= source and context.deviceId == device.id and context.expires >= options.now() then
+                return nil, 'Otra persona ya esta desmontando este dispositivo.'
+            end
+        end
         removals[source] = { token = session.token, deviceId = device.id, expires = options.now() + config.PlacementSeconds, origin = point }
         return { deviceId = device.id, model = installation.model, seconds = config.PlacementSeconds, position = util.copy(installation.position) }
     end

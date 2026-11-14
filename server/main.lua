@@ -634,9 +634,20 @@ end, false)
 RegisterNetEvent('os_security:checkpoint:unmountBegin', function()
     local player = source
     if not lockAllowed(player) then return end
-    local ready, err = lockCall(function() return gameplay.checkpoint.unmountCheck(player) end)
+    local ready, err = lockCall(function() return gameplay.checkpoint.unmountBegin(player) end)
     if ready then TriggerClientEvent('os_security:checkpoint:unmountGame', player)
     else TriggerClientEvent('os_security:alarm:alert', player, err or OSSecurity.Brand.Text.failed, 'warning') end
+end)
+RegisterNetEvent('os_security:checkpoint:unmountCancel', function()
+    local player = source
+    if not lockAllowed(player) then return end
+    lockCall(function() return gameplay.checkpoint.unmountCancel(player) end)
+end)
+-- El cacheado acepta o se niega a entregar lo que el vigilante quiere retener.
+RegisterNetEvent('os_security:checkpoint:retainAnswer', function(accept)
+    local player = source
+    if not lockAllowed(player) then return end
+    checkpointReply(player, lockCall(function() return gameplay.checkpoint.retainAnswer(player, accept == true) end))
 end)
 RegisterNetEvent('os_security:checkpoint:pickup', function()
     local player = source
