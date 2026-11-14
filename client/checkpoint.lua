@@ -181,7 +181,7 @@ RegisterNetEvent('os_security:checkpoint:placeBegin', function(reach)
                 if OSSecurity.Minigame then
                     OSSecurity.Minigame.run(function(ok)
                         if ok then TriggerServerEvent('os_security:checkpoint:place', args) else notify(T.mountCancelled, 'info') end
-                    end, 'install', 'detector')
+                    end, 'install', 'detector', { focus = { x = args.x, y = args.y, z = args.z }, prop = false })
                 else TriggerServerEvent('os_security:checkpoint:place', args) end
             elseif IsControlJustPressed(0, 177) or IsControlJustPressed(0, 200) or IsEntityDead(ped) or IsPedInAnyVehicle(ped, false) then
                 placing = false
@@ -200,7 +200,7 @@ RegisterNetEvent('os_security:checkpoint:unmountGame', function()
     if source ~= 65535 or not OSSecurity.Minigame then return end
     OSSecurity.Minigame.run(function(ok)
         if ok then TriggerServerEvent('os_security:checkpoint:pickup') else notify(T.unmountCancelled, 'info') end
-    end, 'remove', 'detector')
+    end, 'remove', 'detector', { prop = false })
 end)
 
 -- Cacheo -----------------------------------------------------------------------------------------------

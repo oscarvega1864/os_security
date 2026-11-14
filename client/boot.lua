@@ -14,7 +14,8 @@ local minigame = OSSecurity.ClientMinigame.new({
     send = SendNUIMessage,
     focus = function(value) SetNuiFocus(value, value) end,
     timeout = function(callback) SetTimeout(120000, callback) end,
-    animate = function(value) if value then minigameFx.start() else minigameFx.stop() end end
+    animate = function(value, extra) if value then minigameFx.start(extra) else minigameFx.stop() end end,
+    finale = function(mode) minigameFx.finale(mode) end
 })
 OSSecurity.Minigame = minigame -- tambien lo usa el arco detector (client/checkpoint.lua)
 local liveView -- vista en directo de camaras (client/live.lua), creada tras el controlador
@@ -101,6 +102,7 @@ RegisterNUICallback('minigameFx', function(body, callback)
     if not minigame.active() or type(body) ~= 'table' then return end
     if type(body.phase) == 'string' then minigameFx.phase(body.phase) end
     if type(body.drilling) == 'boolean' then minigameFx.drilling(body.drilling) end
+    if type(body.screwing) == 'boolean' then minigameFx.screwing(body.screwing) end
     if type(body.cue) == 'string' then minigameFx.cue(body.cue) end
 end)
 RegisterNUICallback('close', function(_, callback) controller.close(); callback({ ok = true }) end)

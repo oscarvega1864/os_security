@@ -115,9 +115,11 @@
         } else {
           state.active.done = Math.min(1, state.active.done + 0.42 * dt);
           state.heat += 0.34 * dt; status.textContent = state.heat > 0.8 ? t.tooHot : t.drilling;
+          if (state.heat > 0.8 && !state.hot) { state.hot = true; fx({ cue: 'hot' }); } // chispas: la broca se calienta
           if (state.active.done >= 1) { fx({ cue: 'hit' }); release(); status.textContent = t.holeDone; }
         }
       } else state.heat = Math.max(0, state.heat - 0.45 * dt);
+      if (state.heat < 0.6) state.hot = false;
       heat(state.heat);
       for (const hole of list) {
         hole.progress.setAttribute('stroke-dasharray', `${(hole.done * 94.2).toFixed(1)} 999`);
@@ -151,7 +153,7 @@
       board.setPointerCapture?.(event.pointerId); const p = point(board, event);
       state.active = list.find(hole => hole.angle < TURNS * 360 && Math.hypot(hole.x - p.x, hole.y - p.y) <= 22) || null;
       state.last = state.active ? angleOf(state.active, p) : null;
-      if (state.active) status.textContent = t.turnHint;
+      if (state.active) { status.textContent = t.turnHint; fx({ screwing: true }); }
     });
     board.addEventListener('pointermove', event => {
       if (!state.active) return;
@@ -163,9 +165,9 @@
       delta *= direction; // al desmontar cuenta el giro antihorario
       state.active.angle = Math.max(0, state.active.angle + delta);
       if (delta > 0) state.force = Math.min(1.2, state.force + delta / 260);
-      if (state.active.angle >= TURNS * 360) { state.active.angle = TURNS * 360; fx({ cue: 'hit' }); status.textContent = removing ? t.unscrewed : t.hit; state.active = null; }
+      if (state.active.angle >= TURNS * 360) { state.active.angle = TURNS * 360; fx({ cue: 'hit', screwing: false }); status.textContent = removing ? t.unscrewed : t.hit; state.active = null; }
     });
-    const release = () => { state.active = null; };
+    const release = () => { if (state.active) fx({ screwing: false }); state.active = null; };
     board.addEventListener('pointerup', release); board.addEventListener('pointercancel', release);
     loop(dt => {
       state.force = Math.max(0, state.force - 1.1 * dt);
@@ -173,7 +175,7 @@
         state.over += dt;
         if (state.over > 0.35) {
           state.strips++; showStrips(state.strips); state.active.angle = 0; state.active = null; state.force = 0; state.over = 0;
-          fx({ cue: 'miss' }); status.textContent = t.stripped;
+          fx({ cue: 'miss', screwing: false }); status.textContent = t.stripped;
           if (state.strips >= 3) { finish(false, 'stripped'); return false; }
         } else status.textContent = t.tooStrong;
       } else state.over = 0;

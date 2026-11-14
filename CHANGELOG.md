@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.18.0 — Instalación con cámara cercana, polvo, chispas y más sonidos
+
+- Durante el minijuego de montaje o desmontaje (cámaras, alarmas y arco detector) la cámara del juego se acerca de
+  lado al personaje y al punto de trabajo, y vuelve al terminar.
+- Taladro: polvo en la broca mientras perfora; chispas cuando la broca se calienta y al resbalar, con el golpe seco
+  de la broca. Destornillador eléctrico: zumbido mientras se gira un tornillo.
+- Paso final: al terminar bien, el personaje sostiene el equipo (la cámara o el teclado del kit) mientras lo coloca
+  o lo retira, con su sonido; en el arco no hay objeto en la mano.
+- El desmontaje devuelve la posición del equipo para encuadrar la cámara. Si un modelo, animación, partícula o sonido
+  no existe en el juego, esa parte se omite sin error.
+
 ## 0.17.0 — Tablets con sistema propio: inicio, buscador, mapa y avisos
 
 - Las tablets G6 Client y G6 Operations pasan a ser un **sistema de tablet**: marco con barra de estado (hora del

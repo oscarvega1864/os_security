@@ -73,7 +73,7 @@ function OSSecurity.ClientTablet.new(options)
                 options.minigame(function(ok, reason)
                     if ok then submit(proposal)
                     else submit(nil, reason ~= 'cancelled' and OSSecurity.Brand.Text.installFailed or nil) end
-                end)
+                end, nil, nil, { focus = proposal.position, prop = response.placement.model })
             end)
         elseif session then showSession(session) end
     end
@@ -123,7 +123,7 @@ function OSSecurity.ClientTablet.new(options)
                     if result.ok then controller.stream() end
                 end)
             end
-            if options.minigame then options.minigame(function(ok) finish(ok) end, 'remove') else finish(true) end
+            if options.minigame then options.minigame(function(ok) finish(ok) end, 'remove', nil, { focus = response.removal.position, prop = response.removal.model }) else finish(true) end
         end)
     end
     -- Marcar zona desde la tablet: el servidor reserva el marcado y cierra la sesion; la tablet se oculta

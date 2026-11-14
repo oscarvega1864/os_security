@@ -258,16 +258,38 @@ test('Minigame effects attach the phase tool, play the drill sound only while he
         stub('StopSound', function(id) sounds.stopped = id end); stub('ReleaseSoundId', function() end)
         stub('ClearPedTasks', function() calls.cleared = true end)
         stub('PlaySoundFrontend', function(_, name) frontend[#frontend + 1] = name end)
+        local cams, particles = {}, { looped = 0, stopped = 0, bursts = 0 }
+        stub('vector3', function(x, y, z) return { x = x, y = y, z = z } end)
+        stub('GetEntityForwardVector', function() return { x = 0, y = 1, z = 0 } end)
+        stub('CreateCamWithParams', function() cams.made = (cams.made or 0) + 1; return 5 end)
+        stub('PointCamAtCoord', function() end); stub('SetCamActive', function() end)
+        stub('RenderScriptCams', function(on) cams.rendering = on end); stub('DestroyCam', function() cams.destroyed = true end)
+        stub('HasNamedPtfxAssetLoaded', function() return true end); stub('RequestNamedPtfxAsset', function() end); stub('RemoveNamedPtfxAsset', function() end)
+        stub('UseParticleFxAssetNextCall', function() end)
+        stub('StartParticleFxLoopedOnEntity', function(name) particles.looped = particles.looped + 1; particles.name = name; return 9 end)
+        stub('StopParticleFxLooped', function() particles.stopped = particles.stopped + 1 end)
+        stub('StartParticleFxNonLoopedOnEntity', function() particles.bursts = particles.bursts + 1 end)
+        local function drain() while #queue > 0 do table.remove(queue, 1)() end end
         local ok, err = pcall(function()
             local fx = OSSecurity.MinigameFx.new()
-            fx.start(); queue[#queue]()
-            assert(calls.made == 1 and calls.anim == 1)
-            fx.drilling(true); queue[#queue](); assert(sounds[1][2] == 'Drill')
-            fx.drilling(false); assert(sounds.stopped == 77)
-            fx.phase('screw'); queue[#queue](); assert(calls.deleted == 1 and calls.made == 2) -- cambia la herramienta
+            fx.start({ focus = { x = 0, y = 1, z = 0 } }); drain()
+            assert(calls.made == 1 and calls.anim == 1 and cams.made == 1 and cams.rendering == true) -- camara cercana
+            fx.drilling(true); drain(); assert(sounds[1][2] == 'Drill' and particles.looped == 1 and particles.name == 'scr_drill_debris')
+            fx.drilling(false); assert(sounds.stopped == 77 and particles.stopped == 1)
+            fx.cue('hot'); drain(); assert(particles.bursts == 1) -- chispas si se calienta
+            fx.cue('miss'); drain(); assert(particles.bursts == 2 and frontend[#frontend] == 'Drill_Pin_Break')
+            fx.phase('screw'); drain(); assert(calls.deleted == 1 and calls.made == 2) -- cambia la herramienta
             fx.drilling(true); assert(#sounds == 1) -- sin taladro no suena
-            fx.cue('hit'); fx.cue('nada'); assert(#frontend == 1 and frontend[1] == 'Hack_Success')
-            fx.stop(); assert(next(objects) == nil and calls.cleared)
+            fx.screwing(true); drain(); assert(#sounds == 2) -- destornillador electrico
+            fx.screwing(false)
+            local before = #frontend
+            fx.cue('hit'); fx.cue('nada'); assert(#frontend == before + 1 and frontend[#frontend] == 'Hack_Success')
+            fx.finale('install'); drain() -- equipo en la mano, sonido de colocado y despues limpieza
+            assert(calls.made == 3 and frontend[#frontend] == 'CHECKPOINT_PERFECT' and cams.destroyed and cams.rendering == false)
+            assert(next(objects) == nil and calls.cleared)
+            fx.start({ prop = false }); drain(); fx.finale('remove'); drain()
+            assert(calls.made == 4 and frontend[#frontend] == 'PICK_UP') -- sin objeto en el paso final (arco)
+            fx.stop(); assert(next(objects) == nil)
         end)
         for name, value in pairs(saved) do _G[name] = value[1] end
         assert(ok, err)

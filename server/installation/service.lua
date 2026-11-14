@@ -294,7 +294,7 @@ function OSSecurity.InstallationService.new(options)
         local device, installation, point = removable(source, session, deviceId)
         if not device then return nil, installation end
         removals[source] = { token = session.token, deviceId = device.id, expires = options.now() + config.PlacementSeconds, origin = point }
-        return { deviceId = device.id, model = installation.model, seconds = config.PlacementSeconds }
+        return { deviceId = device.id, model = installation.model, seconds = config.PlacementSeconds, position = util.copy(installation.position) }
     end
     function service.removeConfirm(source, session, deviceId)
         local context = removals[source]
