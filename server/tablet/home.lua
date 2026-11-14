@@ -16,13 +16,22 @@ function OSSecurity.TabletHome.new(options)
         if type(position) ~= 'table' or type(position.x) ~= 'number' or type(position.y) ~= 'number' then return nil end
         return { x = util.round(position.x, 1), y = util.round(position.y, 1) }
     end
+    -- Fichas de los dispositivos accesibles: se guardan unos segundos por perfil, salvo que cambie el inventario,
+    -- para no recorrer todo el registro en cada apertura del inicio, del mapa o en cada busqueda.
+    local cache, CACHE_SECONDS = {}, 5
     local function devices(actor)
         local snapshot = options.inventory.snapshot()
+        local key = ('%s|%s|%s'):format(tostring(actor.principal), tostring(actor.kind), tostring(actor.role))
+        local now = options.now and options.now() or 0
+        local entry = cache[key]
+        if entry and entry.revision == (snapshot and snapshot.revision) and now - entry.at < CACHE_SECONDS then return entry.briefs end
         local list, err = options.service.accessible(actor, function(device) return device.state ~= 'retired' end)
         if not list then return nil, err end
         table.sort(list, function(a, b) return a.id < b.id end)
         local briefs = {}
         for _, device in ipairs(list) do briefs[#briefs + 1] = options.service.brief(device, snapshot) end
+        for other, old in pairs(cache) do if now - old.at >= CACHE_SECONDS then cache[other] = nil end end
+        cache[key] = { at = now, revision = snapshot and snapshot.revision, briefs = briefs }
         return briefs
     end
     local function orders(actor)

@@ -1852,7 +1852,9 @@ test('Tablet home: the summary and the map show only what each profile can see, 
     local tech = open(c, 1, 'operations')
     assert(call(c, 1, tech, 'place_begin').ok)
     local placed = call(c, 1, tech, 'place_confirm', proposal()); assert(placed.ok, placed.error)
+    local audits = #c.audit
     local home = call(c, 1, tech, 'home'); assert(home.ok, home.error)
+    assert(#c.audit == audits) -- una consulta de solo lectura no deja linea en la auditoria
     assert(home.data.counts.devices == 1 and home.data.counts.ok == 1 and home.data.counts.attention == 0 and #home.data.attention == 0)
     assert(#home.data.points == 1 and home.data.points[1].kind == 'device' and home.data.points[1].id == placed.data.id and home.data.points[1].x == 1)
     assert(not call(c, 1, tech, 'home', { extra = true }).ok) -- sin argumentos

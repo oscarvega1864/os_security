@@ -182,7 +182,7 @@ function OSSecurity.Gameplay.new(options)
     local service = OSSecurity.TabletService.new({ map = tabletMap, inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, ownerOf = ownerOf, employeeId = options.employeeId,
         sites = options.sites, alarms = alarms, locks = locks, cars = cars,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
-    local home = OSSecurity.TabletHome.new({ inventory = inventory, service = service, orders = orders, dispatch = dispatch })
+    local home = OSSecurity.TabletHome.new({ inventory = inventory, service = service, orders = orders, dispatch = dispatch, now = options.now })
     local patrols = OSSecurity.PatrolService.new({ inventory = inventory, world = options.world, now = options.now,
         playerName = options.playerName, contracts = contracts, send = options.patrolSend or noop,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })

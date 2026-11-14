@@ -1,6 +1,11 @@
 local util = OSSecurity.Util
 OSSecurity.TabletController = {}
 
+-- Acciones que solo leen: si salen bien no dejan linea en la auditoria.
+local READ_ONLY = { inventory = true, devices = true, device = true, home = true, search = true, requests = true, orders = true,
+    emergencies = true, dispatch = true, doors = true, trackers = true, incidents = true, zones = true, contracts = true,
+    bodycams = true, patrols = true, transport = true }
+
 function OSSecurity.TabletController.new(options)
     local controller = {}
     local function failure(err, close)
@@ -174,7 +179,8 @@ function OSSecurity.TabletController.new(options)
         elseif request.action == 'place_cancel' and next(request.args) == nil then
             options.placement.cancel(source); result = { cancelled = true }
         else return failure('Accion no disponible para esta sesion.') end
-        options.audit(result and 'access_allowed' or 'access_denied', source, request.args.deviceId)
+        -- Las consultas de solo lectura no se registran si salen bien (inicio, buscador, listas): taparian lo importante.
+        if not result or not READ_ONLY[request.action] then options.audit(result and 'access_allowed' or 'access_denied', source, request.args.deviceId) end
         if not result then return failure(reason) end
         return { ok = true, data = result, expires = session.expires }
     end

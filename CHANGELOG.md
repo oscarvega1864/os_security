@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.22.1 — Auditoría más limpia y tablet más ligera
+
+- Las consultas de solo lectura de la tablet (inicio, buscador, listas de cada sección) ya no dejan una línea
+  `access_allowed` en la auditoría cuando salen bien; las acciones y los rechazos se siguen registrando.
+- El inicio, el mapa y el buscador guardan unos segundos las fichas de los dispositivos de cada perfil (se renuevan
+  si cambia el inventario) en lugar de recorrer todo el registro en cada consulta.
+
 ## 0.22.0 — Rondas de vigilancia
 
 - **G6 Operations → Rondas:** un supervisor o administrador crea rutas (opcionalmente para la propiedad de un cliente
