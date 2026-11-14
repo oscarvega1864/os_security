@@ -76,6 +76,7 @@ local function fixture(files, external)
         company = function(source) return c.companies[source] end,
         checkpointSend = function(player, event, payload) c.sent[#c.sent + 1] = { player, event, payload } end,
         bodycamSend = function(player, event, payload) c.sent[#c.sent + 1] = { player, event, payload } end,
+        savedWeapons = function(player) return c.savedWeapons and c.savedWeapons[player] or nil end,
         patrolSend = function(player, event, payload) c.sent[#c.sent + 1] = { player, event, payload } end,
         transport = {
             available = function() return c.transportUp ~= false end,
@@ -1706,6 +1707,11 @@ test('Metal detector: any on-duty company places it with the item, it beeps for 
     c.core.time = c.core.time + OSSecurity.GameplayConfig.Checkpoint.PassCooldown + 1
     assert(cp.pass(4, 'md_000001', { { name = 'weapon_knife', ammo = 0 } }).alarm) -- cuchillo: metal
     assert(cp.pass(4, 'md_000001', {}) == nil) -- cooldown
+    -- Arma guardada en el personaje (os_devtools) aunque el cliente no la informe: el arco pita igual.
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Checkpoint.PassCooldown + 1
+    c.savedWeapons = { [4] = { { name = 'WEAPON_PISTOL', ammo = 12 } } }
+    assert(cp.pass(4, 'md_000001', {}).alarm)
+    c.savedWeapons = nil
     c.players[3].point = { x = 30, y = 0, z = 1 }
     assert(cp.pass(3, 'md_000001', {}) == nil) -- lejos del arco
     local restarted = fixture(c.core.files, e); assert(restarted.loaded, restarted.loadError)

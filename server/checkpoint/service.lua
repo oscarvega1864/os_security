@@ -52,12 +52,20 @@ function OSSecurity.CheckpointService.new(options)
     end
     local function canFrisk(source) return company(source) ~= nil or (options.isStaff and options.isStaff(source)) end
     local function holderOf(source) return options.items and options.items.holder(source) or nil end
-    local function weaponsOf(list)
+    -- Armas: las que informa el cliente mas las que el servidor tiene guardadas para el personaje (os_devtools),
+    -- asi un cliente no puede esconder al arco o al cacheo un arma que ya consta en su personaje.
+    local function weaponsOf(list, source)
         local result, seen = {}, {}
-        if type(list) ~= 'table' then return result end
-        for index, entry in ipairs(list) do
-            if index > config.MaxWeapons then break end
+        local merged = {}
+        for _, entry in ipairs(type(list) == 'table' and list or {}) do merged[#merged + 1] = entry end
+        if source and options.savedWeapons then
+            local ok, saved = pcall(options.savedWeapons, source)
+            if ok and type(saved) == 'table' then for _, entry in ipairs(saved) do merged[#merged + 1] = entry end end
+        end
+        for index, entry in ipairs(merged) do
+            if index > config.MaxWeapons * 2 or #result >= config.MaxWeapons then break end
             local weaponName = type(entry) == 'table' and entry.name or entry
+            if type(weaponName) == 'string' then weaponName = weaponName:lower() end
             local ammo = type(entry) == 'table' and math.tointeger(tonumber(entry.ammo)) or 0
             if type(weaponName) == 'string' and OSSecurity.Weapons.List[weaponName] and not seen[weaponName] then
                 seen[weaponName] = true
@@ -188,7 +196,7 @@ function OSSecurity.CheckpointService.new(options)
         if passes[key] and now - passes[key] < config.PassCooldown then return nil end
         passes[key] = now
         local metal = false
-        for _, weapon in ipairs(weaponsOf(weapons)) do if OSSecurity.Weapons.List[weapon.name].metal then metal = true end end
+        for _, weapon in ipairs(weaponsOf(weapons, source)) do if OSSecurity.Weapons.List[weapon.name].metal then metal = true end end
         if not metal then
             local holder = holderOf(source)
             for item in pairs(holder and options.items.contents(holder) or {}) do if config.Metal[item] then metal = true end end
@@ -252,7 +260,7 @@ function OSSecurity.CheckpointService.new(options)
             return nil, T.noTarget
         end
         local holder = holderOf(target)
-        local list = weaponsOf(weapons)
+        local list = weaponsOf(weapons, target)
         frisks[guard] = { target = target, holder = holder, weapons = list, findings = findingsOf(holder, list),
             company = company(guard) or 'gruppe6', expires = options.now() + config.FriskSeconds }
         options.send(guard, 'friskOpen', { target = name(target), zones = util.copy(frisks[guard].findings), order = OSSecurity.Weapons.Zones })

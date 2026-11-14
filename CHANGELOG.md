@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.22.2 — Arco y cacheo con las armas guardadas del personaje
+
+- El arco detector y el cacheo suman a las armas que informa el cliente las que el servidor tiene guardadas para el
+  personaje activo (os_devtools 0.1.6+, export `GetCharacterWeapons`). Un cliente ya no puede esconder un arma que
+  consta en su personaje. Sin ese export todo funciona como antes.
+
 ## 0.22.1 — Auditoría más limpia y tablet más ligera
 
 - Las consultas de solo lectura de la tablet (inicio, buscador, listas de cada sección) ya no dejan una línea

@@ -393,6 +393,12 @@ local gameplay = OSSecurity.Gameplay.new({
             end
         }
     end)(),
+    -- Armas guardadas del personaje activo (os_devtools 0.1.6+); sin ese export, solo cuentan las que informa el cliente.
+    savedWeapons = function(player)
+        if GetResourceState(identityResource) ~= 'started' then return nil end
+        local ok, list = pcall(function() return exports[identityResource]:GetCharacterWeapons(player) end)
+        return ok and type(list) == 'table' and list or nil
+    end,
     patrolSend = function(player, event, payload) TriggerClientEvent('os_security:patrol:' .. event, player, payload) end,
     bodycamSend = function(player, event, payload) TriggerClientEvent('os_security:bodycam:' .. event, player, payload) end,
     -- Radio de visibilidad de entidades (OneSync) de quien mira una bodycam; nil vuelve al de por defecto (0.0).

@@ -202,6 +202,7 @@ function OSSecurity.Gameplay.new(options)
     local checkpoint = OSSecurity.CheckpointService.new({ inventory = inventory, identity = identity, world = options.world, now = options.now,
         players = options.players, playerName = options.playerName, company = options.company, isStaff = isStaff, items = items,
         notify = options.notifyPlayer or effects.notify, send = options.checkpointSend or noop, changed = options.detectorsChanged,
+        savedWeapons = options.savedWeapons,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks, cars = cars,
         lockpick = lockpick, zones = zones, shop = shop, orders = orders, dispatch = dispatch, contracts = contracts, bodycams = bodycams, patrols = patrols, checkpoint = checkpoint }
