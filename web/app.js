@@ -44,7 +44,7 @@
   // Sistema de la tablet (web/os.js): inicio, dock, buscador, mapa y avisos.
   const os = window.G6OS({ state, byId, el, button, request, post, text, date, openApp, goHome, goto, refresh: () => refresh(), modules: () => state.modules });
   // Secciones con vista propia (no son listas paginadas de dispositivos).
-  const OWN_VIEWS = ['map', 'settings', 'contracts', 'bodycams', 'cash_transport', 'inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
+  const OWN_VIEWS = ['map', 'settings', 'contracts', 'bodycams', 'cash_transport', 'patrols', 'inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
   function pagination() {
     const enabled = !state.selected && !OWN_VIEWS.includes(state.module);
     byId('previous').disabled = !enabled || state.offset === 0;
@@ -312,6 +312,38 @@
     }
     content.append(grid);
   }
+  // Rondas de vigilancia: rutas, empezar o abandonar la ronda y, para supervisores, crear rutas y marcar puntos.
+  async function patrolsView(content) {
+    const P = group('patrols'); const data = await request('patrols'); if (!data) return;
+    simpleHero(content, P.title, P.help);
+    const act = async (action, args = {}) => { const result = await request(action, args); if (result) { await refresh(); message(result.message); } };
+    if (data.canManage) {
+      const panel = el('section', null, 'zone-new'); panel.append(el('span', P.newRoute, 'overline'));
+      const row = el('div', null, 'zone-actions');
+      const name = el('input'); name.type = 'text'; name.maxLength = data.nameLength; name.placeholder = P.name; name.className = 'route-name';
+      const site = el('select'); site.setAttribute('aria-label', P.forSite);
+      const none = el('option', P.noSite); none.value = ''; site.append(none);
+      for (const option of data.sites || []) { const node = el('option', option.label); node.value = option.value; site.append(node); }
+      row.append(name, site, button(P.create, () => act('patrol_create', site.value ? { name: name.value, contractId: site.value } : { name: name.value }), false, 'primary'));
+      panel.append(row); content.append(panel);
+    }
+    if (!data.items.length) { content.append(el('div', P.empty, 'empty')); return; }
+    const grid = el('div', null, 'grid');
+    for (const route of data.items) {
+      const card = el('article', null, `card patrol-card${route.running ? ' running' : ''}`); const head = el('div', null, 'card-head');
+      head.append(el('span', format(P.points, route.points), 'overline'), el('span', format(P.rounds, route.rounds), 'badge'));
+      card.append(head, el('h3', route.name));
+      if (route.place) card.append(el('div', route.place, 'site'));
+      card.append(el('div', route.last ? format(P.last, date(route.last.finishedAt), route.last.guardName, route.last.minutes) : P.never, 'subtle'));
+      if (route.running) card.append(el('div', format(P.running, route.running.next, route.running.total), 'order-note'));
+      const actions = el('div', null, 'zone-actions');
+      if (route.running) actions.append(button(P.cancel, () => act('patrol_cancel'), false, 'danger'));
+      else actions.append(button(P.start, () => act('patrol_start', { routeId: route.id }), route.points < 2, 'primary'));
+      if (data.canManage) actions.append(button(P.addPoint, () => act('patrol_point', { routeId: route.id }), route.points >= data.maxPoints), button(P.delete, () => act('patrol_delete', { routeId: route.id }), false, 'danger'));
+      card.append(actions); grid.append(card);
+    }
+    content.append(grid);
+  }
   // Transporte de fondos (misiones de os_gruppesechs): la propia, ofertas de companeros y las que estan en curso.
   async function transportView(content) {
     const X = group('transport'); const data = await request('transport'); if (!data) return;
@@ -384,6 +416,7 @@
     if (contract.clientName && state.session.kind === 'operations') card.append(el('div', `${C.client}: ${contract.clientName}`, 'subtle'));
     const perks = [contract.priority ? C.priority : null, contract.discount >= 1 ? C.free : contract.discount > 0 ? `${C.discount}: ${Math.round(contract.discount * 100)} %` : null].filter(Boolean);
     if (perks.length) card.append(el('div', perks.join(' · '), 'site'));
+    if (contract.rounds?.last) card.append(el('div', format(group('patrols').clientRounds, contract.rounds.count, date(contract.rounds.last.finishedAt)), 'subtle'));
     const meta = el('div', null, 'detail-meta');
     for (const [title, value] of [[C.fee, `${thousands(contract.fee)} $`], [C.nextCharge, contract.status === 'cancelled' ? '—' : date(contract.nextCharge)], [C.paidTotal, `${thousands(contract.paidTotal)} $`]]) {
       const item = el('div', title, 'subtle'); item.append(el('strong', value)); meta.append(item);
@@ -555,7 +588,7 @@
     }
     content.append(grid);
   }
-  const VIEWS = { cash_transport: transportView, bodycams: bodycamsView, contracts: contractsView, locks: doorsView, trackers: trackersView, incidents: incidentsView, installations: zonesView, requests: requestsView, work_orders: ordersView,
+  const VIEWS = { patrols: patrolsView, cash_transport: transportView, bodycams: bodycamsView, contracts: contractsView, locks: doorsView, trackers: trackersView, incidents: incidentsView, installations: zonesView, requests: requestsView, work_orders: ordersView,
     emergencies: emergenciesView, dispatch: dispatchView };
   async function refresh() {
     if (!state.session || state.busy) return;

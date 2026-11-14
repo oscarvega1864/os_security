@@ -31,6 +31,7 @@ client_scripts {
     'client/shop.lua',
     'client/live.lua',
     'client/bodycam.lua',
+    'client/patrol.lua',
     'client/checkpoint.lua',
     'client/boot.lua'
 }
@@ -82,6 +83,7 @@ server_scripts {
     'server/dispatch/service.lua',
     'server/contracts/service.lua',
     'server/bodycams/service.lua',
+    'server/patrols/service.lua',
     'server/checkpoint/service.lua',
     'server/tablet/service.lua',
     'server/tablet/home.lua',

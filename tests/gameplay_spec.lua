@@ -76,6 +76,7 @@ local function fixture(files, external)
         company = function(source) return c.companies[source] end,
         checkpointSend = function(player, event, payload) c.sent[#c.sent + 1] = { player, event, payload } end,
         bodycamSend = function(player, event, payload) c.sent[#c.sent + 1] = { player, event, payload } end,
+        patrolSend = function(player, event, payload) c.sent[#c.sent + 1] = { player, event, payload } end,
         transport = {
             available = function() return c.transportUp ~= false end,
             read = function(player) return c.transportData and c.transportData[player] or nil end,
@@ -796,7 +797,7 @@ test('Native server wiring keeps replies private, normalizes ACE and creates uni
     local handlers, commands, files, replies, hashes = {}, {}, {}, {}, 0
     local ok, err = pcall(function()
         stub('RegisterNetEvent', function(name, callback)
-            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name == 'os_security:g6:zoneAim' or name:match('^os_security:shop:') or name:match('^os_security:alarm:') or name:match('^os_security:locks:') or name:match('^os_security:car:') or name:match('^os_security:lockpick:') or name:match('^os_security:checkpoint:'))
+            assert(name == 'os_security:g6:request' or name == 'os_security:g6:anchorAim' or name == 'os_security:g6:zoneAim' or name:match('^os_security:shop:') or name:match('^os_security:patrol:') or name:match('^os_security:alarm:') or name:match('^os_security:locks:') or name:match('^os_security:car:') or name:match('^os_security:lockpick:') or name:match('^os_security:checkpoint:'))
             if name == 'os_security:g6:request' then handlers.request = callback else handlers.anchorAim = callback end
         end)
         stub('RegisterCommand', function(name, callback) commands[name] = callback end)
@@ -1996,4 +1997,42 @@ test('Cash transport: G6 Operations reads and drives os_gruppesechs missions thr
     local refused = call(c, 1, tech, 'transport_action', { action = 'start' }); assert(not refused.ok and refused.error:find('en curso'))
     c.transportUp = false; assert(not call(c, 1, tech, 'transport').ok)
     assert(not call(c, 2, open(c, 2, 'client'), 'transport').ok) -- solo G6 Operations
+end)
+
+-- Rondas de vigilancia ----------------------------------------------------------------------------------
+test('Patrols: a supervisor builds a route on site, a guard checks in at each point in order, and the contracted client sees the rounds', function()
+    local c = fixture(); assert(c.loaded, c.loadError)
+    grant(c, 1, 'g6_operations_tablet'); grant(c, 3, 'g6_operations_tablet'); grant(c, 2, 'g6_client_tablet')
+    c.assets.properties[7] = { id = 7, owner = 'ana', position = { x = 50, y = 60, z = 30 } }; c.active[2] = { alias = 'ana' }
+    c.wallet[2] = { bank = 10000, cash = 0 }
+    local client = open(c, 2, 'client')
+    assert(call(c, 2, client, 'contract_create', { place = 'site:property:7', plan = 'basic' }).ok)
+    local tech, supervisor = open(c, 1, 'operations'), open(c, 3, 'operations')
+    assert(not call(c, 1, tech, 'patrol_create', { name = 'Ronda' }).ok) -- el tecnico no crea rutas
+    assert(not call(c, 3, supervisor, 'patrol_create', { name = '   ' }).ok)
+    local created = call(c, 3, supervisor, 'patrol_create', { name = 'Perimetro <b>norte</b>', contractId = 'ct_000001' }); assert(created.ok, created.error)
+    local id = created.data.id; assert(id == 'rd_000001')
+    c.players[3].point = { x = 50, y = 60, z = 30 }; assert(call(c, 3, supervisor, 'patrol_point', { routeId = id }).ok)
+    c.players[3].point = { x = 51, y = 60, z = 30 }; assert(not call(c, 3, supervisor, 'patrol_point', { routeId = id }).ok) -- demasiado cerca
+    c.players[3].point = { x = 80, y = 60, z = 30 }; assert(call(c, 3, supervisor, 'patrol_point', { routeId = id }).ok)
+    local route = c.game.inventory.patrols()[id]; assert(#route.points == 2 and not route.name:find('[<>]') and route.owner == c.players[2].principal)
+    -- Ronda: hay que fichar en orden y junto a cada punto.
+    c.players[1].point = { x = 0, y = 0, z = 0 }
+    local started = call(c, 1, tech, 'patrol_start', { routeId = id }); assert(started.ok, started.error)
+    assert(sentTo(c, 1, 'patrolRun')[1].next == 1 and sentTo(c, 1, 'patrolRun')[1].point.x == 50)
+    local _, why = c.game.patrols.check(1); assert(why:find('junto'))
+    c.players[1].point = { x = 80, y = 60, z = 30 }; assert(not c.game.patrols.check(1)) -- el segundo antes que el primero no vale
+    c.players[1].point = { x = 51, y = 61, z = 30 }; assert(c.game.patrols.check(1))
+    c.core.time = c.core.time + 300
+    c.players[1].point = { x = 80, y = 60, z = 30 }; local done = assert(c.game.patrols.check(1)); assert(done.done)
+    route = c.game.inventory.patrols()[id]; assert(#route.logs == 1 and route.logs[1].guardName == 'Jugador1' and route.logs[1].finishedAt - route.logs[1].startedAt == 300)
+    assert(sentTo(c, 1, 'patrolRun')[#sentTo(c, 1, 'patrolRun')] == false)
+    -- El cliente lo ve en su contrato; la lista de rutas lo cuenta.
+    client = open(c, 2, 'client'); tech = open(c, 1, 'operations'); supervisor = open(c, 3, 'operations') -- sesiones caducadas
+    local mine = call(c, 2, client, 'contracts').data.items[1]; assert(mine.rounds and mine.rounds.count == 1 and mine.rounds.last.guardName == 'Jugador1')
+    local listed = call(c, 1, tech, 'patrols'); assert(listed.ok and listed.data.items[1].rounds == 1 and not listed.data.canManage)
+    -- Abandonar y borrar.
+    assert(call(c, 1, tech, 'patrol_start', { routeId = id }).ok and call(c, 1, tech, 'patrol_cancel').ok and not c.game.patrols.check(1))
+    assert(not call(c, 1, tech, 'patrol_delete', { routeId = id }).ok and call(c, 3, supervisor, 'patrol_delete', { routeId = id }).ok)
+    assert(c.game.inventory.patrols()[id] == nil)
 end)

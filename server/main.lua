@@ -393,6 +393,7 @@ local gameplay = OSSecurity.Gameplay.new({
             end
         }
     end)(),
+    patrolSend = function(player, event, payload) TriggerClientEvent('os_security:patrol:' .. event, player, payload) end,
     bodycamSend = function(player, event, payload) TriggerClientEvent('os_security:bodycam:' .. event, player, payload) end,
     -- Radio de visibilidad de entidades (OneSync) de quien mira una bodycam; nil vuelve al de por defecto (0.0).
     cull = function(player, radius) SetPlayerCullingRadius(player, (radius or 0.0) + 0.0) end,
@@ -647,6 +648,18 @@ RegisterNetEvent('os_security:checkpoint:cancel', function()
     if not lockAllowed(player) then return end
     checkpointReply(player, lockCall(function() return gameplay.checkpoint.cancel(player) end))
 end)
+-- Rondas: fichar en el punto de control (tecla E junto al punto) y /ronda cancelar.
+RegisterNetEvent('os_security:patrol:check', function()
+    local player = source
+    if not lockAllowed(player) then return end
+    local result, err = lockCall(function() return gameplay.patrols.check(player) end)
+    TriggerClientEvent('os_security:alarm:alert', player, result and result.message or err or OSSecurity.Brand.Text.failed, result and (result.done and 'success' or 'info') or 'warning')
+end)
+RegisterCommand('ronda', function(player, args)
+    if player == 0 or not lockAllowed(player) or args[1] ~= 'cancelar' then return end
+    local result, err = lockCall(function() return gameplay.patrols.cancel(player) end)
+    TriggerClientEvent('os_security:alarm:alert', player, result and result.message or err or OSSecurity.Brand.Text.failed, 'info')
+end, false)
 -- /bodycam: encender o apagar la propia bodycam (personal de servicio con el objeto).
 RegisterCommand('bodycam', function(player)
     if player == 0 or not lockAllowed(player) then return end

@@ -32,6 +32,10 @@ OSSecurity.GameplayConfig = {
     -- Un salto repetido de la misma central con su aviso abierto suma al mismo aviso (Repeat). Los cerrados
     -- se borran pasados KeepDays. Panico: un aviso activo por cliente y PanicCooldown s entre avisos.
     Dispatch = { MaxCalls = 300, NoteLength = 140, KeepDays = 7, PanicCooldown = 60, MaxRepeat = 99 },
+    -- Rondas de vigilancia: rutas de puntos de control (las crea un supervisor marcando cada punto donde esta) y
+    -- registro de cada ronda hecha. CheckDistance: distancia maxima al punto para fichar (comprobada en el servidor).
+    Patrols = { MaxRoutes = 100, MaxPoints = 12, MaxLogs = 20, CheckDistance = 4.0, MinPointGap = 5.0, NameLength = 40,
+        MaxRoundSeconds = 3600 },
     -- Bodycams: el vigilante de servicio con el objeto la enciende; supervisores y administradores la ven en directo.
     -- CullingRadius: radio de visibilidad de entidades de quien mira mientras mira (para que exista el vigilante).
     Bodycams = { CullingRadius = 6000.0, TickSeconds = 5 },

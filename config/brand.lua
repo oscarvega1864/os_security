@@ -240,6 +240,20 @@ OSSecurity.Brand = {
                 unscrewTitle = 'Soltar los pernos de las bases', unscrewHelp = 'Pulsa sobre cada perno y gira el raton en sentido ANTIHORARIO hasta sacarlo. Sin forzar.'
             }
         },
+        patrols = {
+            title = 'Rondas de vigilancia', help = 'Recorre una ruta fichando en cada punto de control. Los supervisores crean las rutas marcando los puntos donde estan.',
+            empty = 'No hay rutas de rondas.', newRoute = 'Nueva ruta', name = 'Nombre de la ruta', forSite = 'Propiedad con contrato', noSite = 'Sin propiedad',
+            create = 'Crear', addPoint = 'Anadir punto aqui', delete = 'Borrar ruta', start = 'Empezar ronda', cancel = 'Abandonar ronda',
+            points = '%d puntos', rounds = '%d rondas', last = 'Ultima: %s por %s (%d min)', never = 'Sin rondas todavia', running = 'En curso: punto %d de %d',
+            noAccess = 'Solo supervisores y administradores gestionan rutas.', invalid = 'Peticion no valida.', needName = 'Pon un nombre a la ruta.',
+            noContract = 'Ese contrato no existe o esta de baja.', created = 'Ruta %s creada: anade puntos donde estes.', notFound = 'Ruta no encontrada.',
+            full = 'Una ruta tiene como mucho %d puntos.', noPosition = 'Posicion no disponible.', tooClose = 'Demasiado cerca de otro punto (minimo %d m).',
+            pointAdded = 'Punto %d anadido a %s.', deleted = 'Ruta %s borrada.', needPoints = 'La ruta necesita al menos 2 puntos.',
+            started = 'Ronda %s: %d puntos. Ve al primero y pulsa E.', noRun = 'No estas haciendo ninguna ronda.', abandoned = 'Ronda abandonada.',
+            expired = 'Ronda caducada: has tardado demasiado.', tooFar = 'Tienes que estar junto al punto de control.',
+            checked = 'Punto %d de %d fichado.', finished = 'Ronda %s completada.', help3D = 'E: fichar punto de control', blip = 'Punto de control',
+            clientRounds = 'Rondas hechas: %d · ultima %s'
+        },
         transport = {
             title = 'Transporte de fondos', help = 'Pide una mision para tu equipo, sigue cada parada y unete a las de tus companeros.',
             unavailable = 'Transporte de fondos no disponible en este servidor.', invalid = 'Peticion no valida.',
@@ -334,7 +348,7 @@ OSSecurity.Brand = {
             { id = 'alarms', name = 'Alarmas', implemented = true },
             { id = 'access', name = 'Control de accesos', implemented = false },
             { id = 'trackers', name = 'Localizadores', implemented = false },
-            { id = 'patrols', name = 'Rondas', implemented = false },
+            { id = 'patrols', name = 'Rondas', implemented = true },
             { id = 'dispatch', name = 'Central de operaciones', implemented = true },
             { id = 'contracts', name = 'Contratos', implemented = true },
             { id = 'cash_transport', name = 'Transporte de fondos', implemented = true }

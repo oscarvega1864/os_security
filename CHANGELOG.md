@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.22.0 — Rondas de vigilancia
+
+- **G6 Operations → Rondas:** un supervisor o administrador crea rutas (opcionalmente para la propiedad de un cliente
+  con contrato) y les añade puntos de control donde está (hasta 12, separados al menos 5 m).
+- Cualquier perfil de Operations **empieza la ronda**: el siguiente punto sale con marca, punto en el mapa y ruta;
+  junto a él, **E** ficha. El servidor comprueba que está a menos de 4 m y que va en orden. `/ronda cancelar` o el
+  botón de la tablet la abandonan; caduca a la hora.
+- Cada ronda completada queda en el registro de la ruta (últimas 20: vigilante, inicio y fin). El cliente con
+  contrato ve en su tarjeta cuántas rondas se han hecho en su propiedad y la última.
+
 ## 0.21.0 — Transporte de fondos en la tablet
 
 - **G6 Operations → Transporte de fondos:** pedir una misión de os_gruppesechs (tipo al azar o elegido), ver la

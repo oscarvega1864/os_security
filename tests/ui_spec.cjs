@@ -80,6 +80,8 @@ async function main() {
             attention:[{kind:'device',id:'osd_0000000001',title:'G6-D · osd_0000000001',subtitle:'<img src=x onerror="window.__xss=true">',reason:'triggered'},{kind:'call',id:'av_000003',title:'av_000003',subtitle:'Vinewood',reason:'panic'}],
             points:[{kind:'device',id:'osd_0000000001',x:-620,y:240,label:'G6-D · osd_0000000001',subtitle:'Propiedad 200',state:'triggered'},{kind:'call',id:'av_000003',x:-400,y:1000,label:'av_000003',subtitle:'Vinewood',state:'panic'}]};
           else if(body.action==='search') result.data={query:body.args.query,items:[{kind:'device',id:'osd_0000000001',title:'G6-D · osd_0000000001',subtitle:'Propiedad 200',type:'cctv_camera',state:'active'},{kind:'call',id:'av_000003',title:'av_000003',subtitle:'Vinewood',state:'open'}]};
+          else if(body.action==='patrols') result.data={canManage:window.__role==='supervisor',maxPoints:12,nameLength:40,sites:[{value:'ct_000001',label:'Propiedad 7'}],
+            items:[{id:'rd_000001',name:'<b>Perimetro</b>',place:'Propiedad 7',points:3,rounds:2,last:{guardName:'ana',finishedAt:1762700000,minutes:6}}]};
           else if(body.action==='transport') result.data={employed:true,kinds:[{value:'cash',label:'Recogida de efectivo'}],invite:{from:'Ana',title:'Cajeros',pay:900},
             mission:{title:'Recogida de efectivo',percent:40,label:'Ve a <b>Fleeca</b>',index:2,total:5,leader:true,pay:1500,vehicle:'furgon blindado',crew:[{name:'oscar',role:'driver'}],point:{x:5,y:6,z:7}},
             running:[{leader:'Ana',title:'Cajeros',percent:0,crew:1,lobby:true}]};
@@ -306,6 +308,15 @@ async function main() {
     await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('.transport-card button')).find(b=>b.textContent==='Marcar en el GPS').click()`);
     await until(`window.__calls.some(x=>x.endpoint==='waypoint' && x.body.x===5)`);
     console.log('PASS Cash transport: own mission with progress and GPS, crew offers and missions in progress');
+    await evaluate(`document.getElementById('home-button').click()`); await until(`!document.getElementById('home').hidden`);
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Rondas').click()`);
+    await until(`document.querySelectorAll('.patrol-card').length===1 && document.querySelector('.route-name')`);
+    assert(await evaluate(`!document.querySelector('.patrol-card b') && document.querySelector('.patrol-card').textContent.includes('2 rondas')`));
+    await evaluate(`window.__calls.length=0; document.querySelector('.route-name').value='Norte'; document.querySelector('.zone-new select').value='ct_000001'; Array.from(document.querySelectorAll('.zone-new button')).find(b=>b.textContent==='Crear').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='patrol_create' && x.body.args.name==='Norte' && x.body.args.contractId==='ct_000001')`);
+    await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('.patrol-card button')).find(b=>b.textContent==='Anadir punto aqui').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='patrol_point' && x.body.args.routeId==='rd_000001')`);
+    console.log('PASS Patrols (supervisor): routes with rounds, create for a contracted property and add points on site');
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
     await until(`document.getElementById('app').hidden && window.__calls.some(x=>x.endpoint==='close')`);
     console.log('PASS Escape closes the browser view and invokes the native close callback');

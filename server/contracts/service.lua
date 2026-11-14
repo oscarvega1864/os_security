@@ -54,7 +54,7 @@ function OSSecurity.ContractService.new(options)
         return { id = contract.id, plan = contract.plan, planName = planLabel(contract.plan), fee = contract.fee, status = contract.status,
             place = contract.place, clientName = contract.clientName, nextCharge = contract.nextCharge, paidTotal = contract.paidTotal,
             failures = contract.failures, createdAt = contract.createdAt, priority = plan.priority == true, discount = plan.discount,
-            position = util.copy(contract.position) }
+            position = util.copy(contract.position), rounds = options.rounds and options.rounds(contract.client, contract.site) or nil }
     end
     local function sorted(list, accept)
         local result = {}

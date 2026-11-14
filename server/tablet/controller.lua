@@ -84,6 +84,18 @@ function OSSecurity.TabletController.new(options)
             result, reason = options.orders.release(actor, request.args)
         elseif actor.kind == 'operations' and request.action == 'order_bill' then
             result, reason = options.orders.bill(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'patrols' and next(request.args) == nil and options.patrols then
+            result, reason = options.patrols.staffList(actor)
+        elseif actor.kind == 'operations' and request.action == 'patrol_create' and options.patrols then
+            result, reason = options.patrols.create(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'patrol_point' and options.patrols then
+            result, reason = options.patrols.addPoint(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'patrol_delete' and options.patrols then
+            result, reason = options.patrols.delete(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'patrol_start' and options.patrols then
+            result, reason = options.patrols.start(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'patrol_cancel' and next(request.args) == nil and options.patrols then
+            result, reason = options.patrols.cancel(source)
         elseif actor.kind == 'operations' and request.action == 'transport' and next(request.args) == nil then
             local T = OSSecurity.Brand.Text.transport
             if not options.transport or not options.transport.available() then return failure(T.unavailable) end

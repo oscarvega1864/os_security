@@ -167,7 +167,8 @@ RegisterNUICallback('request', function(body, callback)
     elseif ({ inventory = true, devices = true, device = true, maintain = true, alarm = true, doors = true, trackers = true, incidents = true,
         zones = true, zone_delete = true, requests = true, request_create = true, request_cancel = true, request_pay = true,
         orders = true, order_accept = true, order_release = true, order_bill = true,
-        home = true, search = true, map_calibrate = true, bodycams = true, transport = true, transport_action = true, contracts = true, contract_create = true, contract_cancel = true, emergencies = true, panic = true, panic_cancel = true, dispatch = true, call_take = true, call_assign = true,
+        home = true, search = true, map_calibrate = true, bodycams = true, transport = true, transport_action = true,
+        patrols = true, patrol_create = true, patrol_point = true, patrol_delete = true, patrol_start = true, patrol_cancel = true, contracts = true, contract_create = true, contract_cancel = true, emergencies = true, panic = true, panic_cancel = true, dispatch = true, call_take = true, call_assign = true,
         call_release = true, call_resolve = true })[body.action] then controller.request(body.action, body.args, callback)
     else callback({ ok = false, error = OSSecurity.Brand.Text.unavailable }) end
 end)
