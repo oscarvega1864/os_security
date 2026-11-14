@@ -32,6 +32,19 @@ OSSecurity.GameplayConfig = {
     -- Un salto repetido de la misma central con su aviso abierto suma al mismo aviso (Repeat). Los cerrados
     -- se borran pasados KeepDays. Panico: un aviso activo por cliente y PanicCooldown s entre avisos.
     Dispatch = { MaxCalls = 300, NoteLength = 140, KeepDays = 7, PanicCooldown = 60, MaxRepeat = 99 },
+    -- Contratos de seguridad por propiedad o negocio del cliente. La cuota se cobra al contratar y despues cada
+    -- PeriodSeconds (tiempo real) del banco del cliente cuando esta conectado. Si no se puede cobrar, el contrato
+    -- queda suspendido (sin ventajas) y se reintenta cada RetrySeconds; a los MaxFailures fallos se cancela.
+    -- Ventajas: priority = sus avisos salen primero en la central; discount = descuento en ordenes de trabajo de
+    -- esa propiedad (1.0 = gratis).
+    Contracts = { MaxContracts = 300, PeriodSeconds = 86400, RetrySeconds = 3600, MaxFailures = 3, KeepDays = 30,
+        PayAccount = 'bank',
+        Plans = {
+            basic = { fee = 500, priority = false, discount = 0.10 },
+            alarm = { fee = 1500, priority = true, discount = 0.25 },
+            premium = { fee = 3500, priority = true, discount = 1.0 }
+        },
+        PlanOrder = { 'basic', 'alarm', 'premium' } },
     -- Control de acceso: arcos detectores de metales y cacheo. Los coloca y los atiende cualquier empleado
     -- de servicio de una empresa (os_devtools); el arco es de su empresa. Metal: objetos del inventario que
     -- hacen pitar el arco (las armas de shared/weapons.lua con metal = true tambien). Cacheo con permiso del

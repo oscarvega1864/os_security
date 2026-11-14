@@ -655,9 +655,13 @@ RegisterNetEvent('os_security:checkpoint:pickup', function()
     checkpointReply(player, lockCall(function() return gameplay.checkpoint.pickup(player) end))
 end)
 CreateThread(function()
+    local contractTick = 0
     while true do
         Wait(1000)
         if gameplay.status() then pcall(gameplay.checkpoint.tick) end
+        -- Cobro de contratos: una pasada por minuto basta (los periodos son de horas).
+        contractTick = contractTick + 1
+        if contractTick >= 60 and gameplay.status() then contractTick = 0; pcall(gameplay.contracts.tick) end
     end
 end)
 

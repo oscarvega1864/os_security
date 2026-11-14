@@ -74,6 +74,13 @@ function OSSecurity.OrderService.new(options)
         end
         return result
     end
+    -- Lo que paga el cliente: el precio menos el descuento de su contrato activo para esa propiedad.
+    local function due(order)
+        if not order.price then return nil end
+        local covered = options.contracts and order.site and options.contracts.coverage(order.client, order.site)
+        local discount = covered and covered.discount or 0
+        return math.max(0, order.price - math.floor(order.price * discount + 0.5)), covered and discount > 0 and covered or nil
+    end
     -- Pago pendiente al tecnico: se liquida en cuanto esta conectado.
     local function settle(order, source)
         if order.status ~= 'paid' or order.payout ~= 'pending' then return end
@@ -93,7 +100,12 @@ function OSSecurity.OrderService.new(options)
         local kinds = {}
         for kind in pairs(OSSecurity.InventoryState.OrderKinds) do kinds[#kinds + 1] = { value = kind, label = kindLabel(kind) } end
         table.sort(kinds, function(a, b) return a.label < b.label end)
-        return { items = sorted(list, function(order) return order.client == actor.principal end), places = places, kinds = kinds,
+        local items = sorted(list, function(order) return order.client == actor.principal end)
+        for _, item in ipairs(items) do
+            local stored = list[item.id]
+            if stored and stored.status == 'billed' then local amount, covered = due(stored); item.due = amount; item.contract = covered and covered.id or nil end
+        end
+        return { items = items, places = places, kinds = kinds,
             maxOpen = config.MaxOpenPerClient, noteLength = config.NoteLength, account = config.PayAccount }
     end
     function service.create(actor, args)
@@ -163,17 +175,21 @@ function OSSecurity.OrderService.new(options)
         if not order then return nil, err end
         if order.status ~= 'billed' then return nil, 'No hay nada que pagar en esta solicitud.' end
         if not options.money.available() then return nil, 'Pago no disponible en este servidor.' end
-        local charged, why = options.money.charge(actor.source, order.price, config.PayAccount, order.id)
-        if not charged then return nil, why == 'insufficient_funds' and 'Saldo insuficiente en el banco.' or 'Pago rechazado.' end
+        -- Con contrato: paga el precio con descuento (el tecnico cobra su parte del precio completo).
+        local amount = due(order)
+        if amount > 0 then
+            local charged, why = options.money.charge(actor.source, amount, config.PayAccount, order.id)
+            if not charged then return nil, why == 'insufficient_funds' and 'Saldo insuficiente en el banco.' or 'Pago rechazado.' end
+        end
         order.status, order.payout = 'paid', 'pending'
         local saved, saveError = save(order)
         if not saved then
-            options.money.refund(actor.source, order.price, config.PayAccount, order.id)
+            if amount > 0 then options.money.refund(actor.source, amount, config.PayAccount, order.id) end
             return nil, saveError
         end
         settle(order)
         options.audit('order_paid', actor.source)
-        return { message = OSSecurity.Brand.Text.orders.paid:format(order.price) }
+        return { message = OSSecurity.Brand.Text.orders.paid:format(amount) }
     end
 
     -- Tecnico ----------------------------------------------------------------------------------------

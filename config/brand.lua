@@ -240,6 +240,28 @@ OSSecurity.Brand = {
                 unscrewTitle = 'Soltar los pernos de las bases', unscrewHelp = 'Pulsa sobre cada perno y gira el raton en sentido ANTIHORARIO hasta sacarlo. Sin forzar.'
             }
         },
+        contracts = {
+            plans = {
+                basic = { name = 'Basico', description = 'Seguimiento de tus equipos G6 y 10 % de descuento en reparaciones.' },
+                alarm = { name = 'Alarma conectada', description = 'Tus avisos salen primero en la central y 25 % de descuento en reparaciones.' },
+                premium = { name = 'Vigilancia total', description = 'Prioridad en la central y reparaciones sin coste.' }
+            },
+            title = 'Contratos de seguridad', help = 'Contrata un plan para cada propiedad o negocio. Se paga al contratar y despues cada %s desde tu banco.',
+            staffHelp = 'Cartera de contratos de los clientes. Los avisos de clientes con prioridad salen primero en la central.',
+            newTitle = 'Nuevo contrato', place = 'Propiedad', plan = 'Plan', hire = 'Contratar', cancel = 'Dar de baja', fee = 'Cuota',
+            priority = 'Prioridad en la central', discount = 'Descuento en reparaciones', free = 'Reparaciones sin coste',
+            noPlaces = 'No tienes propiedades o negocios sin contrato.', empty = 'Aun no tienes contratos.', staffEmpty = 'No hay contratos.',
+            nextCharge = 'Proximo cobro', paidTotal = 'Pagado en total', client = 'Cliente', active = 'Activos', suspendedCount = 'Suspendidos',
+            income = 'Ingresos por periodo', confirmCancel = 'Pulsa otra vez para confirmar la baja.',
+            status = { active = 'Activo', suspended = 'Suspendido (impago)', cancelled = 'Dado de baja' },
+            period = { day = 'dia', hours = '%d h' },
+            choosePlan = 'Elige una propiedad y un plan.', notYours = 'Esa propiedad no es tuya.', already = 'Esa propiedad ya tiene contrato.',
+            noPayments = 'Pagos no disponibles en este servidor.', noFunds = 'Saldo insuficiente en el banco.', payRejected = 'Pago rechazado.',
+            created = 'Contrato %s para %s: pagados %d $.', notFound = 'Contrato no encontrado.', alreadyCancelled = 'Ese contrato ya esta dado de baja.',
+            cancelled = 'Contrato de %s dado de baja.', charged = 'Cuota de seguridad cobrada: %d $ (%s).',
+            suspended = 'No se pudo cobrar el contrato de %s (%d $): queda suspendido hasta que se pague.',
+            cancelledUnpaid = 'Contrato de %s cancelado por impago.', contractBadge = 'Contrato', discountApplied = 'Con descuento de contrato'
+        },
         dispatch = {
             kinds = { panic = 'Boton de panico', alarm = 'Salto de alarma', tamper = 'Manipulacion de teclado' },
             status = { open = 'Sin asignar', assigned = 'En camino', resolved = 'Resuelto', cancelled = 'Cancelado' },
@@ -277,7 +299,7 @@ OSSecurity.Brand = {
             { id = 'locks', name = 'Cerraduras', implemented = true },
             { id = 'trackers', name = 'Localizadores de vehiculos', implemented = true },
             { id = 'emergencies', name = 'Emergencias', implemented = true },
-            { id = 'contracts', name = 'Contratos', implemented = false },
+            { id = 'contracts', name = 'Contratos', implemented = true },
             { id = 'requests', name = 'Solicitudes de mantenimiento', implemented = true },
             { id = 'incidents', name = 'Historial de incidencias', implemented = true }
         },
@@ -294,6 +316,7 @@ OSSecurity.Brand = {
             { id = 'trackers', name = 'Localizadores', implemented = false },
             { id = 'patrols', name = 'Rondas', implemented = false },
             { id = 'dispatch', name = 'Central de operaciones', implemented = true },
+            { id = 'contracts', name = 'Contratos', implemented = true },
             { id = 'cash_transport', name = 'Transporte de fondos', implemented = false }
         }
     }

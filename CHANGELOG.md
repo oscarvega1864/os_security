@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.19.0 — Contratos de seguridad
+
+- **G6 Client → Contratos:** el cliente contrata un plan para cada propiedad o negocio suyo (Básico, Alarma
+  conectada, Vigilancia total). Paga la cuota al contratar y después cada periodo (24 h reales por defecto) desde
+  su banco, cuando está conectado. Puede darlo de baja (con confirmación).
+- **Ventajas** mientras está activo: con prioridad, sus avisos (pánico y saltos de alarma de esa propiedad) salen
+  por delante en la Central con la marca «Contrato»; y las órdenes de trabajo de esa propiedad llevan descuento
+  (10 %, 25 % o sin coste). El técnico cobra su parte del precio completo.
+- **Impago:** si no se puede cobrar, el contrato queda suspendido (sin ventajas) y se reintenta cada hora; a los
+  3 fallos se cancela. Los cancelados se borran a los 30 días.
+- **G6 Operations → Contratos:** cartera de contratos con activos, suspendidos e ingresos por periodo.
+- Planes, cuotas, periodo y descuentos en `config/gameplay.lua` (`Contracts`); textos en `config/brand.lua`.
+
 ## 0.18.2 — Textos nítidos en los minijuegos, un desmontaje a la vez y entrega aceptada en el cacheo
 
 - **Arreglo:** los textos de los minijuegos (código de colores y bornes) se veían emborronados desde 0.17.0: el

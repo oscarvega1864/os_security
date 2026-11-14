@@ -18,7 +18,7 @@ window.G6OS = function createOS(api) {
     inventory: 'M4 8l8-4 8 4v9l-8 4-8-4zM4 8l8 4 8-4M12 12v9', work_orders: 'M9 4h6v3H9zM6 6h12v15H6zM9 12l2 2 4-4',
     dispatch: 'M4 12a8 8 0 0116 0v5h-3v-5M4 17h3v-5M12 4V2', map: 'M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15',
     search: 'M10 4a6 6 0 110 12 6 6 0 010-12zM15 15l5 5', notices: 'M6 16V11a6 6 0 0112 0v5l2 2H4zM10 20a2 2 0 004 0',
-    home: 'M4 11l8-7 8 7M6 10v10h12V10',
+    home: 'M4 11l8-7 8 7M6 10v10h12V10', contracts: 'M7 3h10v18H7zM10 7h4M10 11h4M10 15l1.5 1.5L14 14',
     settings: 'M12 9a3 3 0 110 6 3 3 0 010-6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1',
     display: 'M12 4a8 8 0 100 16zM12 4a8 8 0 010 16', wallpaper: 'M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4M15 9h.5',
     about: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 11v5M12 8v.5'

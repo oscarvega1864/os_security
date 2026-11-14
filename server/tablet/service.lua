@@ -134,7 +134,7 @@ function OSSecurity.TabletService.new(options)
         return options.cars.owned(actor.source) or {}
     end
     -- Modulos que no son listas de dispositivos: tienen su propia accion.
-    local OWN_ACTION = { locks = true, trackers = true, incidents = true, installations = true, inventory = true, requests = true, work_orders = true,
+    local OWN_ACTION = { contracts = true, locks = true, trackers = true, incidents = true, installations = true, inventory = true, requests = true, work_orders = true,
         emergencies = true, dispatch = true }
     function service.list(actor, args)
         if not util.object(args, { offset = true, module = true })

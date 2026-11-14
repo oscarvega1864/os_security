@@ -44,7 +44,7 @@
   // Sistema de la tablet (web/os.js): inicio, dock, buscador, mapa y avisos.
   const os = window.G6OS({ state, byId, el, button, request, post, text, date, openApp, goHome, goto, refresh: () => refresh(), modules: () => state.modules });
   // Secciones con vista propia (no son listas paginadas de dispositivos).
-  const OWN_VIEWS = ['map', 'settings', 'inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
+  const OWN_VIEWS = ['map', 'settings', 'contracts', 'inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
   function pagination() {
     const enabled = !state.selected && !OWN_VIEWS.includes(state.module);
     byId('previous').disabled = !enabled || state.offset === 0;
@@ -304,9 +304,76 @@
     for (const order of data.items) {
       const card = orderCard(order, T);
       const actions = el('div', null, 'zone-actions');
-      if (order.status === 'billed') actions.append(button(format(T.pay, thousands(order.price)), async () => { const result = await request('request_pay', { orderId: order.id }); if (result) { await refresh(); message(result.message); } }, false, 'primary'));
+      if (order.status === 'billed' && order.contract) card.append(el('div', `${group('contracts').discountApplied}: ${thousands(order.price)} → ${thousands(order.due)} $`, 'subtle'));
+      if (order.status === 'billed') actions.append(button(format(T.pay, thousands(order.due ?? order.price)), async () => { const result = await request('request_pay', { orderId: order.id }); if (result) { await refresh(); message(result.message); } }, false, 'primary'));
       if (order.status === 'open' || order.status === 'accepted') actions.append(button(T.cancel, async () => { if (await request('request_cancel', { orderId: order.id })) refresh(); }, false, 'danger'));
       if (actions.childElementCount) card.append(actions);
+      grid.append(card);
+    }
+    content.append(grid);
+  }
+  // Contratos de seguridad: el cliente contrata y da de baja; el personal G6 ve la cartera.
+  function periodText(seconds, C) { return seconds === 86400 ? C.period.day : format(C.period.hours, Math.round(seconds / 3600)); }
+  function contractCard(contract, C) {
+    const card = el('article', null, `card contract-card status-${contract.status}`); const head = el('div', null, 'card-head');
+    head.append(el('span', contract.planName, 'overline'), el('span', C.status[contract.status] || contract.status, `badge state-${contract.status}`));
+    card.append(head, el('h3', contract.place || contract.id));
+    if (contract.clientName && state.session.kind === 'operations') card.append(el('div', `${C.client}: ${contract.clientName}`, 'subtle'));
+    const perks = [contract.priority ? C.priority : null, contract.discount >= 1 ? C.free : contract.discount > 0 ? `${C.discount}: ${Math.round(contract.discount * 100)} %` : null].filter(Boolean);
+    if (perks.length) card.append(el('div', perks.join(' · '), 'site'));
+    const meta = el('div', null, 'detail-meta');
+    for (const [title, value] of [[C.fee, `${thousands(contract.fee)} $`], [C.nextCharge, contract.status === 'cancelled' ? '—' : date(contract.nextCharge)], [C.paidTotal, `${thousands(contract.paidTotal)} $`]]) {
+      const item = el('div', title, 'subtle'); item.append(el('strong', value)); meta.append(item);
+    }
+    card.append(meta);
+    return card;
+  }
+  async function contractsView(content) {
+    const C = group('contracts'); const data = await request('contracts'); if (!data) return;
+    if (state.session.kind === 'operations') {
+      simpleHero(content, C.title, C.staffHelp);
+      const strip = el('div', null, 'widgets contract-summary');
+      for (const [label, value] of [[C.active, data.summary.active], [C.suspendedCount, data.summary.suspended], [`${C.income} (${periodText(data.period, C)})`, `${thousands(data.summary.income)} $`]]) {
+        const box = el('div', null, 'widget'); box.append(el('div', label, 'widget-head'), el('div', value, 'widget-value')); strip.append(box);
+      }
+      content.append(strip);
+      if (!data.items.length) { content.append(el('div', C.staffEmpty, 'empty')); return; }
+      const grid = el('div', null, 'grid'); for (const contract of data.items) grid.append(contractCard(contract, C)); content.append(grid);
+      return;
+    }
+    simpleHero(content, C.title, format(C.help, periodText(data.period, C)));
+    const panel = el('section', null, 'zone-new'); panel.append(el('span', C.newTitle, 'overline'));
+    if (!data.places.length) panel.append(el('p', C.noPlaces, 'subtle'));
+    else {
+      const place = el('select'); place.setAttribute('aria-label', C.place);
+      for (const option of data.places) { const node = el('option', option.label); node.value = option.value; place.append(node); }
+      let chosen = data.plans[0]?.value;
+      const plans = el('div', null, 'plan-list');
+      const paint = () => { for (const node of plans.children) node.classList.toggle('selected', node.dataset.plan === chosen); };
+      for (const plan of data.plans) {
+        const option = button('', () => { chosen = plan.value; paint(); }, false, 'plan-option'); option.replaceChildren(); option.dataset.plan = plan.value;
+        option.append(el('strong', plan.name), el('span', `${thousands(plan.fee)} $ / ${periodText(data.period, C)}`, 'plan-fee'), el('span', plan.description || '', 'subtle'));
+        plans.append(option);
+      }
+      paint();
+      panel.append(place, plans, button(C.hire, async () => {
+        const result = await request('contract_create', { place: place.value, plan: chosen });
+        if (result) { await refresh(); message(result.message); }
+      }, false, 'primary'));
+    }
+    content.append(panel);
+    if (!data.items.length) { content.append(el('div', C.empty, 'empty')); return; }
+    const grid = el('div', null, 'grid');
+    for (const contract of data.items) {
+      const card = contractCard(contract, C);
+      if (contract.status !== 'cancelled') {
+        const actions = el('div', null, 'zone-actions'); let armed = false;
+        const cancel = button(C.cancel, async () => {
+          if (!armed) { armed = true; cancel.textContent = C.confirmCancel; return; }
+          const result = await request('contract_cancel', { contractId: contract.id }); if (result) { await refresh(); message(result.message); }
+        }, false, 'danger');
+        actions.append(cancel); card.append(actions);
+      }
       grid.append(card);
     }
     content.append(grid);
@@ -424,7 +491,7 @@
     }
     content.append(grid);
   }
-  const VIEWS = { locks: doorsView, trackers: trackersView, incidents: incidentsView, installations: zonesView, requests: requestsView, work_orders: ordersView,
+  const VIEWS = { contracts: contractsView, locks: doorsView, trackers: trackersView, incidents: incidentsView, installations: zonesView, requests: requestsView, work_orders: ordersView,
     emergencies: emergenciesView, dispatch: dispatchView };
   async function refresh() {
     if (!state.session || state.busy) return;

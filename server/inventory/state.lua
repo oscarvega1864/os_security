@@ -140,8 +140,9 @@ end
 function state.call(value)
     local limits = OSSecurity.GameplayConfig.Dispatch
     if not util.object(value, { id = true, kind = true, status = true, client = true, clientName = true, technician = true, techName = true,
-        deviceId = true, place = true, position = true, note = true, resolution = true, count = true, createdAt = true, updatedAt = true })
-        or not state.callId(value.id) or not state.CallKinds[value.kind] or not state.CallStatus[value.status]
+        deviceId = true, place = true, position = true, note = true, resolution = true, count = true, createdAt = true, updatedAt = true,
+        contract = true })
+        or not state.callId(value.id) or (value.contract ~= nil and value.contract ~= true) or not state.CallKinds[value.kind] or not state.CallStatus[value.status]
         or (value.client ~= nil and not identity.valid(value.client)) or (value.technician ~= nil and not identity.valid(value.technician))
         or (value.deviceId ~= nil and not OSSecurity.DeviceValidation.id(value.deviceId))
         or not shortText(value.clientName, 64) or not shortText(value.techName, 64) or not shortText(value.place, 80)
@@ -151,6 +152,22 @@ function state.call(value)
     -- Asignado exige tecnico; un panico siempre tiene cliente.
     if value.status == 'assigned' and not value.technician then return false end
     if value.kind == 'panic' and not value.client then return false end
+    return true
+end
+
+-- Contrato de seguridad de una propiedad o negocio (ver server/contracts/service.lua).
+state.ContractStatus = { active = true, suspended = true, cancelled = true }
+function state.contractId(id) return type(id) == 'string' and id:match('^ct_%d%d%d%d%d%d$') ~= nil end
+function state.contract(value)
+    local limits = OSSecurity.GameplayConfig.Contracts
+    if not util.object(value, { id = true, client = true, clientName = true, site = true, place = true, position = true, plan = true,
+        fee = true, status = true, failures = true, nextCharge = true, paidTotal = true, createdAt = true, updatedAt = true })
+        or not state.contractId(value.id) or not identity.valid(value.client) or not shortText(value.clientName, 64)
+        or not state.site(value.site) or not shortText(value.place, 80) or not state.vector(value.position, 1000000)
+        or type(value.plan) ~= 'string' or not limits.Plans[value.plan] or not util.integer(value.fee, 0, 10000000)
+        or not state.ContractStatus[value.status] or not util.integer(value.failures, 0, 100)
+        or not util.integer(value.nextCharge, 0, 253402300799) or not util.integer(value.paidTotal, 0, 2000000000)
+        or not util.integer(value.createdAt, 0, 253402300799) or not util.integer(value.updatedAt, 0, 253402300799) then return false end
     return true
 end
 
@@ -230,7 +247,7 @@ local function operation(op, limits)
     if not util.object(op, { kind = true, at = true, principal = true, item = true, amount = true,
         deviceId = true, role = true, anchor = true, installation = true, installationId = true, reason = true, site = true, alarm = true,
         doorId = true, door = true, carId = true, car = true, anchorId = true, orderId = true, order = true, target = true,
-        callId = true, call = true, detectorId = true, detector = true, custodyId = true, custody = true })
+        callId = true, call = true, detectorId = true, detector = true, custodyId = true, custody = true, contractId = true, contract = true })
         or not util.integer(op.at, 0, 253402300799) then return false end
     local fields = { kind = true, at = true }
     if op.kind == 'grant' or op.kind == 'migrate' then
@@ -266,6 +283,10 @@ local function operation(op, limits)
         -- Sin 'call' se borra (limpieza de avisos cerrados antiguos).
         fields.callId, fields.call = true, true
         if not state.callId(op.callId) or (op.call ~= nil and (not state.call(op.call) or op.call.id ~= op.callId)) then return false end
+    elseif op.kind == 'contract' then
+        -- Sin 'contract' se borra (limpieza de contratos cancelados antiguos).
+        fields.contractId, fields.contract = true, true
+        if not state.contractId(op.contractId) or (op.contract ~= nil and (not state.contract(op.contract) or op.contract.id ~= op.contractId)) then return false end
     elseif op.kind == 'detector' then
         -- Sin 'detector' se retira el arco.
         fields.detectorId, fields.detector = true, true
@@ -317,7 +338,7 @@ end
 function state.snapshot(snapshot, limits)
     if not util.object(snapshot, { schemaVersion = true, revision = true, nextInstallation = true,
         accounts = true, anchors = true, installations = true, lastOperation = true, sites = true, alarms = true, doors = true, cars = true, orders = true,
-        owners = true, calls = true, detectors = true, custody = true })
+        owners = true, calls = true, detectors = true, custody = true, contracts = true })
         or snapshot.schemaVersion ~= 1 or not util.integer(snapshot.revision, 0, 9007199254740000)
         or not util.integer(snapshot.nextInstallation, 1, limits.MaxInstallations + 1)
         or not util.object(snapshot.accounts) or not util.object(snapshot.anchors) or not util.object(snapshot.installations)
@@ -326,6 +347,7 @@ function state.snapshot(snapshot, limits)
         or (snapshot.orders ~= nil and not util.object(snapshot.orders)) or (snapshot.owners ~= nil and not util.object(snapshot.owners))
         or (snapshot.calls ~= nil and not util.object(snapshot.calls))
         or (snapshot.detectors ~= nil and not util.object(snapshot.detectors)) or (snapshot.custody ~= nil and not util.object(snapshot.custody))
+        or (snapshot.contracts ~= nil and not util.object(snapshot.contracts))
         or (snapshot.revision == 0 and snapshot.lastOperation ~= nil)
         or (snapshot.revision > 0 and not operation(snapshot.lastOperation, limits)) then return nil, 'Formato de inventario incompatible.' end
     local count, deviceIds = 0, {}
@@ -411,6 +433,11 @@ function state.snapshot(snapshot, limits)
         calls = calls + 1
         if calls > OSSecurity.GameplayConfig.Dispatch.MaxCalls or not state.call(call) or call.id ~= callId then return nil, 'Aviso de la central invalido.' end
     end
+    local contracts = 0
+    for contractId, contract in pairs(snapshot.contracts or {}) do
+        contracts = contracts + 1
+        if contracts > OSSecurity.GameplayConfig.Contracts.MaxContracts or not state.contract(contract) or contract.id ~= contractId then return nil, 'Contrato invalido.' end
+    end
     local detectors, custody = 0, 0
     for detectorId, detector in pairs(snapshot.detectors or {}) do
         detectors = detectors + 1
@@ -478,6 +505,15 @@ function state.apply(snapshot, op, limits)
         end
         nextState.calls[op.callId] = op.call and util.copy(op.call) or nil
         if next(nextState.calls) == nil then nextState.calls = nil end
+    elseif op.kind == 'contract' then
+        nextState.contracts = nextState.contracts or {}
+        if op.contract and not nextState.contracts[op.contractId] then
+            local count = 0
+            for _ in pairs(nextState.contracts) do count = count + 1 end
+            if count >= OSSecurity.GameplayConfig.Contracts.MaxContracts then return nil, 'Limite de contratos alcanzado.' end
+        end
+        nextState.contracts[op.contractId] = op.contract and util.copy(op.contract) or nil
+        if next(nextState.contracts) == nil then nextState.contracts = nil end
     elseif op.kind == 'detector' or op.kind == 'custody' then
         local key, id, value, limit, label = 'detectors', op.detectorId, op.detector, OSSecurity.GameplayConfig.Checkpoint.MaxDetectors, 'arcos detectores'
         if op.kind == 'custody' then key, id, value, limit, label = 'custody', op.custodyId, op.custody, OSSecurity.GameplayConfig.Checkpoint.MaxCustody, 'custodias' end
@@ -527,6 +563,9 @@ function state.apply(snapshot, op, limits)
         for _, call in pairs(nextState.calls or {}) do
             if call.client == from then call.client = to end
             if call.technician == from then call.technician = to end
+        end
+        for _, contract in pairs(nextState.contracts or {}) do
+            if contract.client == from then contract.client = to end
         end
         for _, detector in pairs(nextState.detectors or {}) do
             if detector.placedBy == from then detector.placedBy = to end

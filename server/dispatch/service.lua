@@ -72,7 +72,7 @@ function OSSecurity.DispatchService.new(options)
         return call
     end
     local function public(call, viewer, here)
-        return { id = call.id, kind = call.kind, status = call.status, priority = PRIORITY[call.kind], place = call.place, note = call.note,
+        return { id = call.id, kind = call.kind, status = call.status, priority = PRIORITY[call.kind], contract = call.contract, place = call.place, note = call.note,
             resolution = call.resolution, clientName = call.clientName, techName = call.techName, count = call.count,
             createdAt = call.createdAt, updatedAt = call.updatedAt, position = util.copy(call.position),
             mine = viewer ~= nil and call.technician == viewer or nil,
@@ -84,7 +84,9 @@ function OSSecurity.DispatchService.new(options)
         table.sort(result, function(a, b)
             local activeA, activeB = ACTIVE[a.status] == true, ACTIVE[b.status] == true
             if activeA ~= activeB then return activeA end
-            if activeA and a.priority ~= b.priority then return a.priority < b.priority end
+            -- Con contrato con prioridad, el aviso sube medio nivel (por delante de los de su tipo y del siguiente).
+            local pa, pb = a.priority - (a.contract and 0.5 or 0), b.priority - (b.contract and 0.5 or 0)
+            if activeA and pa ~= pb then return pa < pb end
             if a.updatedAt ~= b.updatedAt then return a.updatedAt > b.updatedAt end
             return a.id > b.id
         end)
@@ -107,7 +109,11 @@ function OSSecurity.DispatchService.new(options)
                 return call
             end
         end
-        local call = create(list, { kind = kind, client = owner, deviceId = device.id, place = clean(place, 80) or device.id, position = point(device.position) })
+        -- Contrato con prioridad de la propiedad donde esta la central: el aviso sale antes en la central.
+        local site = options.inventory.site and options.inventory.site(device.id) or nil
+        local covered = owner and options.contracts and options.contracts.coverage(owner, site and { kind = site.kind, id = site.id } or nil)
+        local call = create(list, { kind = kind, client = owner, deviceId = device.id, place = clean(place, 80) or device.id, position = point(device.position),
+            contract = covered and covered.priority or nil })
         if call then
             broadcast(call, T.newCall:format(kindLabel(kind), call.place), kind == 'alarm' and 'error' or 'warning')
             options.audit('call_raised', 0, device.id)
@@ -123,7 +129,7 @@ function OSSecurity.DispatchService.new(options)
         for _, site in ipairs(options.sites.owned()) do
             if site.owner == alias then
                 result[#result + 1] = { value = ('site:%s:%d'):format(site.kind, site.id), label = options.sites.label({ kind = site.kind, id = site.id }),
-                    position = util.copy(site.position) }
+                    site = { kind = site.kind, id = site.id }, position = util.copy(site.position) }
             end
         end
         return result
@@ -147,19 +153,20 @@ function OSSecurity.DispatchService.new(options)
         if lastPanic[actor.principal] and now - lastPanic[actor.principal] < config.PanicCooldown then
             return nil, ('Espera %d s antes de otro aviso.'):format(lastPanic[actor.principal] + config.PanicCooldown - now)
         end
-        local position, place
+        local position, place, site
         if args.place == 'here' then
             position = options.world(actor.source)
             if not position then return nil, 'Posicion no disponible.' end
             place = T.clientPlace
         else
             for _, owned in ipairs(ownedSites(actor.source)) do
-                if owned.value == args.place then position, place = owned.position, owned.label end
+                if owned.value == args.place then position, place, site = owned.position, owned.label, owned.site end
             end
             if not position then return nil, 'Ese lugar no es tuyo.' end
         end
+        local covered = options.contracts and options.contracts.coverage(actor.principal, site)
         local call, err = create(all(), { kind = 'panic', client = actor.principal, clientName = name(actor.source), place = clean(place, 80),
-            note = clean(args.note, config.NoteLength), position = point(position) })
+            note = clean(args.note, config.NoteLength), position = point(position), contract = covered and covered.priority or nil })
         if not call then return nil, err end
         lastPanic[actor.principal] = now
         local alerted = #staff(actor.source)

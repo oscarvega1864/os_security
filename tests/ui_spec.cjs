@@ -80,6 +80,10 @@ async function main() {
             attention:[{kind:'device',id:'osd_0000000001',title:'G6-D · osd_0000000001',subtitle:'<img src=x onerror="window.__xss=true">',reason:'triggered'},{kind:'call',id:'av_000003',title:'av_000003',subtitle:'Vinewood',reason:'panic'}],
             points:[{kind:'device',id:'osd_0000000001',x:-620,y:240,label:'G6-D · osd_0000000001',subtitle:'Propiedad 200',state:'triggered'},{kind:'call',id:'av_000003',x:-400,y:1000,label:'av_000003',subtitle:'Vinewood',state:'panic'}]};
           else if(body.action==='search') result.data={query:body.args.query,items:[{kind:'device',id:'osd_0000000001',title:'G6-D · osd_0000000001',subtitle:'Propiedad 200',type:'cctv_camera',state:'active'},{kind:'call',id:'av_000003',title:'av_000003',subtitle:'Vinewood',state:'open'}]};
+          else if(body.action==='contracts') result.data=window.__mode==='operations'
+            ? {period:86400,summary:{active:1,suspended:0,income:1500},items:[{id:'ct_000001',plan:'alarm',planName:'Alarma conectada',fee:1500,status:'active',place:'Propiedad 7',clientName:'ana',nextCharge:1762800000,paidTotal:3000,failures:0,priority:true,discount:0.25}]}
+            : {period:86400,places:[{value:'site:property:7',label:'Propiedad 7'}],plans:[{value:'basic',name:'Basico',fee:500,discount:0.1},{value:'alarm',name:'Alarma conectada',fee:1500,priority:true,discount:0.25}],
+              items:[{id:'ct_000002',plan:'premium',planName:'<b>Vigilancia</b>',fee:3500,status:'suspended',place:'Negocio 4',nextCharge:1762800000,paidTotal:3500,failures:1,priority:true,discount:1}]};
           else if(body.action==='incidents') result.data={items:[{at:1762700000,kind:'triggered',device:'G6-D · osd_0000000009',deviceId:'osd_0000000009',site:'Propiedad 200'}]};
         }
         return new Response(JSON.stringify(result),{status:200,headers:{'Content-Type':'application/json'}});
@@ -150,10 +154,21 @@ async function main() {
     await evaluate(`Array.from(document.querySelectorAll('.set-nav')).find(b=>b.textContent==='General').click()`); await until(`document.querySelector('.set-row .danger')`);
     await evaluate(`document.querySelector('.set-row .danger').click()`); await until(`!document.getElementById('app').classList.contains('dark') && document.querySelector('.screen.wp-1')`);
     console.log('PASS settings: theme, wallpaper and notice banners are applied, saved per player and reset');
+    // Contratos (cliente): planes, contratar y dar de baja con confirmacion.
+    await evaluate(`document.getElementById('home-bar').click()`); await until(`!document.getElementById('home').hidden`);
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Contratos').click()`);
+    await until(`document.querySelectorAll('.plan-option').length===2 && document.querySelectorAll('.contract-card').length===1`);
+    assert(await evaluate(`document.querySelector('.contract-card').textContent.includes('Suspendido') && !document.querySelector('.contract-card b') && document.querySelector('.contract-card .site').textContent.includes('sin coste')`));
+    await evaluate(`window.__calls.length=0; document.querySelectorAll('.plan-option')[1].click(); Array.from(document.querySelectorAll('.zone-new button')).find(b=>b.textContent==='Contratar').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='contract_create' && x.body.args.plan==='alarm' && x.body.args.place==='site:property:7')`);
+    await evaluate(`window.__calls.length=0; document.querySelector('.contract-card .danger').click()`);
+    assert(await evaluate(`!window.__calls.some(x=>x.body.action==='contract_cancel')`), 'Cancel asks for confirmation first');
+    await evaluate(`document.querySelector('.contract-card .danger').click()`); await until(`window.__calls.some(x=>x.body.action==='contract_cancel' && x.body.args.contractId==='ct_000002')`);
+    console.log('PASS contracts: plans, hire and cancel with confirmation in G6 Client');
     await evaluate(`window.__open('client')`);
     await until(`document.querySelectorAll('.card').length===1`);
     assert(await evaluate(`document.getElementById('edition').textContent==='G6 Client' && !document.querySelector('.tablet.operations')`));
-    assert(await evaluate(`!Array.from(document.querySelectorAll('nav button')).some(b=>b.disabled || b.textContent.includes('Contratos')) && Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent.includes('Cerraduras'))`));
+    assert(await evaluate(`!Array.from(document.querySelectorAll('nav button')).some(b=>b.disabled || b.textContent.includes('Bodycams')) && Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent==='Contratos') && Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent.includes('Cerraduras'))`));
     assert(await evaluate(`document.getElementById('app').textContent.indexOf('Reparar')===-1 && document.querySelector('video')===null`));
     fs.writeFileSync(path.join(output, 'client.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
     console.log('PASS Client identity, unimplemented modules hidden and absence of repair/video controls');

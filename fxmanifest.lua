@@ -79,6 +79,7 @@ server_scripts {
     'server/shop/service.lua',
     'server/orders/service.lua',
     'server/dispatch/service.lua',
+    'server/contracts/service.lua',
     'server/checkpoint/service.lua',
     'server/tablet/service.lua',
     'server/tablet/home.lua',

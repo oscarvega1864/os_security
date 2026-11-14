@@ -1889,3 +1889,54 @@ test('Tablet map: the session carries the calibration; only an admin recalibrate
     grant(restarted, 4, 'g6_operations_tablet')
     local reset = call(restarted, 4, open(restarted, 4, 'operations'), 'map_calibrate', { reset = true }); assert(reset.ok and not reset.data.custom and reset.data.ax == 0.02072)
 end)
+
+-- Contratos de seguridad --------------------------------------------------------------------------------
+test('Contracts: a client hires a plan for an owned property, is charged each period, gets central priority and repair discounts', function()
+    local c = fixture(); assert(c.loaded, c.loadError)
+    local plans = OSSecurity.GameplayConfig.Contracts
+    grant(c, 2, 'g6_client_tablet'); grant(c, 1, 'g6_operations_tablet'); grant(c, 3, 'g6_operations_tablet')
+    c.assets.properties[7] = { id = 7, owner = 'ana', position = { x = 50, y = 60, z = 30 } }; c.active[2] = { alias = 'ana' }
+    c.wallet[2] = { bank = 10000, cash = 0 }; c.wallet[1] = { bank = 0, cash = 0 }
+    local client = open(c, 2, 'client')
+    local list = call(c, 2, client, 'contracts'); assert(list.ok, list.error)
+    assert(#list.data.items == 0 and #list.data.plans == 3 and #list.data.places == 1 and list.data.places[1].value == 'site:property:7')
+    assert(not call(c, 2, client, 'contract_create', { place = 'site:property:99', plan = 'alarm' }).ok) -- no es suya
+    assert(not call(c, 2, client, 'contract_create', { place = 'site:property:7', plan = 'oro' }).ok)
+    local hired = call(c, 2, client, 'contract_create', { place = 'site:property:7', plan = 'alarm' }); assert(hired.ok, hired.error)
+    assert(hired.data.id == 'ct_000001' and c.wallet[2].bank == 10000 - plans.Plans.alarm.fee)
+    assert(not call(c, 2, client, 'contract_create', { place = 'site:property:7', plan = 'basic' }).ok) -- ya tiene contrato
+    assert(#call(c, 2, client, 'contracts').data.places == 0)
+    -- Prioridad: el panico desde su propiedad sale por delante de otro anterior sin contrato.
+    grant(c, 5, 'g6_client_tablet'); c.aces[5][config.Ace.client] = true; c.players[5].point = { x = 1, y = 1, z = 1 }
+    assert(call(c, 5, open(c, 5, 'client'), 'panic', { place = 'here', note = 'Primero' }).ok)
+    c.core.time = c.core.time + 1
+    assert(call(c, 2, client, 'panic', { place = 'site:property:7', note = 'Segundo' }).ok)
+    local central = call(c, 3, open(c, 3, 'operations'), 'dispatch'); assert(central.ok)
+    assert(central.data.items[1].contract == true and central.data.items[1].place:find('Propiedad 7', 1, true))
+    -- Descuento: orden de esa propiedad facturada a 1000 -> paga 750 (alarm: 25 %); el tecnico cobra su parte del precio.
+    c.core.time = c.core.time + 20
+    assert(call(c, 2, client, 'request_create', { kind = 'repair', place = 'site:property:7', note = 'Camara' }).ok)
+    local tech = open(c, 1, 'operations')
+    assert(call(c, 1, tech, 'order_accept', { orderId = 'ot_000001' }).ok and call(c, 1, tech, 'order_bill', { orderId = 'ot_000001', price = 1000 }).ok)
+    local mine = call(c, 2, client, 'requests').data.items[1]; assert(mine.due == 750 and mine.contract == 'ct_000001')
+    local before = c.wallet[2].bank
+    assert(call(c, 2, client, 'request_pay', { orderId = 'ot_000001' }).ok); assert(c.wallet[2].bank == before - 750)
+    assert(c.wallet[1].bank == math.floor(1000 * OSSecurity.GameplayConfig.Orders.TechShare))
+    -- Cobro periodico: al vencer se cobra; si no hay saldo, suspendido y sin ventajas; tras varios fallos, cancelado.
+    c.core.time = c.core.time + plans.PeriodSeconds + 1; before = c.wallet[2].bank
+    c.game.contracts.tick(); assert(c.wallet[2].bank == before - plans.Plans.alarm.fee and c.game.inventory.contracts().ct_000001.status == 'active')
+    c.game.contracts.tick(); assert(c.wallet[2].bank == before - plans.Plans.alarm.fee) -- no cobra dos veces
+    c.wallet[2].bank = 0
+    c.core.time = c.core.time + plans.PeriodSeconds + 1; c.game.contracts.tick()
+    local contract = c.game.inventory.contracts().ct_000001; assert(contract.status == 'suspended' and contract.failures == 1)
+    assert(c.game.contracts.coverage(c.players[2].principal, { kind = 'property', id = 7 }) == nil) -- suspendido: sin ventajas
+    for _ = 2, plans.MaxFailures do c.core.time = c.core.time + plans.RetrySeconds + 1; c.game.contracts.tick() end
+    assert(c.game.inventory.contracts().ct_000001.status == 'cancelled')
+    -- Personal G6: ve la cartera; el cliente da de baja otro contrato.
+    c.wallet[2].bank = 10000; client = open(c, 2, 'client') -- la sesion anterior caduco con el paso del tiempo
+    assert(call(c, 2, client, 'contract_create', { place = 'site:property:7', plan = 'basic' }).ok)
+    local staff = call(c, 3, open(c, 3, 'operations'), 'contracts'); assert(staff.ok and staff.data.summary.active == 1 and #staff.data.items == 2)
+    assert(not call(c, 5, open(c, 5, 'client'), 'contract_cancel', { contractId = 'ct_000002' }).ok) -- no es suyo
+    assert(call(c, 2, client, 'contract_cancel', { contractId = 'ct_000002' }).ok and c.game.inventory.contracts().ct_000002.status == 'cancelled')
+    local restarted = fixture(c.core.files); assert(restarted.loaded and restarted.game.inventory.contracts().ct_000002)
+end)
