@@ -1972,8 +1972,13 @@ test('Bodycams: on-duty staff with the item turn it on, only supervisors and adm
     local tech = open(c, 1, 'operations')
     assert(not call(c, 1, tech, 'bodycams').ok)
     local supervisor = open(c, 3, 'operations')
-    local list = call(c, 3, supervisor, 'bodycams'); assert(list.ok and #list.data.items == 1 and list.data.items[1].id == 1 and list.data.items[1].distance == 20, list.error or ('n=' .. #list.data.items .. ' d=' .. tostring(list.data.items[1] and list.data.items[1].distance)))
+    local list = call(c, 3, supervisor, 'bodycams'); assert(list.ok and #list.data.items == 1 and list.data.items[1].id == 1 and list.data.items[1].distance == 20 and not list.data.items[1].self, list.error or ('n=' .. #list.data.items .. ' d=' .. tostring(list.data.items[1] and list.data.items[1].distance)))
     assert(not call(c, 3, supervisor, 'bodycam_live', { target = 2 }).ok) -- no esta encendida
+    -- La propia sale en la lista (marcada) y se puede ver: sirve para probar estando solo.
+    grant(c, 3, 'os_bodycam'); assert(cams.toggle(3).on)
+    local own = call(c, 3, supervisor, 'bodycams').data.items; assert(#own == 2 and own[2].id == 3 and own[2].self)
+    assert(call(c, 3, supervisor, 'bodycam_live', { target = 3 }).ok and call(c, 3, supervisor, 'bodycam_stop').ok)
+    assert(not cams.toggle(3).on)
     local live = call(c, 3, supervisor, 'bodycam_live', { target = 1 }); assert(live.ok, live.error)
     assert(live.data.target == 1 and live.data.name == 'Jugador1' and live.data.position.x == 10 and c.culling[3] == OSSecurity.GameplayConfig.Bodycams.CullingRadius)
     assert(call(c, 3, supervisor, 'bodycam_stop').ok and c.culling[3] == nil)

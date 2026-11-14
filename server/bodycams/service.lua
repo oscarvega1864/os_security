@@ -41,12 +41,11 @@ function OSSecurity.BodycamService.new(options)
     local function list(viewer)
         local here = options.world(viewer)
         local result = {}
+        -- Incluye la propia (marcada): sirve para comprobar que funciona estando solo.
         for source, entry in pairs(active) do
-            if source ~= viewer then
-                local point = options.world(source)
-                result[#result + 1] = { id = source, name = name(source), since = entry.since,
-                    distance = here and point and util.round(distance(here, point), 0) or nil }
-            end
+            local point = options.world(source)
+            result[#result + 1] = { id = source, name = name(source), since = entry.since, self = source == viewer or nil,
+                distance = here and point and util.round(distance(here, point), 0) or nil }
         end
         table.sort(result, function(a, b) return a.id < b.id end)
         return result
@@ -76,7 +75,7 @@ function OSSecurity.BodycamService.new(options)
         if not canWatch(actor) then return nil, T.noAccess end
         if not util.object(args, { target = true }) or not util.integer(args.target, 1, 2147483647) then return nil, T.notFound end
         local target = args.target
-        if target == actor.source or not active[target] then return nil, T.notFound end
+        if not active[target] then return nil, T.notFound end
         if not options.isStaff(target) or not options.hasItem(target) then turnOff(target, T.autoOff); return nil, T.notFound end
         local _, viewerBucket = options.world(actor.source)
         local point, targetBucket = options.world(target)

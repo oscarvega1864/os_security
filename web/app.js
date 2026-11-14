@@ -401,7 +401,7 @@
     const rows = el('div', null, 'rows');
     for (const item of data.items) {
       const row = el('div', null, 'row bodycam-row'); const body = el('div');
-      body.append(el('strong', item.name), el('span', [`${B.since} ${date(item.since)}`, item.distance != null ? format(B.distance, item.distance) : null].filter(Boolean).join(' · '), 'subtle'));
+      body.append(el('strong', item.self ? `${item.name} (${B.you})` : item.name), el('span', [`${B.since} ${date(item.since)}`, item.distance != null && !item.self ? format(B.distance, item.distance) : null].filter(Boolean).join(' · '), 'subtle'));
       row.append(el('span', null, 'row-icon cam-icon'), body, button(B.watch, () => request('bodycam_live', { target: item.id }), false, 'primary'));
       rows.append(row);
     }

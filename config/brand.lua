@@ -272,7 +272,7 @@ OSSecurity.Brand = {
             on = 'Bodycam encendida: la Central puede ver lo que ves.', off = 'Bodycam apagada.',
             autoOff = 'Bodycam apagada (fuera de servicio o sin el equipo).', notFound = 'Esa bodycam ya no esta encendida.',
             noSignal = 'Sin senal de la bodycam.', lost = 'Se ha perdido la senal de la bodycam.', waiting = 'Conectando con la bodycam...',
-            label = 'BODYCAM', help2 = 'Q / E: otra bodycam   Retroceso: salir', recording = 'Grabando'
+            label = 'BODYCAM', help2 = 'Q / E: otra bodycam   Retroceso: salir', recording = 'Grabando', you = 'tu'
         },
         contracts = {
             plans = {

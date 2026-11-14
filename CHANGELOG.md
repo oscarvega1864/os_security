@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.22.3
+
+- Bodycams: la lista incluye también la propia (marcada «tú») y se puede ver en directo; antes quedaba fuera y, con
+  una sola persona, parecía que no había ninguna encendida.
+
 ## 0.22.2 — Arco y cacheo con las armas guardadas del personaje
 
 - El arco detector y el cacheo suman a las armas que informa el cliente las que el servidor tiene guardadas para el
