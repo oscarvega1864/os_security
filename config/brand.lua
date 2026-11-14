@@ -33,7 +33,23 @@ OSSecurity.Brand = {
             kinds = { device = 'Dispositivo', order = 'Orden', call = 'Aviso', car = 'Vehiculo' },
             orderStatus = { open = 'Sin asignar', accepted = 'Aceptada', billed = 'Facturada', paid = 'Pagada', cancelled = 'Cancelada' },
             carState = { sounding = 'Alarma sonando', parked = 'Localizado' },
-            legend = { device = 'Dispositivos', order = 'Ordenes', call = 'Avisos', car = 'Vehiculos' }
+            legend = { device = 'Dispositivos', order = 'Ordenes', call = 'Avisos', car = 'Vehiculos' },
+            mapOpening = 'Abriendo el mapa... Tus puntos aparecen como iconos; al salir del mapa vuelves a la tablet.',
+            settings = {
+                title = 'Configuracion', general = 'General', display = 'Pantalla y brillo', wallpaper = 'Fondo de pantalla',
+                notifications = 'Notificaciones', about = 'Informacion',
+                generalGroup = 'Tablet', startScreen = 'Pantalla al abrir', searchScope = 'El buscador incluye',
+                searchScopeValue = 'Dispositivos, ordenes, avisos y vehiculos', reset = 'Restablecer ajustes', resetButton = 'Restablecer',
+                resetHelp = 'Vuelve al tema, fondo, texto y avisos de fabrica. Tus datos no se tocan.',
+                appearance = 'Aspecto', theme = 'Tema', themeAuto = 'Automatico', themeLight = 'Claro', themeDark = 'Oscuro',
+                themeHelp = 'Automatico usa el tema de cada tablet: claro en G6 Client y oscuro en G6 Operations.',
+                text = 'Texto', textSize = 'Tamano del texto', textNormal = 'Normal', textLarge = 'Grande',
+                chooseWallpaper = 'Elige un fondo', wallpapers = { 'Gruppe Sechs', 'Noche', 'Atardecer', 'Grafito', 'Bosque', 'Oceano' },
+                notificationsGroup = 'Avisos', banners = 'Mostrar avisos en pantalla', sounds = 'Sonido de avisos',
+                notificationsHelp = 'Los avisos se guardan siempre en el centro de avisos (campana), aunque no se muestren.',
+                name = 'Nombre', model = 'Modelo', modelValue = 'G6 Tab 11', version = 'Version del sistema', profile = 'Perfil',
+                employee = 'Acreditacion', sessionUntil = 'Sesion valida hasta', operator = 'Operador'
+            }
         },
         deviceTypes = { cctv_camera = 'Camara CCTV', alarm_panel = 'Alarma', alarm_sensor = 'Sensor de alarma', smart_lock = 'Cerradura',
             vehicle_tracker = 'Localizador', bodycam = 'Bodycam', security_monitor = 'Monitor de seguridad' },

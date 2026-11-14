@@ -124,7 +124,11 @@ inventario, validados por `InventoryState.detector/custody`. Requiere el inventa
   avisos del actor y vehiculos propios. No dan acceso a nada que la tablet no mostrase ya en su seccion.
 - Avisos en vivo: el cliente reenvia a la tablet abierta cada `os_security:alarm:alert` (mensaje NUI `notice`).
   Cada segundo envia `status` con la hora del juego y la posicion del jugador (marcador del mapa).
-- El mapa es esquematico (contorno dibujado a mano, sin imagenes del juego); la posicion exacta la da el GPS.
+- App Mapa: la NUI envia `openMap` con los puntos del resumen; `client/worldmap.lua` cierra la tablet, crea iconos
+  temporales y abre el mapa del menu de pausa (`ActivateFrontendMenu` + `PauseMenuceptionGoDeeper`). Al cerrar el
+  menu de pausa quita los iconos y vuelve a abrir la tablet. No se incluye ninguna imagen del mapa del juego.
+- App Configuracion: la NUI envia `settings`; el cliente valida los valores y los guarda con `SetResourceKvp`
+  (por jugador y equipo). Se devuelven en la sesion (`session.settings`) al abrir la tablet.
 
 ## Inventario standalone y persistencia
 

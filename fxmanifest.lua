@@ -31,6 +31,7 @@ client_scripts {
     'client/shop.lua',
     'client/live.lua',
     'client/checkpoint.lua',
+    'client/worldmap.lua',
     'client/boot.lua'
 }
 

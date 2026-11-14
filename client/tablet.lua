@@ -14,6 +14,7 @@ function OSSecurity.ClientTablet.new(options)
         local public = {}
         for key, value in pairs(session) do if key ~= 'token' and key ~= 'sequence' then public[key] = value end end
         public.module, wantedModule = wantedModule, nil
+        public.settings = options.settings and options.settings() or nil
         controller.visible = true
         options.show(public)
     end

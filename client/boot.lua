@@ -18,6 +18,22 @@ local minigame = OSSecurity.ClientMinigame.new({
 })
 OSSecurity.Minigame = minigame -- tambien lo usa el arco detector (client/checkpoint.lua)
 local liveView -- vista en directo de camaras (client/live.lua), creada tras el controlador
+local worldmap = OSSecurity.ClientWorldMap.new()
+-- Ajustes de la tablet (app Configuracion): por jugador, guardados en este equipo (KVP del recurso).
+local SETTINGS_KEY = 'os_security:tablet_settings'
+local SETTINGS = { theme = { auto = true, light = true, dark = true }, textSize = { normal = true, large = true } }
+local function cleanSettings(raw)
+    local value = type(raw) == 'table' and raw or {}
+    local wallpaper = math.tointeger(tonumber(value.wallpaper))
+    return { theme = SETTINGS.theme[value.theme] and value.theme or 'auto', textSize = SETTINGS.textSize[value.textSize] and value.textSize or 'normal',
+        wallpaper = wallpaper and wallpaper >= 1 and wallpaper <= 6 and wallpaper or 1,
+        sounds = value.sounds ~= false, banners = value.banners ~= false }
+end
+local function loadSettings()
+    local stored = GetResourceKvpString(SETTINGS_KEY)
+    local ok, decoded = pcall(json.decode, stored or '{}')
+    return cleanSettings(ok and decoded or nil)
+end
 local controller = OSSecurity.ClientTablet.new({
     minigame = minigame.run,
     live = { start = function(feed) liveView.start(feed) end },
@@ -26,7 +42,8 @@ local controller = OSSecurity.ClientTablet.new({
     send = function(packet) TriggerServerEvent('os_security:g6:request', packet) end,
     timeout = function(callback) SetTimeout(8000, callback) end,
     expiry = function(expires) SendNUIMessage({ type = 'expiry', expires = expires }) end,
-    notify = function(message, kind) OSSecurity.Notify(message or OSSecurity.Brand.Text.failed, kind) end
+    notify = function(message, kind) OSSecurity.Notify(message or OSSecurity.Brand.Text.failed, kind) end,
+    settings = loadSettings
 })
 
 liveView = OSSecurity.ClientLive.new({
@@ -121,6 +138,20 @@ RegisterNUICallback('waypoint', function(body, callback)
     end
 end)
 
+-- App Mapa: cierra la tablet, abre el mapa del juego con los puntos y al salir vuelve a abrir la tablet.
+RegisterNUICallback('openMap', function(body, callback)
+    callback({ ok = true })
+    if type(body) ~= 'table' or (body.kind ~= 'client' and body.kind ~= 'operations') or worldmap.open() then return end
+    local kind = body.kind
+    controller.close()
+    worldmap.show(body.points, function() controller.open(kind) end)
+end)
+RegisterNUICallback('settings', function(body, callback)
+    local clean = cleanSettings(body)
+    SetResourceKvp(SETTINGS_KEY, json.encode(clean))
+    callback({ ok = true, settings = clean })
+end)
+
 RegisterNUICallback('request', function(body, callback)
     if type(body) ~= 'table' or type(body.action) ~= 'string' or type(body.args) ~= 'table' then callback({ ok = false }); return end
     if body.action == 'use' then controller.use(body.args.item, callback)
@@ -160,7 +191,7 @@ end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
-    minigame.cancel(); controller.stop(); placement.cancel(); props.clear(); view.hide()
+    minigame.cancel(); controller.stop(); placement.cancel(); props.clear(); view.hide(); worldmap.stop()
 end)
 
 -- Alarmas: teclado junto al dispositivo, aviso de entrada, sirena y avisos.

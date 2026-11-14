@@ -18,7 +18,10 @@ window.G6OS = function createOS(api) {
     inventory: 'M4 8l8-4 8 4v9l-8 4-8-4zM4 8l8 4 8-4M12 12v9', work_orders: 'M9 4h6v3H9zM6 6h12v15H6zM9 12l2 2 4-4',
     dispatch: 'M4 12a8 8 0 0116 0v5h-3v-5M4 17h3v-5M12 4V2', map: 'M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15',
     search: 'M10 4a6 6 0 110 12 6 6 0 010-12zM15 15l5 5', notices: 'M6 16V11a6 6 0 0112 0v5l2 2H4zM10 20a2 2 0 004 0',
-    home: 'M4 11l8-7 8 7M6 10v10h12V10'
+    home: 'M4 11l8-7 8 7M6 10v10h12V10',
+    settings: 'M12 9a3 3 0 110 6 3 3 0 010-6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1',
+    display: 'M12 4a8 8 0 100 16zM12 4a8 8 0 010 16', wallpaper: 'M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4M15 9h.5',
+    about: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 11v5M12 8v.5'
   };
   function icon(name) {
     const svg = document.createElementNS(svgNS, 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true');
@@ -40,7 +43,7 @@ window.G6OS = function createOS(api) {
   }
   os.status = message => {
     if (message.clock && Number.isFinite(message.clock.h) && Number.isFinite(message.clock.m)) os.clock = { h: message.clock.h, m: message.clock.m };
-    if (message.position && Number.isFinite(message.position.x) && Number.isFinite(message.position.y)) { os.here = { x: message.position.x, y: message.position.y }; moveYou(); }
+    if (message.position && Number.isFinite(message.position.x) && Number.isFinite(message.position.y)) { os.here = { x: message.position.x, y: message.position.y }; }
     paintClock();
     if (state.view === 'home') byId('greeting').textContent = greeting() || '';
   };
@@ -58,7 +61,8 @@ window.G6OS = function createOS(api) {
     const entry = { text: message.text.slice(0, 240), kind, position, at: Date.now() };
     os.notices.unshift(entry); if (os.notices.length > 30) os.notices.length = 30;
     if (byId('notice-center').hidden) os.unread++; else paintNotices();
-    paintBell(); toast(entry);
+    paintBell(); if (os.settings.banners) toast(entry);
+    if (os.settings.sounds) window.postMessage({ type: 'beep', frequency: kind === 'error' ? 1500 : 1180, duration: 0.09 }, '*');
     if (state.view === 'home' && !state.busy) os.renderHome();
   };
   function toast(entry) {
@@ -170,91 +174,98 @@ window.G6OS = function createOS(api) {
     return H().carState?.[item.state] || item.state;
   }
 
-  // ---------- Mapa tactico (esquematico, coordenadas del mundo) ----------
-  // Contorno aproximado dibujado a mano: solo orienta, la posicion exacta la marca el GPS.
-  const WORLD = { minX: -4200, maxX: 4600, minY: -4200, maxY: 8200 };
-  const COAST = [[1350, -3350], [300, -3300], [-900, -3600], [-1900, -3300], [-1600, -2000], [-1900, -1250], [-2100, -500], [-3000, 200], [-3250, 1100],
-    [-3100, 1900], [-2800, 2500], [-2650, 3100], [-2300, 3800], [-2000, 4500], [-1600, 5300], [-900, 6000], [-300, 6600], [150, 7450], [700, 7150],
-    [1500, 6700], [2400, 6100], [3300, 5400], [3850, 4500], [3700, 3500], [3200, 2400], [2950, 1300], [2750, 100], [2550, -1200], [1900, -2400]];
-  const PLACES = [['Los Santos', 150, -900], ['Vinewood', 300, 600], ['Sandy Shores', 1800, 3600], ['Grapeseed', 1900, 4950], ['Paleto Bay', -250, 6350],
-    ['Fort Zancudo', -2250, 3150], ['Chumash', -2900, 900], ['Monte Chiliad', 500, 5550], ['Alamo Sea', 1300, 4050]];
-  const toSvg = (x, y) => [x - WORLD.minX, WORLD.maxY - y];
-  let view = null; let mapNodes = null;
-  function moveYou() {
-    if (!mapNodes?.you || !os.here) return;
-    const [x, y] = toSvg(os.here.x, os.here.y); mapNodes.you.setAttribute('transform', `translate(${x} ${y})`); mapNodes.you.style.display = '';
-  }
-  // Proporcion alto/ancho del marco: la vista siempre tiene la forma del marco y el mapa lo llena.
-  const ratio = () => { const svg = mapNodes?.svg; return svg && svg.clientWidth ? svg.clientHeight / svg.clientWidth : 0.6; };
-  function setView(v) {
-    const width = WORLD.maxX - WORLD.minX, height = WORLD.maxY - WORLD.minY;
-    v.w = Math.min(Math.max(width, height / ratio()), Math.max(500, v.w)); v.h = v.w * ratio();
-    v.x = Math.min(width - v.w * 0.2, Math.max(-v.w * 0.8, v.x)); v.y = Math.min(height - v.h * 0.2, Math.max(-v.h * 0.8, v.y));
-    view = v; mapNodes.svg.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
-    // Con 'slice' el mapa llena el marco: unidades del mundo por pixel en pantalla (tamano fijo de puntos y textos).
-    mapNodes.svg.style.setProperty('--u', String(v.w / (mapNodes.svg.clientWidth || 800)));
-  }
+  // ---------- Mapa: el mapa real del juego ----------
+  // La NUI no dibuja el mapa: pide al cliente que abra el mapa del juego con los puntos del resumen como iconos.
+  // Al salir del mapa el cliente vuelve a abrir la tablet en el inicio.
   os.mapView = async content => {
     const data = await request('home'); if (!state.session) return;
     os.data = data && data.counts ? data : os.data;
     const points = Array.isArray(os.data?.points) ? os.data.points : [];
-    const wrap = el('div', null, 'map-wrap'); const svg = document.createElementNS(svgNS, 'svg'); svg.classList.add('map');
-    const make = (tag, attrs, parent = svg) => { const node = document.createElementNS(svgNS, tag); for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v); parent.append(node); return node; };
-    const width = WORLD.maxX - WORLD.minX, height = WORLD.maxY - WORLD.minY;
-    make('rect', { x: -width, y: -height, width: width * 3, height: height * 3, class: 'map-sea' });
-    const grid = make('g', { class: 'map-grid' });
-    for (let x = 0; x <= width; x += 1000) make('line', { x1: x, y1: 0, x2: x, y2: height }, grid);
-    for (let y = 0; y <= height; y += 1000) make('line', { x1: 0, y1: y, x2: width, y2: y }, grid);
-    make('polygon', { points: COAST.map(([x, y]) => toSvg(x, y).join(',')).join(' '), class: 'map-land' });
-    const [lx, ly] = toSvg(1300, 4050); make('ellipse', { cx: lx, cy: ly, rx: 900, ry: 330, transform: `rotate(-12 ${lx} ${ly})`, class: 'map-lake' });
-    for (const [name, x, y] of PLACES) { const [px, py] = toSvg(x, y); const label = make('text', { x: px, y: py, class: 'map-place' }); label.textContent = name; }
-    const layer = make('g', { class: 'map-points' });
-    const popup = el('div', null, 'map-popup'); popup.hidden = true;
-    for (const point of points) {
-      if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) continue;
-      const [px, py] = toSvg(point.x, point.y);
-      const g = make('g', { class: `map-point kind-${point.kind} state-${point.state}`, transform: `translate(${px} ${py})` }, layer);
-      make('circle', { r: 1, class: 'map-dot' }, g);
-      g.addEventListener('click', event => {
-        event.stopPropagation(); popup.hidden = false; popup.replaceChildren();
-        popup.append(el('span', (H().kinds || {})[point.kind], 'overline'), el('strong', point.label), el('div', [point.subtitle, stateLabel({ kind: point.kind, state: point.state })].filter(Boolean).join(' · '), 'subtle'));
-        const actions = el('div', null, 'map-actions');
-        actions.append(button(H().gps, () => gps(point), false, 'primary'), button(H().open, () => api.goto({ kind: point.kind, id: point.id })));
-        popup.append(actions);
-      });
+    content.append(el('p', H().mapOpening, 'empty map-opening'));
+    post('openMap', { kind: state.session.kind, points }).catch(() => {});
+  };
+
+  // ---------- Configuracion (ajustes por jugador) ----------
+  const DEFAULTS = { theme: 'auto', wallpaper: 1, textSize: 'normal', sounds: true, banners: true };
+  os.settings = { ...DEFAULTS };
+  const S = () => H().settings || {};
+  function clean(raw) {
+    const value = raw && typeof raw === 'object' ? raw : {};
+    return { theme: ['auto', 'light', 'dark'].includes(value.theme) ? value.theme : 'auto',
+      wallpaper: Number.isInteger(value.wallpaper) && value.wallpaper >= 1 && value.wallpaper <= 6 ? value.wallpaper : 1,
+      textSize: value.textSize === 'large' ? 'large' : 'normal', sounds: value.sounds !== false, banners: value.banners !== false };
+  }
+  os.apply = () => {
+    const session = state.session; if (!session) return;
+    const app = byId('app'); const set = os.settings;
+    const dark = set.theme === 'dark' || (set.theme === 'auto' && session.kind === 'operations');
+    const theme = session.brand.Themes[dark ? 'operations' : 'client'];
+    for (const [key, value] of Object.entries(theme)) if (/^#[0-9a-f]{6}$/i.test(value)) app.style.setProperty(`--${key}`, value);
+    app.classList.toggle('dark', dark); app.classList.toggle('text-large', set.textSize === 'large');
+    const screen = app.querySelector('.screen'); screen.className = `screen wp-${set.wallpaper}`;
+  };
+  async function save(change) {
+    os.settings = clean({ ...os.settings, ...change }); os.apply();
+    try { const result = await post('settings', os.settings); if (result?.settings) os.settings = clean(result.settings); } catch { /* se aplica igualmente en esta sesion */ }
+  }
+  function toggle(on, action) {
+    const node = button('', () => action(!node.classList.contains('on')), false, `switch${on ? ' on' : ''}`); node.replaceChildren(el('span'));
+    node.setAttribute('role', 'switch'); node.setAttribute('aria-checked', String(on)); return node;
+  }
+  function segmented(options, current, action) {
+    const box = el('div', null, 'segmented');
+    for (const [value, label] of options) box.append(button(label, () => action(value), false, value === current ? 'active' : null));
+    return box;
+  }
+  function group(title, rows, foot) {
+    const node = el('section', null, 'set-group'); if (title) node.append(el('div', title, 'set-title'));
+    const list = el('div', null, 'set-list'); for (const row of rows) list.append(row); node.append(list);
+    if (foot) node.append(el('div', foot, 'set-foot')); return node;
+  }
+  function row(iconName, label, control, tone) {
+    const node = el('div', null, 'set-row'); const tile = el('span', null, `set-icon tone-${tone || 'grey'}`); tile.append(icon(iconName));
+    node.append(tile, el('span', label, 'set-label')); if (control) node.append(control); return node;
+  }
+  let settingsPage = 'general';
+  os.settingsView = content => {
+    const T = S(); const session = state.session; const set = os.settings;
+    const pages = [['general', T.general, 'settings', 'grey'], ['display', T.display, 'display', 'blue'], ['wallpaper', T.wallpaper, 'wallpaper', 'teal'],
+      ['notifications', T.notifications, 'notices', 'red'], ['about', T.about, 'about', 'grey']];
+    const shell = el('div', null, 'settings'); const side = el('aside', null, 'set-side'); const pane = el('div', null, 'set-pane');
+    const card = el('div', null, 'set-account'); const avatar = el('span', session.brand.Monogram, 'set-avatar');
+    const who = el('div'); who.append(el('strong', session.profile || ''), el('span', [session.brand.Tablets[session.kind]?.name, session.employeeId].filter(Boolean).join(' · ')));
+    card.append(avatar, who); side.append(card);
+    const nav = el('div', null, 'set-list');
+    for (const [id, label, iconName, tone] of pages) {
+      const item = button('', () => { settingsPage = id; render(); }, false, `set-row set-nav${settingsPage === id ? ' selected' : ''}`); item.replaceChildren();
+      const tile = el('span', null, `set-icon tone-${tone}`); tile.append(icon(iconName)); item.append(tile, el('span', label, 'set-label'));
+      nav.append(item);
     }
-    const you = make('g', { class: 'map-you' }); make('circle', { r: 1, class: 'map-you-pulse' }, you); make('circle', { r: 1, class: 'map-you-dot' }, you); you.style.display = 'none';
-    svg.addEventListener('click', () => { popup.hidden = true; });
-    mapNodes = { svg, you };
-    const tools = el('div', null, 'map-tools'); const legend = el('div', null, 'map-legend');
-    wrap.append(svg, tools, legend, popup);
-    content.append(el('p', points.length ? H().mapHelp : H().noPoints, 'subtle map-help'), wrap);
-    // Encuadre inicial: la zona con puntos (o el jugador, o Los Santos).
-    const xs = points.map(p => p.x), ys = points.map(p => p.y);
-    if (os.here) { xs.push(os.here.x); ys.push(os.here.y); }
-    if (!xs.length) { xs.push(-1500, 1500); ys.push(-2500, 1000); }
-    const pad = 600, minX = Math.min(...xs) - pad, maxX = Math.max(...xs) + pad, maxY = Math.max(...ys) + pad, minY = Math.min(...ys) - pad;
-    const w = Math.max(maxX - minX, (maxY - minY) / ratio(), 2500); const [cx, cy] = toSvg((minX + maxX) / 2, (minY + maxY) / 2);
-    setView({ x: cx - w / 2, y: cy - (w * ratio()) / 2, w });
-    moveYou();
-    // Rueda: zoom hacia el cursor. Arrastrar: mover.
-    svg.addEventListener('wheel', event => {
-      event.preventDefault(); const box = svg.getBoundingClientRect(); const factor = event.deltaY > 0 ? 1.18 : 1 / 1.18;
-      const fx = (event.clientX - box.left) / box.width, fy = (event.clientY - box.top) / box.height; const nw = view.w * factor;
-      setView({ x: view.x + (view.w - nw) * fx, y: view.y + (view.h - nw * view.h / view.w) * fy, w: nw });
-    }, { passive: false });
-    let drag = null;
-    svg.addEventListener('pointerdown', event => { drag = { x: event.clientX, y: event.clientY, view: { ...view }, moved: false }; });
-    svg.addEventListener('pointermove', event => {
-      if (!drag) return; const box = svg.getBoundingClientRect(); const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
-      if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
-      if (drag.moved) setView({ x: drag.view.x - dx * drag.view.w / box.width, y: drag.view.y - dy * drag.view.h / box.height, w: drag.view.w });
-    });
-    svg.addEventListener('pointerup', () => { drag = null; }); svg.addEventListener('pointerleave', () => { drag = null; });
-    tools.append(button('+', () => setView({ x: view.x + view.w * 0.15, y: view.y + view.h * 0.15, w: view.w * 0.7 })),
-      button('−', () => setView({ x: view.x - view.w * 0.2, y: view.y - view.h * 0.2, w: view.w * 1.4 })),
-      button(H().you, () => { if (!os.here) return; const [x, y] = toSvg(os.here.x, os.here.y); setView({ x: x - 1250, y: y - 1250 * ratio(), w: 2500 }); }, false, 'you'));
-    for (const kind of ['device', 'order', 'call', 'car']) if (points.some(p => p.kind === kind)) { const item = el('span', (H().legend || {})[kind], `legend kind-${kind}`); legend.append(item); }
+    side.append(nav);
+    const render = () => { content.replaceChildren(); os.settingsView(content); };
+    pane.append(el('h2', pages.find(page => page[0] === settingsPage)?.[1] || '', 'set-heading'));
+    if (settingsPage === 'general') {
+      pane.append(group(T.generalGroup, [row('home', T.startScreen, el('span', H().title, 'set-value'), 'blue'), row('search', T.searchScope, el('span', T.searchScopeValue, 'set-value'), 'grey')]),
+        group(null, [row('settings', T.reset, button(T.resetButton, () => save({ ...DEFAULTS }).then(render), false, 'danger mini'), 'red')], T.resetHelp));
+    } else if (settingsPage === 'display') {
+      pane.append(group(T.appearance, [row('display', T.theme, segmented([['auto', T.themeAuto], ['light', T.themeLight], ['dark', T.themeDark]], set.theme, value => save({ theme: value }).then(render)), 'blue')], T.themeHelp),
+        group(T.text, [row('display', T.textSize, segmented([['normal', T.textNormal], ['large', T.textLarge]], set.textSize, value => save({ textSize: value }).then(render)), 'grey')]));
+    } else if (settingsPage === 'wallpaper') {
+      const grid = el('div', null, 'wallpapers');
+      for (let index = 1; index <= 6; index++) {
+        const option = button('', () => save({ wallpaper: index }).then(render), false, `wallpaper-option wp-${index}${set.wallpaper === index ? ' selected' : ''}`);
+        option.replaceChildren(el('span', (T.wallpapers || [])[index - 1] || String(index))); grid.append(option);
+      }
+      pane.append(group(T.chooseWallpaper, [grid]));
+    } else if (settingsPage === 'notifications') {
+      pane.append(group(T.notificationsGroup, [row('notices', T.banners, toggle(set.banners, value => save({ banners: value }).then(render)), 'red'),
+        row('notices', T.sounds, toggle(set.sounds, value => save({ sounds: value }).then(render)), 'red')], T.notificationsHelp));
+    } else {
+      const info = [[T.name, session.brand.Tablets[session.kind]?.name], [T.model, T.modelValue], [T.version, session.version], [T.profile, session.profile],
+        [T.employee, session.employeeId], [T.sessionUntil, api.date(session.expires)], [T.operator, session.brand.Name]];
+      pane.append(group(null, info.filter(([, value]) => value).map(([label, value]) => { const node = el('div', null, 'set-row'); node.append(el('span', label, 'set-label'), el('span', value, 'set-value')); return node; })));
+    }
+    shell.append(side, pane); content.append(shell);
   };
 
   // ---------- Montaje ----------
@@ -265,10 +276,12 @@ window.G6OS = function createOS(api) {
     byId('search-close').addEventListener('click', closeSearch);
     byId('search-input').addEventListener('input', event => { clearTimeout(searchTimer); const value = event.target.value; searchTimer = setTimeout(() => runSearch(value), 280); });
     byId('home-bar').addEventListener('click', () => { os.closeOverlays(); api.goHome(); });
+    byId('home-button').addEventListener('click', () => { os.closeOverlays(); api.goHome(); });
     setInterval(() => { if (!os.clock && state.session) paintClock(); }, 15000);
   };
   os.reset = session => {
-    os.notices = []; os.unread = 0; os.data = null; mapNodes = null; paintBell(); paintClock();
+    os.notices = []; os.unread = 0; os.data = null; paintBell(); paintClock();
+    os.settings = clean(session.settings); os.apply();
     byId('spotlight').hidden = true; byId('notice-center').hidden = true; byId('toasts').replaceChildren();
     byId('notice-title').textContent = H().notices || ''; byId('notice-clear').textContent = H().clear || '';
     byId('search-close').textContent = state.session.brand.Text.close || '';
@@ -278,7 +291,7 @@ window.G6OS = function createOS(api) {
     dock.append(os.appButton('search', H().search, openSearch, 'dock-app'), os.appButton('map', H().map, () => api.openApp('map'), 'dock-app'),
       os.appButton('notices', H().notices, () => toggleNotices(), 'dock-app'));
     if (first) dock.append(os.appButton(first.id, first.name, () => api.openApp(first.id), 'dock-app'));
-    void session;
+    dock.append(os.appButton('settings', H().settings?.title, () => api.openApp('settings'), 'dock-app'));
   };
   return os;
 };

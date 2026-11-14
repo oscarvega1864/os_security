@@ -92,7 +92,7 @@ function OSSecurity.TabletService.new(options)
             kind = session.actor.kind, profile = OSSecurity.Brand.Profiles[session.actor.role],
             canInstall = session.actor.kind == 'operations' and OSSecurity.GameplayConfig.Profiles[session.actor.role].install == true,
             -- Solo presentacion: el servidor sigue comprobando cada accion contra el perfil y el dispositivo.
-            role = session.actor.role, abilities = service.abilities(session.actor),
+            role = session.actor.role, abilities = service.abilities(session.actor), version = OSSecurity.Config.Version,
             employeeId = session.actor.kind == 'operations' and options.employeeId(session.actor.principal) or nil,
             brand = util.copy(OSSecurity.Brand), capabilities = util.copy(OSSecurity.IntegrationContracts.cctv) }
     end

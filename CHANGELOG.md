@@ -11,9 +11,13 @@
   Lista «Requiere atención» (alarmas sonando, averías, salud baja, avisos activos); tocar una fila abre lo que toca.
 - **Buscador** (acción `search`, 2–40 caracteres): dispositivos por identificador, tipo, modelo o dirección; órdenes y
   avisos por número, lugar, nombre o nota; matrículas propias. Solo busca en lo que el perfil ya puede ver.
-- **Mapa táctico** (app Mapa): contorno esquemático de la isla con dispositivos instalados, órdenes, avisos y
-  vehículos propios, y tu posición. Rueda o botones para acercar, arrastrar para mover; tocar un punto permite
-  marcarlo en el GPS o abrirlo.
+- **Mapa** (app Mapa): abre el **mapa real del juego** (menú de pausa) con los dispositivos instalados, órdenes,
+  avisos y vehículos propios como iconos (los que necesitan atención en rojo y parpadeando). Se marca ruta como en el
+  mapa normal; al salir del mapa se quitan los iconos y vuelve a abrirse la tablet. No se distribuye ninguna imagen
+  del juego.
+- **Configuración** (estilo iOS, en las dos tablets y en el dock): tema automático/claro/oscuro, seis fondos de
+  pantalla, tamaño del texto, mostrar avisos en pantalla y sonido de avisos, restablecer ajustes e información de la
+  tablet (modelo, versión, perfil, acreditación, sesión). Se guarda por jugador en su equipo (KVP del recurso).
 - **Avisos en vivo**: con la tablet abierta, los avisos del servidor (alarmas, emergencias, órdenes asignadas…)
   aparecen como notificación dentro de la tablet, con contador en la campana y centro de avisos (con GPS si el aviso
   tiene posición). Escape cierra primero el buscador o el centro de avisos.

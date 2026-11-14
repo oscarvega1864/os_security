@@ -42,9 +42,9 @@
     post('close', {}).catch(() => {}); state.session = null;
   }
   // Sistema de la tablet (web/os.js): inicio, dock, buscador, mapa y avisos.
-  const os = window.G6OS({ state, byId, el, button, request, post, text, openApp, goHome, goto, modules: () => state.modules });
+  const os = window.G6OS({ state, byId, el, button, request, post, text, date, openApp, goHome, goto, modules: () => state.modules });
   // Secciones con vista propia (no son listas paginadas de dispositivos).
-  const OWN_VIEWS = ['map', 'inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
+  const OWN_VIEWS = ['map', 'settings', 'inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
   function pagination() {
     const enabled = !state.selected && !OWN_VIEWS.includes(state.module);
     byId('previous').disabled = !enabled || state.offset === 0;
@@ -432,8 +432,10 @@
     if (state.view === 'home') { await os.renderHome(); return; }
     const content = byId('content'); content.replaceChildren();
     const module = (state.session.brand.Modules[state.session.kind] || []).find(item => item.id === state.module);
-    byId('heading').textContent = state.module === 'map' ? (state.session.brand.Text.home?.map || 'Mapa') : module?.name || text('inventory');
+    const H = state.session.brand.Text.home || {};
+    byId('heading').textContent = state.module === 'map' ? H.map : state.module === 'settings' ? H.settings?.title : module?.name || text('inventory');
     if (state.module === 'map') { await os.mapView(content); pagination(); return; }
+    if (state.module === 'settings') { os.settingsView(content); pagination(); return; }
     if (state.session.kind === 'inventory' || state.module === 'inventory') {
       await inventory(content); pagination(); return;
     }
@@ -503,9 +505,10 @@
       : (brand.Modules[session.kind] || []).filter(module => module.implemented && (!module.requires || abilities.has(module.requires)));
     state.modules = modules;
     for (const module of modules) navigation.append(os.appButton(module.id, module.name, () => openApp(module.id)));
-    if (session.kind !== 'inventory') navigation.append(os.appButton('map', brand.Text.home?.map || 'Mapa', () => openApp('map')));
+    if (session.kind !== 'inventory') navigation.append(os.appButton('map', brand.Text.home?.map || 'Mapa', () => openApp('map')),
+      os.appButton('settings', brand.Text.home?.settings?.title || 'Configuracion', () => openApp('settings')));
     os.reset(session);
-    const wanted = typeof session.module === 'string' && (modules.some(module => module.id === session.module) || (session.module === 'map' && session.kind !== 'inventory')) ? session.module : null;
+    const wanted = typeof session.module === 'string' && (modules.some(module => module.id === session.module) || (['map', 'settings'].includes(session.module) && session.kind !== 'inventory')) ? session.module : null;
     if (session.kind === 'inventory') { state.module = 'inventory'; show('app'); refresh(); }
     else if (wanted) { state.module = wanted; show('app'); refresh(); }
     else { show('home'); refresh(); }
