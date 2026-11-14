@@ -26,7 +26,7 @@
     if (noise > 0) info.append(el('div', text.noise || 'Senal degradada', 'live-warn'));
     top.append(left, info);
     const bottom = el('div', null, 'live-bottom');
-    bottom.append(el('div', text.help || '', 'live-help'));
+    bottom.append(el('div', data.help || text.help || '', 'live-help'));
     root.append(top, bottom);
     root.hidden = false;
     clock = setInterval(() => { time.textContent = stamp(); }, 1000);

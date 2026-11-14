@@ -32,6 +32,9 @@ OSSecurity.GameplayConfig = {
     -- Un salto repetido de la misma central con su aviso abierto suma al mismo aviso (Repeat). Los cerrados
     -- se borran pasados KeepDays. Panico: un aviso activo por cliente y PanicCooldown s entre avisos.
     Dispatch = { MaxCalls = 300, NoteLength = 140, KeepDays = 7, PanicCooldown = 60, MaxRepeat = 99 },
+    -- Bodycams: el vigilante de servicio con el objeto la enciende; supervisores y administradores la ven en directo.
+    -- CullingRadius: radio de visibilidad de entidades de quien mira mientras mira (para que exista el vigilante).
+    Bodycams = { CullingRadius = 6000.0, TickSeconds = 5 },
     -- Contratos de seguridad por propiedad o negocio del cliente. La cuota se cobra al contratar y despues cada
     -- PeriodSeconds (tiempo real) del banco del cliente cuando esta conectado. Si no se puede cobrar, el contrato
     -- queda suspendido (sin ventajas) y se reintenta cada RetrySeconds; a los MaxFailures fallos se cancela.

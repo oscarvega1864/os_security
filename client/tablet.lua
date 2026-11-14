@@ -151,6 +151,26 @@ function OSSecurity.ClientTablet.new(options)
         if not session then callback({ ok = false, error = 'Sesion cerrada.' }); return end
         controller.request('live', { deviceId = deviceId }, callback)
     end
+    -- Bodycam en directo (supervisores): igual que una camara, con el vigilante como objetivo.
+    function controller.bodycam(target, callback)
+        controller.request('bodycam_live', { target = target }, function(response)
+            callback({ ok = response.ok, error = response.error, close = response.close })
+            if not response.ok or type(response.data) ~= 'table' or not options.bodycam then return end
+            controller.watchingBodycam = true
+            hide()
+            options.bodycam.start(response.data)
+        end)
+    end
+    function controller.bodycamFeed(target, callback)
+        if not session then callback({ ok = false, error = 'Sesion cerrada.' }); return end
+        controller.request('bodycam_live', { target = target }, callback)
+    end
+    function controller.bodycamEnd()
+        if not controller.watchingBodycam then return end
+        controller.watchingBodycam = false
+        if not session then return end
+        controller.request('bodycam_stop', {}, function() if session then wantedModule = 'bodycams'; showSession(session) end end)
+    end
     -- Al salir de la vista se vuelve a la tablet, en la seccion de CCTV.
     function controller.liveEnd()
         if not controller.watching then return end

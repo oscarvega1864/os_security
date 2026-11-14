@@ -240,6 +240,16 @@ OSSecurity.Brand = {
                 unscrewTitle = 'Soltar los pernos de las bases', unscrewHelp = 'Pulsa sobre cada perno y gira el raton en sentido ANTIHORARIO hasta sacarlo. Sin forzar.'
             }
         },
+        bodycams = {
+            title = 'Bodycams', help = 'Camaras de pecho del personal de servicio. Pulsa Ver en directo para mirar lo que ve el vigilante.',
+            empty = 'Nadie lleva la bodycam encendida ahora mismo.', watch = 'Ver en directo', since = 'Encendida desde',
+            distance = '%d m', noAccess = 'Solo supervisores y administradores ven las bodycams.',
+            needDuty = 'Tienes que estar de servicio en Gruppe Sechs.', needItem = 'Necesitas una bodycam.',
+            on = 'Bodycam encendida: la Central puede ver lo que ves.', off = 'Bodycam apagada.',
+            autoOff = 'Bodycam apagada (fuera de servicio o sin el equipo).', notFound = 'Esa bodycam ya no esta encendida.',
+            noSignal = 'Sin senal de la bodycam.', lost = 'Se ha perdido la senal de la bodycam.', waiting = 'Conectando con la bodycam...',
+            label = 'BODYCAM', help2 = 'Q / E: otra bodycam   Retroceso: salir', recording = 'Grabando'
+        },
         contracts = {
             plans = {
                 basic = { name = 'Basico', description = 'Seguimiento de tus equipos G6 y 10 % de descuento en reparaciones.' },
@@ -310,7 +320,7 @@ OSSecurity.Brand = {
             { id = 'inventory', name = 'Inventario tecnico', implemented = true },
             { id = 'cctv', name = 'Registro CCTV', implemented = true },
             { id = 'work_orders', name = 'Ordenes de trabajo', implemented = true, requires = 'install' },
-            { id = 'bodycams', name = 'Bodycams', implemented = false },
+            { id = 'bodycams', name = 'Bodycams', implemented = true },
             { id = 'alarms', name = 'Alarmas', implemented = true },
             { id = 'access', name = 'Control de accesos', implemented = false },
             { id = 'trackers', name = 'Localizadores', implemented = false },

@@ -24,6 +24,8 @@ OSSecurity.ShopConfig = {
         { item = 'os_battery', price = 45, audience = 'public' },
         -- Cualquier empresa lo compra; solo lo coloca quien esta de servicio en una empresa.
         { item = 'os_metal_detector', price = 4800, audience = 'public' },
+        -- Solo personal G6: la camara de pecho que la Central ve en directo.
+        { item = 'os_bodycam', price = 650, audience = 'staff' },
         { item = 'os_cctv_kit', price = 950, audience = 'staff' },
         { item = 'os_cctv_kit_mini', price = 700, audience = 'staff' },
         { item = 'os_cctv_kit_dome', price = 1350, audience = 'staff' },

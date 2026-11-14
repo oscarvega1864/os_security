@@ -181,14 +181,24 @@ function OSSecurity.Gameplay.new(options)
         sites = options.sites, alarms = alarms, locks = locks, cars = cars,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local home = OSSecurity.TabletHome.new({ inventory = inventory, service = service, orders = orders, dispatch = dispatch })
+    local function hasItem(source, item)
+        local principal = identity.resolve(source)
+        if not principal then return false end
+        return holdings.has({ principal = principal, holder = holdings.external() and holdings.holder(source) or nil }, item, 1) == true
+    end
+    local bodycams = OSSecurity.BodycamService.new({ world = options.world, now = options.now, playerName = options.playerName,
+        isStaff = isStaff, hasItem = function(source) return hasItem(source, 'os_bodycam') end,
+        connected = options.connected or function() return true end, notify = options.notifyPlayer,
+        send = options.bodycamSend or noop, cull = options.cull or noop,
+        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
-        sessions = sessions, service = service, placement = placement, zones = zones, orders = orders, dispatch = dispatch, contracts = contracts, home = home, map = tabletMap, audit = options.audit })
+        sessions = sessions, service = service, placement = placement, zones = zones, orders = orders, dispatch = dispatch, contracts = contracts, bodycams = bodycams, home = home, map = tabletMap, audit = options.audit })
     local checkpoint = OSSecurity.CheckpointService.new({ inventory = inventory, identity = identity, world = options.world, now = options.now,
         players = options.players, playerName = options.playerName, company = options.company, isStaff = isStaff, items = items,
         notify = options.notifyPlayer or effects.notify, send = options.checkpointSend or noop, changed = options.detectorsChanged,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local gameplay = { inventory = inventory, identity = identity, placement = placement, holdings = holdings, alarms = alarms, locks = locks, cars = cars,
-        lockpick = lockpick, zones = zones, shop = shop, orders = orders, dispatch = dispatch, contracts = contracts, checkpoint = checkpoint }
+        lockpick = lockpick, zones = zones, shop = shop, orders = orders, dispatch = dispatch, contracts = contracts, bodycams = bodycams, checkpoint = checkpoint }
     function gameplay.status() return ready and inventory.status() and options.registry.status() end
     -- Datos antiguos por cuenta (license): pasan al unico personaje que hizo sus instalaciones.
     -- Si una cuenta instalo con varios personajes no se adivina: se avisa y se deja como estaba.
@@ -239,7 +249,7 @@ function OSSecurity.Gameplay.new(options)
         if not gameplay.status() then return { ok = false, error = 'Flujo Gruppe Sechs no disponible; revisar servidor.', close = true } end
         return controller.handle(source, request)
     end
-    function gameplay.drop(source) controller.drop(source); locks.drop(source); cars.drop(source); lockpick.drop(source); shop.drop(source); checkpoint.forget(source) end
+    function gameplay.drop(source) controller.drop(source); locks.drop(source); cars.drop(source); lockpick.drop(source); shop.drop(source); checkpoint.forget(source); bodycams.forget(source) end
     function gameplay.clear() ready = false; controller.clear(); alarms.clear(); locks.clear(); cars.clear(); lockpick.clear() end
     -- Zona marcada con el visor (desde la tablet): el servidor revalida perfil, cercania y datos.
     function gameplay.zoneAt(source, payload)

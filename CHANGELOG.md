@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.20.0 — Bodycams
+
+- Objeto **Bodycam** (`os_bodycam`, tienda G6 solo para personal, 650 $). El vigilante de servicio la enciende o
+  apaga con «Usar» en el inventario o con `/bodycam`. Se apaga sola si deja el servicio, se queda sin ella o se
+  desconecta.
+- **G6 Operations → Bodycams** (supervisores y administradores): lista de bodycams encendidas con la distancia y
+  **Ver en directo**: la cámara del juego va sujeta al pecho del vigilante y gira con él, con el filtro y el HUD de
+  las cámaras CCTV. Ratón o flechas para mirar alrededor, Q / E para otra bodycam, Retroceso para volver a la tablet.
+- Mientras se mira, el servidor amplía el radio de visibilidad de entidades de quien mira (`SetPlayerCullingRadius`,
+  `Bodycams.CullingRadius`) para que el vigilante exista en su equipo, y lo restaura al salir. En otro mundo
+  (routing bucket) no hay señal.
+- Necesita os_inventory con el objeto `os_bodycam` (y su permiso de escritura y uso para os_security).
+
 ## 0.19.0 — Contratos de seguridad
 
 - **G6 Client → Contratos:** el cliente contrata un plan para cada propiedad o negocio suyo (Básico, Alarma

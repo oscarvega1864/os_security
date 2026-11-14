@@ -44,7 +44,7 @@
   // Sistema de la tablet (web/os.js): inicio, dock, buscador, mapa y avisos.
   const os = window.G6OS({ state, byId, el, button, request, post, text, date, openApp, goHome, goto, refresh: () => refresh(), modules: () => state.modules });
   // Secciones con vista propia (no son listas paginadas de dispositivos).
-  const OWN_VIEWS = ['map', 'settings', 'contracts', 'inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
+  const OWN_VIEWS = ['map', 'settings', 'contracts', 'bodycams', 'inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
   function pagination() {
     const enabled = !state.selected && !OWN_VIEWS.includes(state.module);
     byId('previous').disabled = !enabled || state.offset === 0;
@@ -312,6 +312,20 @@
     }
     content.append(grid);
   }
+  // Bodycams (supervisores y administradores): quien la lleva encendida y ver en directo.
+  async function bodycamsView(content) {
+    const B = group('bodycams'); const data = await request('bodycams'); if (!data) return;
+    simpleHero(content, B.title, B.help);
+    if (!data.items.length) { content.append(el('div', B.empty, 'empty')); return; }
+    const rows = el('div', null, 'rows');
+    for (const item of data.items) {
+      const row = el('div', null, 'row bodycam-row'); const body = el('div');
+      body.append(el('strong', item.name), el('span', [`${B.since} ${date(item.since)}`, item.distance != null ? format(B.distance, item.distance) : null].filter(Boolean).join(' · '), 'subtle'));
+      row.append(el('span', null, 'row-icon cam-icon'), body, button(B.watch, () => request('bodycam_live', { target: item.id }), false, 'primary'));
+      rows.append(row);
+    }
+    content.append(rows);
+  }
   // Contratos de seguridad: el cliente contrata y da de baja; el personal G6 ve la cartera.
   function periodText(seconds, C) { return seconds === 86400 ? C.period.day : format(C.period.hours, Math.round(seconds / 3600)); }
   function contractCard(contract, C) {
@@ -492,7 +506,7 @@
     }
     content.append(grid);
   }
-  const VIEWS = { contracts: contractsView, locks: doorsView, trackers: trackersView, incidents: incidentsView, installations: zonesView, requests: requestsView, work_orders: ordersView,
+  const VIEWS = { bodycams: bodycamsView, contracts: contractsView, locks: doorsView, trackers: trackersView, incidents: incidentsView, installations: zonesView, requests: requestsView, work_orders: ordersView,
     emergencies: emergenciesView, dispatch: dispatchView };
   async function refresh() {
     if (!state.session || state.busy) return;

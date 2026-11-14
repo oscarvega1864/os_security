@@ -75,6 +75,8 @@ local function fixture(files, external)
         locksChanged = function(list) c.doorBroadcasts = (c.doorBroadcasts or 0) + 1; c.lastDoors = list end,
         company = function(source) return c.companies[source] end,
         checkpointSend = function(player, event, payload) c.sent[#c.sent + 1] = { player, event, payload } end,
+        bodycamSend = function(player, event, payload) c.sent[#c.sent + 1] = { player, event, payload } end,
+        cull = function(player, radius) c.culling = c.culling or {}; c.culling[player] = radius end,
         detectorsChanged = function(list) c.detectorList = list end,
         alarmEffects = {
             players = function()
@@ -1939,4 +1941,35 @@ test('Contracts: a client hires a plan for an owned property, is charged each pe
     assert(not call(c, 5, open(c, 5, 'client'), 'contract_cancel', { contractId = 'ct_000002' }).ok) -- no es suyo
     assert(call(c, 2, client, 'contract_cancel', { contractId = 'ct_000002' }).ok and c.game.inventory.contracts().ct_000002.status == 'cancelled')
     local restarted = fixture(c.core.files); assert(restarted.loaded and restarted.game.inventory.contracts().ct_000002)
+end)
+
+-- Bodycams ----------------------------------------------------------------------------------------------
+test('Bodycams: on-duty staff with the item turn it on, only supervisors and admins watch it live, and it turns off on its own', function()
+    local c = fixture(); assert(c.loaded, c.loadError)
+    grant(c, 3, 'g6_operations_tablet'); grant(c, 1, 'g6_operations_tablet')
+    local cams = c.game.bodycams
+    for id = 1, 4 do c.players[id].point = { x = id * 10, y = 0, z = 1 } end
+    local _, why = cams.toggle(2); assert(why:find('servicio')) -- el cliente no es personal G6
+    _, why = cams.toggle(1); assert(why:find('bodycam')) -- sin el objeto
+    grant(c, 1, 'os_bodycam')
+    local on = assert(cams.toggle(1)); assert(on.on and cams.isOn(1) and sentTo(c, 1, 'bodycamState')[1] == true)
+    -- El tecnico no ve bodycams; el supervisor si, y la ve en directo con su radio de visibilidad ampliado.
+    local tech = open(c, 1, 'operations')
+    assert(not call(c, 1, tech, 'bodycams').ok)
+    local supervisor = open(c, 3, 'operations')
+    local list = call(c, 3, supervisor, 'bodycams'); assert(list.ok and #list.data.items == 1 and list.data.items[1].id == 1 and list.data.items[1].distance == 20, list.error or ('n=' .. #list.data.items .. ' d=' .. tostring(list.data.items[1] and list.data.items[1].distance)))
+    assert(not call(c, 3, supervisor, 'bodycam_live', { target = 2 }).ok) -- no esta encendida
+    local live = call(c, 3, supervisor, 'bodycam_live', { target = 1 }); assert(live.ok, live.error)
+    assert(live.data.target == 1 and live.data.name == 'Jugador1' and live.data.position.x == 10 and c.culling[3] == OSSecurity.GameplayConfig.Bodycams.CullingRadius)
+    assert(call(c, 3, supervisor, 'bodycam_stop').ok and c.culling[3] == nil)
+    -- Otro mundo (bucket): sin senal.
+    local bucket = c.players[1].bucket; c.players[1].bucket = 5; assert(not call(c, 3, supervisor, 'bodycam_live', { target = 1 }).ok); c.players[1].bucket = bucket
+    -- Al dejar el servicio se apaga sola y quien la miraba pierde la senal.
+    local again = call(c, 3, supervisor, 'bodycam_live', { target = 1 }); assert(again.ok, again.error)
+    c.aces[1][config.Ace.operations] = nil; c.aces[1][config.Ace.technician] = nil
+    cams.tick(); assert(not cams.isOn(1) and #sentTo(c, 3, 'bodycamLost') == 1 and c.culling[3] == nil)
+    -- Apagarla a mano y desconectarse.
+    c.aces[1][config.Ace.operations], c.aces[1][config.Ace.technician] = true, true
+    assert(cams.toggle(1).on and not cams.toggle(1).on and not cams.isOn(1))
+    assert(cams.toggle(1).on); c.game.drop(1); assert(not cams.isOn(1))
 end)

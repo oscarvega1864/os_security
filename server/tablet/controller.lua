@@ -84,6 +84,12 @@ function OSSecurity.TabletController.new(options)
             result, reason = options.orders.release(actor, request.args)
         elseif actor.kind == 'operations' and request.action == 'order_bill' then
             result, reason = options.orders.bill(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'bodycams' and next(request.args) == nil and options.bodycams then
+            result, reason = options.bodycams.staffList(actor)
+        elseif actor.kind == 'operations' and request.action == 'bodycam_live' and options.bodycams then
+            result, reason = options.bodycams.live(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'bodycam_stop' and next(request.args) == nil and options.bodycams then
+            result, reason = options.bodycams.stop(source)
         elseif actor.kind == 'client' and request.action == 'contracts' and next(request.args) == nil and options.contracts then
             result, reason = options.contracts.clientList(actor)
         elseif actor.kind == 'operations' and request.action == 'contracts' and next(request.args) == nil and options.contracts then

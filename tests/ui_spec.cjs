@@ -80,6 +80,7 @@ async function main() {
             attention:[{kind:'device',id:'osd_0000000001',title:'G6-D · osd_0000000001',subtitle:'<img src=x onerror="window.__xss=true">',reason:'triggered'},{kind:'call',id:'av_000003',title:'av_000003',subtitle:'Vinewood',reason:'panic'}],
             points:[{kind:'device',id:'osd_0000000001',x:-620,y:240,label:'G6-D · osd_0000000001',subtitle:'Propiedad 200',state:'triggered'},{kind:'call',id:'av_000003',x:-400,y:1000,label:'av_000003',subtitle:'Vinewood',state:'panic'}]};
           else if(body.action==='search') result.data={query:body.args.query,items:[{kind:'device',id:'osd_0000000001',title:'G6-D · osd_0000000001',subtitle:'Propiedad 200',type:'cctv_camera',state:'active'},{kind:'call',id:'av_000003',title:'av_000003',subtitle:'Vinewood',state:'open'}]};
+          else if(body.action==='bodycams') result.data={canWatch:true,items:[{id:7,name:'<i>vigilante</i>',since:1762700000,distance:85}]};
           else if(body.action==='contracts') result.data=window.__mode==='operations'
             ? {period:86400,summary:{active:1,suspended:0,income:1500},items:[{id:'ct_000001',plan:'alarm',planName:'Alarma conectada',fee:1500,status:'active',place:'Propiedad 7',clientName:'ana',nextCharge:1762800000,paidTotal:3000,failures:0,priority:true,discount:0.25}]}
             : {period:86400,places:[{value:'site:property:7',label:'Propiedad 7'}],plans:[{value:'basic',name:'Basico',fee:500,discount:0.1},{value:'alarm',name:'Alarma conectada',fee:1500,priority:true,discount:0.25}],
@@ -286,6 +287,13 @@ async function main() {
     await evaluate(`window.__calls.length=0; document.querySelector('.call-card select').value='1'; Array.from(document.querySelectorAll('.call-card')[0].querySelectorAll('button')).find(b=>b.textContent==='Asignar').click()`);
     await until(`window.__calls.some(x=>x.body.action==='call_assign' && x.body.args.callId==='av_000003' && x.body.args.target===1)`);
     console.log('PASS Central (supervisor): assign a call to an on-duty colleague');
+    await evaluate(`document.getElementById('home-button').click()`); await until(`!document.getElementById('home').hidden`);
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Bodycams').click()`);
+    await until(`document.querySelectorAll('.bodycam-row').length===1`);
+    assert(await evaluate(`document.querySelector('.bodycam-row').textContent.includes('<i>vigilante</i>') && !document.querySelector('.bodycam-row i') && document.querySelector('.bodycam-row').textContent.includes('85 m')`));
+    await evaluate(`window.__calls.length=0; document.querySelector('.bodycam-row .primary').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='bodycam_live' && x.body.args.target===7)`);
+    console.log('PASS Bodycams (supervisor): list of cameras switched on and watch live');
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
     await until(`document.getElementById('app').hidden && window.__calls.some(x=>x.endpoint==='close')`);
     console.log('PASS Escape closes the browser view and invokes the native close callback');

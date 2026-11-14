@@ -374,6 +374,9 @@ local gameplay = OSSecurity.Gameplay.new({
     end,
     checkpointSend = function(player, event, payload) TriggerClientEvent('os_security:checkpoint:' .. event, player, payload) end,
     detectorsChanged = function(list) TriggerClientEvent('os_security:checkpoint:detectors', -1, list) end,
+    bodycamSend = function(player, event, payload) TriggerClientEvent('os_security:bodycam:' .. event, player, payload) end,
+    -- Radio de visibilidad de entidades (OneSync) de quien mira una bodycam; nil vuelve al de por defecto (0.0).
+    cull = function(player, radius) SetPlayerCullingRadius(player, (radius or 0.0) + 0.0) end,
     audit = function(action, source, deviceId)
         local safeId = OSSecurity.DeviceValidation.id(deviceId) and deviceId or '-'
         print(('%s [G6 AUDIT] action=%s source=%d device=%s'):format(constants.LOG_PREFIX, action, source, safeId))
@@ -625,6 +628,12 @@ RegisterNetEvent('os_security:checkpoint:cancel', function()
     if not lockAllowed(player) then return end
     checkpointReply(player, lockCall(function() return gameplay.checkpoint.cancel(player) end))
 end)
+-- /bodycam: encender o apagar la propia bodycam (personal de servicio con el objeto).
+RegisterCommand('bodycam', function(player)
+    if player == 0 or not lockAllowed(player) then return end
+    local result, err = lockCall(function() return gameplay.bodycams.toggle(player) end)
+    TriggerClientEvent('os_security:alarm:alert', player, result and result.message or err or OSSecurity.Brand.Text.failed, result and 'info' or 'warning')
+end, false)
 -- /cacheo: pide permiso a la persona que tienes delante (el cliente elige a quien mira). /custodia: recoger.
 RegisterCommand('custodia', function(player)
     if player == 0 or not lockAllowed(player) then return end
@@ -662,6 +671,7 @@ CreateThread(function()
         -- Cobro de contratos: una pasada por minuto basta (los periodos son de horas).
         contractTick = contractTick + 1
         if contractTick >= 60 and gameplay.status() then contractTick = 0; pcall(gameplay.contracts.tick) end
+        if contractTick % OSSecurity.GameplayConfig.Bodycams.TickSeconds == 0 and gameplay.status() then pcall(gameplay.bodycams.tick) end
     end
 end)
 
@@ -732,6 +742,9 @@ local function registerUsableTablets()
                         local ready, err = lockCall(function() return gameplay.checkpoint.mountCheck(player) end)
                         if ready then TriggerClientEvent('os_security:checkpoint:placeBegin', player, OSSecurity.GameplayConfig.Checkpoint.PlaceDistance)
                         else TriggerClientEvent('os_security:alarm:alert', player, err or OSSecurity.Brand.Text.failed, 'warning') end
+                    elseif definition.usable == 'bodycam' then
+                        local result, err = lockCall(function() return gameplay.bodycams.toggle(player) end)
+                        TriggerClientEvent('os_security:alarm:alert', player, result and result.message or err or OSSecurity.Brand.Text.failed, result and 'info' or 'warning')
                     elseif definition.usable == 'tag' then
                         local result, err = gameplay.alarms.tagNearest(player)
                         TriggerClientEvent('os_security:alarm:result', player, result, err, nil)

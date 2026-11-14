@@ -19,6 +19,7 @@ local minigame = OSSecurity.ClientMinigame.new({
 })
 OSSecurity.Minigame = minigame -- tambien lo usa el arco detector (client/checkpoint.lua)
 local liveView -- vista en directo de camaras (client/live.lua), creada tras el controlador
+local bodycamView -- vista en directo de bodycams (client/bodycam.lua), creada tras el controlador
 -- Ajustes de la tablet (app Configuracion): por jugador, guardados en este equipo (KVP del recurso).
 local SETTINGS_KEY = 'os_security:tablet_settings'
 local SETTINGS = { theme = { auto = true, light = true, dark = true }, textSize = { normal = true, large = true } }
@@ -37,6 +38,7 @@ end
 local controller = OSSecurity.ClientTablet.new({
     minigame = minigame.run,
     live = { start = function(feed) liveView.start(feed) end },
+    bodycam = { start = function(feed) bodycamView.start(feed) end },
     show = function(session) lastUiAlive = GetGameTimer(); view.show(session) end,
     hide = view.hide, cancelPlacement = placement.cancel, beginPlacement = placement.begin, props = function(list) props.sync(list); alarms.sync(list) end,
     send = function(packet) TriggerServerEvent('os_security:g6:request', packet) end,
@@ -45,6 +47,14 @@ local controller = OSSecurity.ClientTablet.new({
     notify = function(message, kind) OSSecurity.Notify(message or OSSecurity.Brand.Text.failed, kind) end,
     settings = loadSettings
 })
+
+bodycamView = OSSecurity.ClientBodycam.new({
+    send = SendNUIMessage,
+    request = function(target, callback) controller.bodycamFeed(target, callback) end,
+    exit = function() controller.bodycamEnd() end
+})
+RegisterNetEvent('os_security:bodycam:bodycamLost', function(text) if source == 65535 and bodycamView.active then bodycamView.stop(type(text) == 'string' and text or nil, 'error') end end)
+RegisterNetEvent('os_security:bodycam:bodycamState', function(on) if source == 65535 then TriggerEvent('os_security:bodycamState', on == true) end end)
 
 liveView = OSSecurity.ClientLive.new({
     send = SendNUIMessage,
@@ -153,10 +163,11 @@ RegisterNUICallback('request', function(body, callback)
     elseif body.action == 'zone_begin' then controller.markZone(body.args, callback, startViewfinder)
     elseif body.action == 'zone_install' then controller.installZone(body.args, callback)
     elseif body.action == 'live' and type(body.args.deviceId) == 'string' then controller.live(body.args.deviceId, callback)
+    elseif body.action == 'bodycam_live' and math.tointeger(tonumber(body.args.target)) then controller.bodycam(math.tointeger(tonumber(body.args.target)), callback)
     elseif ({ inventory = true, devices = true, device = true, maintain = true, alarm = true, doors = true, trackers = true, incidents = true,
         zones = true, zone_delete = true, requests = true, request_create = true, request_cancel = true, request_pay = true,
         orders = true, order_accept = true, order_release = true, order_bill = true,
-        home = true, search = true, map_calibrate = true, contracts = true, contract_create = true, contract_cancel = true, emergencies = true, panic = true, panic_cancel = true, dispatch = true, call_take = true, call_assign = true,
+        home = true, search = true, map_calibrate = true, bodycams = true, contracts = true, contract_create = true, contract_cancel = true, emergencies = true, panic = true, panic_cancel = true, dispatch = true, call_take = true, call_assign = true,
         call_release = true, call_resolve = true })[body.action] then controller.request(body.action, body.args, callback)
     else callback({ ok = false, error = OSSecurity.Brand.Text.unavailable }) end
 end)
@@ -184,7 +195,7 @@ end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
-    minigame.cancel(); controller.stop(); placement.cancel(); props.clear(); view.hide()
+    minigame.cancel(); controller.stop(); placement.cancel(); props.clear(); view.hide(); if bodycamView then bodycamView.stop() end
 end)
 
 -- Alarmas: teclado junto al dispositivo, aviso de entrada, sirena y avisos.
