@@ -425,6 +425,18 @@ async function main() {
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
     await until(`document.getElementById('pinpad').hidden && window.__calls.some(x => x.endpoint === 'pinpadClose')`);
     console.log('PASS alarm pinpad: masked code, disarm and tag requests, errors and Escape');
+    // Minijuego del arco detector: mismos gestos con su dibujo, sus titulos y sus bornes.
+    await evaluate(`window.__mgText = Object.assign({}, window.__brand.Text.minigame, window.__brand.Text.checkpoint.minigame);
+      window.postMessage({ type: 'minigame', text: window.__mgText, mode: 'install', variant: 'detector' }, '*')`);
+    await until(`!document.getElementById('minigame').hidden && document.querySelector('.mg-head h2').textContent === window.__mgText.drillTitle`);
+    assert(await evaluate(`document.querySelector('.mg-overline').textContent.startsWith('Montaje del arco detector')
+      && document.querySelectorAll('.mg-target').length === 4 && Array.from(document.querySelectorAll('.mg-target')).every(c => Number(c.getAttribute('cy')) > 200)`), 'Detector anchors are drilled on the floor base plates');
+    await evaluate(`window.postMessage({ type: 'minigame', text: window.__mgText, mode: 'remove', variant: 'detector' }, '*')`);
+    await until(`document.querySelector('.mg-head h2').textContent === window.__mgText.unplugTitle`);
+    assert(await evaluate(`Array.from(document.querySelectorAll('.mg-terminal-label')).every(t => ['+12V','GND','SEN I','SEN D','ZUMB'].includes(t.textContent))
+      && Array.from(document.querySelectorAll('.mg-terminal-label')).filter(t => ['SEN I','SEN D','ZUMB'].includes(t.textContent)).length >= 2`), 'Detector wiring uses its own terminal names');
+    await evaluate(`window.postMessage({ type: 'minigameClose' }, '*')`); await until(`document.getElementById('minigame').hidden`);
+    console.log('PASS detector minigame: own titles, floor anchors and control-unit terminals for mounting and unmounting');
     // Control de acceso: permiso de cacheo y panel por zonas.
     await evaluate(`window.__cpText = window.__brand.Text.checkpoint; window.__calls.length = 0;
       window.postMessage({ type: 'friskAsk', text: window.__cpText, data: { from: 'Agente <b>Ruiz</b>', company: 'gruppe6', seconds: 20 } }, '*')`);

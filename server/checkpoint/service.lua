@@ -76,12 +76,25 @@ function OSSecurity.CheckpointService.new(options)
         return result
     end
     local function changed() if options.changed then options.changed(service.list()) end end
-    function service.place(source, args)
+    -- Herramientas de montaje (taladro y destornillador, como alarmas y camaras): se comprueban, no se gastan.
+    local function hasTools(holder)
+        for _, tool in ipairs(config.Tools) do if options.items.count(holder, tool) < 1 then return false end end
+        return true
+    end
+    -- Antes de abrir el minijuego de montaje: empresa, objeto y herramientas.
+    function service.mountCheck(source)
         local job = company(source)
         if not job then return nil, T.needJob end
         if not options.items or not options.items.available() then return nil, T.needInventory end
         local holder = holderOf(source)
         if not holder or options.items.count(holder, 'os_metal_detector') < 1 then return nil, T.needItem end
+        if not hasTools(holder) then return nil, T.needTools end
+        return { job = job, holder = holder }
+    end
+    function service.place(source, args)
+        local ready, why = service.mountCheck(source)
+        if not ready then return nil, why end
+        local job, holder = ready.job, ready.holder
         if not util.object(args, { x = true, y = true, z = true, h = true }) then return nil, T.badPlace end
         local x, y, z, h = tonumber(args.x), tonumber(args.y), tonumber(args.z), tonumber(args.h)
         local here, bucket = where(source)
@@ -116,13 +129,21 @@ function OSSecurity.CheckpointService.new(options)
         end
         return best
     end
-    function service.pickup(source)
+    -- Antes de abrir el minijuego de desmontaje: empresa, arco suyo al lado y herramientas.
+    function service.unmountCheck(source)
         local job = company(source)
         if not job then return nil, T.needJob end
         local detector = nearest(source, config.PickupDistance, function(item) return item.company == job end)
         if not detector then return nil, T.noOwnNear end
         local holder = holderOf(source)
         if not holder then return nil, T.needInventory end
+        if not hasTools(holder) then return nil, T.needTools end
+        return { detector = detector, holder = holder }
+    end
+    function service.pickup(source)
+        local ready, why = service.unmountCheck(source)
+        if not ready then return nil, why end
+        local detector, holder = ready.detector, ready.holder
         local saved, err = options.inventory.apply({ kind = 'detector', detectorId = detector.id })
         if not saved then return nil, err end
         options.items.giveAny(holder, 'os_metal_detector', 1, 'detector:' .. detector.id .. ':pickup')

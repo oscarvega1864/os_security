@@ -103,8 +103,10 @@ El titular de la alarma recibe su aviso de siempre; el personal solo el de la ce
 `server/checkpoint/service.lua`; arcos (`detectors`, `md_000001`) y custodias (`custody`, `cu_000001`) en el
 inventario, validados por `InventoryState.detector/custody`. Requiere el inventario por personaje (os_inventory).
 
-- Colocar: objeto `os_metal_detector` + empleo de servicio (`options.company`, cualquier `job` de os_devtools); a
-  `PlaceDistance` del jugador y a más de 1,5 m de otro arco. Recoger: misma empresa, `/arco recoger`.
+- Colocar: objeto `os_metal_detector` + empleo de servicio (`options.company`, cualquier `job` de os_devtools) +
+  `Checkpoint.Tools` (taladro y destornillador, se conservan); a `PlaceDistance` del jugador y a más de 1,5 m de otro
+  arco. Recoger: misma empresa y herramientas, `/arco recoger`. Ambos pasan por el minijuego de instalación en su
+  variante `detector` (`mountCheck`/`unmountCheck` antes del minijuego; `place`/`pickup` lo revalidan).
 - Paso: el cliente informa al cruzar el hueco; el servidor exige estar en el arco (`PassRadius`), mismo bucket y
   `PassCooldown`. Pita con objetos `Checkpoint.Metal` o armas con `metal = true`. Avisa a la empresa (`AlertRadius`).
 - Cacheo: `/cacheo` → consentimiento del cacheado (`RequestSeconds`) → zonas → retener solo lo encontrado y

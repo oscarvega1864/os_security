@@ -53,14 +53,26 @@
     const frame = now => { if (!run || run.id !== id) return; const dt = Math.min(0.1, (now - last) / 1000); last = now; if (tick(dt) !== false && run && run.id === id) run.frame = requestAnimationFrame(frame); };
     run.frame = requestAnimationFrame(frame);
   }
+  // Variante 'detector' (arco detector de metales): dos postes con su placa de anclaje al suelo y el travesano.
   function plate(board) {
+    if (run.variant === 'detector') {
+      board.append(svg('rect', { x: 80, y: 30, width: 240, height: 22, rx: 6, class: 'mg-plate-inner' }));
+      for (const x of [95, 285]) {
+        board.append(svg('rect', { x, y: 40, width: 20, height: 160, rx: 4, class: 'mg-plate-inner' }));
+        board.append(svg('rect', { x: x - 35, y: 195, width: 90, height: 40, rx: 8, class: 'mg-plate' }));
+      }
+      return;
+    }
     board.append(svg('rect', { x: 70, y: 40, width: 260, height: 180, rx: 14, class: 'mg-plate' }));
     board.append(svg('rect', { x: 150, y: 95, width: 100, height: 70, rx: 8, class: 'mg-plate-inner' }));
   }
   function holes() {
-    const base = [[105, 75], [295, 75], [105, 185], [295, 185]];
-    return base.map(([x, y]) => ({ x: x + (Math.random() * 16 - 8), y: y + (Math.random() * 12 - 6) }));
+    const base = run.variant === 'detector' ? [[75, 215], [135, 215], [265, 215], [325, 215]] : [[105, 75], [295, 75], [105, 185], [295, 185]];
+    const jitter = run.variant === 'detector' ? 6 : 16;
+    return base.map(([x, y]) => ({ x: x + (Math.random() * jitter - jitter / 2), y: y + (Math.random() * 8 - 4) }));
   }
+  // Etiqueta del borne: la variante puede llamarlos de otra forma (sensores y zumbador del arco).
+  const terminalOf = wire => run.text.terminals?.[wire.key] || wire.terminal;
 
   // Fase 1: mantener pulsado sobre cada marca hasta perforarla. La broca se calienta mientras
   // taladras y se enfria al soltar; si llega al maximo se rompe. Salirse de la marca es un resbalon.
@@ -204,7 +216,7 @@
     const targets = shuffled(wires).map((wire, i) => {
       const node = { ...wire, x: W - 80, y: rightRows[i], linked: false };
       board.append(svg('rect', { x: W - 72, y: node.y - 10, width: 50, height: 20, rx: 3, class: 'mg-terminal' }));
-      board.append(Object.assign(svg('text', { x: W - 47, y: node.y + 4, class: 'mg-terminal-label', 'text-anchor': 'middle' }), { textContent: wire.terminal }));
+      board.append(Object.assign(svg('text', { x: W - 47, y: node.y + 4, class: 'mg-terminal-label', 'text-anchor': 'middle' }), { textContent: terminalOf(wire) }));
       node.socket = svg('circle', { cx: node.x, cy: node.y, r: 10, class: 'mg-socket', 'data-key': wire.key }); board.append(node.socket);
       return node;
     });
@@ -226,7 +238,7 @@
       if (target && target.key === current.source.key) {
         current.path.setAttribute('d', sagging(current.source, target, current.source.sag)); current.path.classList.add('linked');
         current.source.linked = target.linked = true; target.socket.classList.add('linked', target.key); current.source.plug.classList.add('linked');
-        linked++; fx({ cue: 'connected' }); status.textContent = `${t.connected}: ${target.terminal}`;
+        linked++; fx({ cue: 'connected' }); status.textContent = `${t.connected}: ${terminalOf(target)}`;
         if (linked === wires.length) finish(true);
       } else {
         current.path.remove();
@@ -253,7 +265,7 @@
       const socket = { x: W - 80, y: rightRows[i] };
       const anchor = { x: 140, y: leftRows[i] };
       board.append(svg('rect', { x: W - 72, y: socket.y - 10, width: 50, height: 20, rx: 3, class: 'mg-terminal' }));
-      board.append(Object.assign(svg('text', { x: W - 47, y: socket.y + 4, class: 'mg-terminal-label', 'text-anchor': 'middle' }), { textContent: wire.terminal }));
+      board.append(Object.assign(svg('text', { x: W - 47, y: socket.y + 4, class: 'mg-terminal-label', 'text-anchor': 'middle' }), { textContent: terminalOf(wire) }));
       const path = svg('path', { d: curve(anchor, socket), class: `mg-cable linked ${key}` }); layer.append(path);
       const plug = svg('circle', { cx: socket.x, cy: socket.y, r: 10, class: `mg-plug ${key}`, 'data-key': key }); board.append(plug);
       return { key, socket, anchor, path, plug, out: false };
@@ -290,7 +302,7 @@
   window.addEventListener('keydown', event => { if (run && event.key === 'Escape') finish(false, 'cancelled'); });
   window.addEventListener('message', event => {
     if (event.data?.type === 'minigame' && event.data.text) {
-      stop(); run = { id: ++runs, text: event.data.text, mode: event.data.mode === 'remove' ? 'remove' : 'install' };
+      stop(); run = { id: ++runs, text: event.data.text, mode: event.data.mode === 'remove' ? 'remove' : 'install', variant: event.data.variant === 'detector' ? 'detector' : 'cctv' };
       if (run.mode === 'remove') unplug(); else drill();
     }
     else if (event.data?.type === 'minigameClose') stop();

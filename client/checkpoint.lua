@@ -175,14 +175,32 @@ RegisterNetEvent('os_security:checkpoint:placeBegin', function(reach)
             end
             BeginTextCommandDisplayHelp('STRING'); AddTextComponentSubstringPlayerName(T.placeHelp); EndTextCommandDisplayHelp(0, false, false, -1)
             if IsControlJustPressed(0, 38) then
-                TriggerServerEvent('os_security:checkpoint:place', { x = spot.x, y = spot.y, z = z + 1.0, h = heading % 360 })
+                -- Sitio elegido: minijuego de montaje (anclar bases, atornillar postes y cablear) y despues colocar.
+                local args = { x = spot.x, y = spot.y, z = z + 1.0, h = heading % 360 }
                 placing = false
+                if OSSecurity.Minigame then
+                    OSSecurity.Minigame.run(function(ok)
+                        if ok then TriggerServerEvent('os_security:checkpoint:place', args) else notify(T.mountCancelled, 'info') end
+                    end, 'install', 'detector')
+                else TriggerServerEvent('os_security:checkpoint:place', args) end
             elseif IsControlJustPressed(0, 177) or IsControlJustPressed(0, 200) or IsEntityDead(ped) or IsPedInAnyVehicle(ped, false) then
                 placing = false
             end
         end
         if ghost and DoesEntityExist(ghost) then DeleteEntity(ghost) end
     end)
+end)
+
+-- /arco recoger: el servidor comprueba empresa, arco y herramientas; despues, minijuego de desmontaje.
+RegisterCommand('arco', function(_, args)
+    if args[1] == 'recoger' then TriggerServerEvent('os_security:checkpoint:unmountBegin')
+    else notify('Uso: /arco recoger (junto a un arco de tu empresa, con taladro y destornillador). Para colocarlo, usa el objeto.', 'info') end
+end, false)
+RegisterNetEvent('os_security:checkpoint:unmountGame', function()
+    if source ~= 65535 or not OSSecurity.Minigame then return end
+    OSSecurity.Minigame.run(function(ok)
+        if ok then TriggerServerEvent('os_security:checkpoint:pickup') else notify(T.unmountCancelled, 'info') end
+    end, 'remove', 'detector')
 end)
 
 -- Cacheo -----------------------------------------------------------------------------------------------

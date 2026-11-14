@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.16.1 — Montaje del arco con herramientas y minijuego
+
+- Montar y desmontar el arco detector exige **taladro y destornillador** (se conservan), como alarmas y cámaras.
+- Minijuego propio del arco: **montar** = anclar las dos bases al suelo (taladrar), atornillar los postes y conectar
+  la unidad de control (sensores izquierdo y derecho, zumbador); **desmontar** = desconectar la unidad y soltar los
+  pernos. Cancelar o fallar no gasta el arco ni lo retira.
+- `/arco recoger` pasa a ser del cliente: el servidor comprueba empresa, arco y herramientas antes del minijuego y
+  vuelve a comprobarlo al retirarlo.
+
 ## 0.16.0 — Arco detector de metales y cacheo
 
 - Objeto **Arco detector de metales** (tienda G6, 4.800 $). Lo coloca cualquier empleado de servicio de una empresa

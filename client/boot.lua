@@ -16,6 +16,7 @@ local minigame = OSSecurity.ClientMinigame.new({
     timeout = function(callback) SetTimeout(120000, callback) end,
     animate = function(value) if value then minigameFx.start() else minigameFx.stop() end end
 })
+OSSecurity.Minigame = minigame -- tambien lo usa el arco detector (client/checkpoint.lua)
 local liveView -- vista en directo de camaras (client/live.lua), creada tras el controlador
 local controller = OSSecurity.ClientTablet.new({
     minigame = minigame.run,

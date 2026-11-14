@@ -1676,8 +1676,13 @@ test('Metal detector: any on-duty company places it with the item, it beeps for 
     c.companies[1] = 'police'
     local _, why = cp.place(1, args); assert(why:find('arco')) -- sin el objeto
     e.give(1, 'os_metal_detector')
+    _, why = cp.place(1, args); assert(why:find('taladro')) -- sin herramientas
+    assert(not cp.mountCheck(1))
+    e.give(1, 'os_drill'); e.give(1, 'os_screwdriver')
+    assert(cp.mountCheck(1).job == 'police')
     assert(not cp.place(1, { x = 40, y = 0, z = 1, h = 0 })) -- demasiado lejos
     local placed = assert(cp.place(1, args)); assert(placed.id == 'md_000001' and e.count(1, 'os_metal_detector') == 0)
+    assert(e.count(1, 'os_drill') == 1 and e.count(1, 'os_screwdriver') == 1) -- las herramientas se conservan
     assert(#c.detectorList == 1 and c.detectorList[1].company == 'police' and c.detectorList[1].h == 90)
     e.give(1, 'os_metal_detector'); assert(not cp.place(1, { x = 2.5, y = 0.2, z = 1, h = 0 })) -- pegado a otro
     -- Cruza alguien con un telefono: pita y avisa al policia cercano.
@@ -1700,6 +1705,11 @@ test('Metal detector: any on-duty company places it with the item, it beeps for 
     c.companies[2] = 'ambulance'; c.players[2].point = { x = 1, y = 0, z = 1 }
     assert(not cp.pickup(2))
     c.players[1].point = { x = 1, y = 0, z = 1 }
+    e.counts[e.holders[1]].os_drill = 0
+    _, why = cp.unmountCheck(1); assert(why:find('taladro')) -- desmontar tambien pide herramientas
+    assert(not cp.pickup(1))
+    e.give(1, 'os_drill')
+    assert(cp.unmountCheck(1).detector.id == 'md_000001')
     assert(cp.pickup(1)); assert(#c.detectorList == 0 and e.count(1, 'os_metal_detector') == 2)
 end)
 

@@ -37,6 +37,7 @@ OSSecurity.GameplayConfig = {
     -- hacen pitar el arco (las armas de shared/weapons.lua con metal = true tambien). Cacheo con permiso del
     -- cacheado; lo retenido queda en custodia y su dueno lo recoge en el mismo sitio (PickupDistance).
     Checkpoint = {
+        Tools = { 'os_drill', 'os_screwdriver' }, -- como alarmas y camaras: se comprueban y se conservan
         MaxDetectors = 200, PlaceDistance = 3.0, PickupDistance = 3.0, PassRadius = 1.2, PassCooldown = 4, AlertRadius = 40.0,
         Metal = { telefono = true, herramienta = true, os_lockpick = true, os_drill = true, os_screwdriver = true, os_battery = true,
             os_cctv_kit = true, os_cctv_kit_mini = true, os_cctv_kit_dome = true, os_alarm_kit = true, os_alarm_kit_panel = true,

@@ -176,7 +176,20 @@ OSSecurity.Brand = {
             accept = 'Aceptar', refuse = 'Rechazar', friskTitle = 'Cacheo de %s', friskHelp = 'Pasa las manos por cada zona (mantén el raton encima) para palpar.',
             zones = { chest = 'Pecho', back = 'Espalda', waist = 'Cintura', leftArm = 'Brazo izq.', rightArm = 'Brazo der.', leftLeg = 'Pierna izq.', rightLeg = 'Pierna der.', ankles = 'Tobillos' },
             found = 'Encontrado', nothing = 'Nada', retain = 'Retener', finish = 'Terminar cacheo', cancel = 'Cancelar', pending = 'Faltan zonas por palpar (%d).',
-            metal = 'metal', weapon = 'arma', item = 'objeto'
+            metal = 'metal', weapon = 'arma', item = 'objeto',
+            needTools = 'Necesitas taladro y destornillador.', mountCancelled = 'Montaje cancelado: el arco sigue en tu inventario.',
+            unmountCancelled = 'Desmontaje cancelado: el arco sigue en su sitio.',
+            -- Minijuego de montaje y desmontaje (sustituye a los textos comunes del minijuego de instalacion).
+            minigame = {
+                title = 'Montaje del arco detector', removeTitle = 'Desmontaje del arco detector',
+                drillTitle = 'Anclar las bases al suelo', drillHelp = 'Manten pulsado sobre cada marca de las placas de anclaje hasta perforar el suelo. Suelta para enfriar la broca; no te salgas de la marca.',
+                screwTitle = 'Atornillar los postes a las bases', screwHelp = 'Pulsa sobre cada perno y gira el raton en sentido horario hasta apretarlo. Con demasiada fuerza se pasa la rosca.',
+                cablesTitle = 'Conectar la unidad de control', cablesHelp = 'Arrastra cada cable del arco hasta su borne en la unidad de control segun el codigo de colores.',
+                wireCode = 'Rojo +12V · Negro GND · Verde SENSOR IZQ · Blanco SENSOR DER · Amarillo ZUMBADOR',
+                terminals = { red = '+12V', black = 'GND', green = 'SEN I', white = 'SEN D', yellow = 'ZUMB' },
+                unplugTitle = 'Desconectar la unidad de control', unplugHelp = 'Arrastra cada cable fuera de su borne hasta la bandeja de la izquierda.',
+                unscrewTitle = 'Soltar los pernos de las bases', unscrewHelp = 'Pulsa sobre cada perno y gira el raton en sentido ANTIHORARIO hasta sacarlo. Sin forzar.'
+            }
         },
         dispatch = {
             kinds = { panic = 'Boton de panico', alarm = 'Salto de alarma', tamper = 'Manipulacion de teclado' },
