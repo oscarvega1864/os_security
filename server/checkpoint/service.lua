@@ -33,6 +33,12 @@ function OSSecurity.CheckpointService.new(options)
         for id in pairs(list) do highest = math.max(highest, tonumber(id:sub(4)) or 0) end
         return ('%s_%06d'):format(prefix, highest + 1)
     end
+    -- Identificador de operacion de inventario unico por arco o custodia: los numeros md_/cu_ se reutilizan al
+    -- retirarlos, asi que se anade el momento de creacion. Sin esto, el inventario veria una operacion "ya hecha"
+    -- y no quitaria ni devolveria nada la segunda vez.
+    local function op(record, action, item)
+        return ('%s:%s:%s%s'):format(record.id:sub(1, 2) == 'md' and 'detector' or 'custody', record.id .. '@' .. tostring(record.createdAt), action, item and (':' .. item) or '')
+    end
     local function where(source)
         local point, bucket = options.world(source)
         return point, bucket or 0
@@ -108,11 +114,11 @@ function OSSecurity.CheckpointService.new(options)
             position = { x = util.round(x, 2), y = util.round(y, 2), z = util.round(z, 2) }, heading = util.round(h % 360, 1) % 360,
             bucket = bucket, createdAt = options.now() }
         if not detector.placedBy then return nil, T.badPlace end
-        local taken, takeError = options.items.takeAny(holder, 'os_metal_detector', 1, 'detector:' .. detector.id .. ':place')
+        local taken, takeError = options.items.takeAny(holder, 'os_metal_detector', 1, op(detector, 'place'))
         if not taken then return nil, takeError end
         local saved, err = options.inventory.apply({ kind = 'detector', detectorId = detector.id, detector = detector })
         if not saved then
-            options.items.giveAny(holder, 'os_metal_detector', 1, 'detector:' .. detector.id .. ':refund')
+            options.items.giveAny(holder, 'os_metal_detector', 1, op(detector, 'refund'))
             return nil, err
         end
         changed()
@@ -146,7 +152,7 @@ function OSSecurity.CheckpointService.new(options)
         local detector, holder = ready.detector, ready.holder
         local saved, err = options.inventory.apply({ kind = 'detector', detectorId = detector.id })
         if not saved then return nil, err end
-        options.items.giveAny(holder, 'os_metal_detector', 1, 'detector:' .. detector.id .. ':pickup')
+        options.items.giveAny(holder, 'os_metal_detector', 1, op(detector, 'pickup'))
         changed()
         options.audit('detector_removed', source, detector.id)
         return { message = T.pickedUp }
@@ -252,16 +258,18 @@ function OSSecurity.CheckpointService.new(options)
         end
         local found = {}
         for _, entries in pairs(frisk.findings) do for _, entry in ipairs(entries) do found[entry.kind .. ':' .. entry.name] = entry end end
-        local record = { items = {}, weapons = {} }
+        local record, failed = { items = {}, weapons = {} }, {}
         local list = custody()
         local id = nextId(list, 'cu')
+        local stamp = { id = id, createdAt = options.now() } -- para el identificador de operacion (ver op)
         local point, bucket = where(frisk.target)
         if not point then endFrisk(guard); return nil, T.noTarget end
         for item, amount in pairs(wantItems) do
             local entry = found['item:' .. tostring(item)]
             amount = math.tointeger(tonumber(amount))
             if entry and entry.retainable and amount and amount >= 1 and amount <= entry.count and frisk.holder then
-                if options.items.takeAny(frisk.holder, item, amount, ('custody:%s:%s:take'):format(id, item)) then record.items[item] = amount end
+                if options.items.takeAny(frisk.holder, item, amount, op(stamp, 'take', item)) then record.items[item] = amount
+                else failed[#failed + 1] = entry.label end
             end
         end
         local removed = {}
@@ -270,21 +278,24 @@ function OSSecurity.CheckpointService.new(options)
         end
         endFrisk(guard)
         if next(record.items) == nil and #record.weapons == 0 then
+            if #failed > 0 then return nil, T.notRetained:format(table.concat(failed, ', ')) end
             notify(frisk.target, T.clean, 'success')
             return { message = T.nothingRetained }
         end
         local entry = { id = id, owner = options.identity.resolve(frisk.target), holder = next(record.items) and frisk.holder or nil,
             ownerName = name(frisk.target), company = frisk.company, guardName = name(guard), items = record.items, weapons = record.weapons,
-            position = { x = util.round(point.x, 2), y = util.round(point.y, 2), z = util.round(point.z, 2) }, bucket = bucket, createdAt = options.now() }
+            position = { x = util.round(point.x, 2), y = util.round(point.y, 2), z = util.round(point.z, 2) }, bucket = bucket, createdAt = stamp.createdAt }
         local saved, err = entry.owner and options.inventory.apply({ kind = 'custody', custodyId = id, custody = entry })
         if not saved then
-            for item, amount in pairs(record.items) do options.items.giveAny(frisk.holder, item, amount, ('custody:%s:%s:undo'):format(id, item)) end
+            for item, amount in pairs(record.items) do options.items.giveAny(frisk.holder, item, amount, op(stamp, 'undo', item)) end
             return nil, err or T.noTarget
         end
         if #removed > 0 then options.send(frisk.target, 'removeWeapons', removed) end
         notify(frisk.target, T.retainedOwner:format(entry.company), 'warning')
         options.audit('custody_created', guard, id)
-        return { message = T.retained:format(id) }
+        local message = T.retained:format(id)
+        if #failed > 0 then message = message .. ' ' .. T.notRetained:format(table.concat(failed, ', ')) end
+        return { message = message }
     end
     function service.cancel(guard) if endFrisk(guard) then return { message = T.cancelled } end; return nil, T.noFrisk end
     -- Recoger lo retenido: el dueno, en el mismo sitio donde se lo retuvieron.
@@ -304,7 +315,7 @@ function OSSecurity.CheckpointService.new(options)
         if next(found.items) and holder ~= found.holder then return nil, T.otherCharacter end
         local saved, err = options.inventory.apply({ kind = 'custody', custodyId = found.id })
         if not saved then return nil, err end
-        for item, amount in pairs(found.items) do options.items.giveAny(holder, item, amount, ('custody:%s:%s:return'):format(found.id, item)) end
+        for item, amount in pairs(found.items) do options.items.giveAny(holder, item, amount, op(found, 'return', item)) end
         if #found.weapons > 0 then options.send(source, 'giveWeapons', found.weapons) end
         options.audit('custody_returned', source, found.id)
         return { message = T.returned }

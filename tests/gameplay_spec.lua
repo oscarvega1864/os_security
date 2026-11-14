@@ -1711,6 +1711,11 @@ test('Metal detector: any on-duty company places it with the item, it beeps for 
     e.give(1, 'os_drill')
     assert(cp.unmountCheck(1).detector.id == 'md_000001')
     assert(cp.pickup(1)); assert(#c.detectorList == 0 and e.count(1, 'os_metal_detector') == 2)
+    -- Volver a colocarlo: vuelve a ser md_000001, pero el arco se gasta de verdad y al recogerlo se devuelve.
+    c.core.time = c.core.time + 5
+    assert(cp.place(1, args).id == 'md_000001' and e.count(1, 'os_metal_detector') == 1)
+    c.core.time = c.core.time + 5
+    assert(cp.pickup(1)); assert(e.count(1, 'os_metal_detector') == 2)
 end)
 
 test('Frisk: needs consent, reveals what is carried by zone, retains only dangerous things and the owner picks them up at the same place', function()
@@ -1744,6 +1749,18 @@ test('Frisk: needs consent, reveals what is carried by zone, retains only danger
     c.players[5].point = { x = 1, y = 1, z = 1 }
     assert(cp.reclaim(5)); assert(e.count(5, 'herramienta') == 2 and sentTo(c, 5, 'giveWeapons')[1][1].name == 'weapon_pistol')
     assert(c.game.inventory.custody().cu_000001 == nil and not cp.reclaim(5))
+    -- Segundo cacheo: la custodia vuelve a llamarse cu_000001, pero lo retenido se quita de verdad otra vez
+    -- (antes el inventario veia la misma operacion "ya hecha" y no quitaba nada).
+    c.core.time = c.core.time + 5
+    assert(cp.request(1, 5) and cp.answer(5, true, {}))
+    local again = assert(cp.finish(1, { items = { herramienta = 2 }, weapons = {} })); assert(again.message:find('cu_000001'))
+    assert(e.count(5, 'herramienta') == 0 and c.game.inventory.custody().cu_000001.items.herramienta == 2)
+    c.core.time = c.core.time + 5; assert(cp.reclaim(5)); assert(e.count(5, 'herramienta') == 2)
+    -- Si el inventario no deja quitar algo, se avisa al vigilante y no se apunta en custodia.
+    assert(cp.request(1, 5) and cp.answer(5, true, {}))
+    local before = e.count(5, 'herramienta'); e.counts[e.holders[5]].herramienta = 0
+    local _, refused = cp.finish(1, { items = { herramienta = 2 }, weapons = {} }); assert(refused and refused:find('No se pudo retener'))
+    e.counts[e.holders[5]].herramienta = before
     -- Sin nada que retener, el cacheo acaba limpio y sin custodia.
     assert(cp.request(1, 5) and cp.answer(5, true, {}) and cp.finish(1, { items = {}, weapons = {} }).message:find('sin retener'))
     -- La peticion caduca sin respuesta.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.18.1 — Cacheo: objeto real y retención que sí quita del inventario
+
+- **Arreglo:** retener en un cacheo no quitaba el objeto del inventario a partir de la segunda custodia. Los números
+  `cu_…` (y los del arco, `md_…`) se reutilizan al retirarse, y el identificador de la operación de inventario se
+  repetía: el inventario la daba por hecha y no quitaba nada. Ahora cada custodia y cada arco tienen un identificador
+  propio (número + momento de creación). Lo mismo afectaba a volver a colocar un arco (no se gastaba).
+- El cacheo muestra el nombre real del objeto (el del inventario; si no lo da, el del catálogo de OS Security).
+  Necesita os_inventory con el nombre visible en `GetInventory`.
+- Si el inventario no deja retener algo, el vigilante recibe «No se pudo retener: …» y no se apunta en custodia.
+
 ## 0.18.0 — Instalación con cámara cercana, polvo, chispas y más sonidos
 
 - Durante el minijuego de montaje o desmontaje (cámaras, alarmas y arco detector) la cámara del juego se acerca de

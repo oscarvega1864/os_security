@@ -83,7 +83,10 @@ function OSSecurity.ExternalItems.new(api)
         for _, entry in pairs(inventory.slots) do
             if type(entry) == 'table' and type(entry.name) == 'string' and entry.name:match('^[%w_]+$') and #entry.name <= 64
                 and util.integer(entry.count, 1, 100000) then
-                local current = result[entry.name] or { count = 0, label = type(entry.label) == 'string' and entry.label:sub(1, 64) or entry.name }
+                -- Nombre visible: el que da el inventario; si no lo da, el del catalogo de OS Security; si no, el identificador.
+                local catalog = OSSecurity.ItemCatalog[entry.name]
+                local label = type(entry.label) == 'string' and entry.label ~= '' and entry.label:sub(1, 64) or (catalog and catalog.name) or entry.name
+                local current = result[entry.name] or { count = 0, label = label }
                 current.count = current.count + entry.count
                 result[entry.name] = current
             end

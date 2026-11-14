@@ -211,7 +211,7 @@ OSSecurity.Brand = {
             asked = 'Pides permiso a %s para cachearle...', refused = '%s no acepta el cacheo.', youRefused = 'Has rechazado el cacheo.',
             accepted = 'Has aceptado el cacheo: no te muevas.', expired = 'La peticion de cacheo ha caducado.', noAnswer = 'No ha respondido al cacheo.',
             noFrisk = 'No estas cacheando a nadie.', cancelled = 'Cacheo cancelado.', clean = 'Cacheo terminado: puedes continuar.',
-            nothingRetained = 'Cacheo terminado sin retener nada.', retained = 'Objetos en custodia (%s).',
+            nothingRetained = 'Cacheo terminado sin retener nada.', retained = 'Objetos en custodia (%s).', notRetained = 'No se pudo retener: %s.',
             retainedOwner = 'Te han retenido objetos (custodia de %s). Recogelos aqui mismo con /custodia.',
             noCustody = 'No tienes objetos en custodia.', goBack = 'Tus objetos estan en custodia de %s: vuelve al sitio donde te los retuvieron.',
             otherCharacter = 'Esos objetos son de otro personaje.', returned = 'Te devuelven tus objetos.',
