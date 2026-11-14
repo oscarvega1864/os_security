@@ -192,7 +192,7 @@ function OSSecurity.Gameplay.new(options)
         send = options.bodycamSend or noop, cull = options.cull or noop,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
-        sessions = sessions, service = service, placement = placement, zones = zones, orders = orders, dispatch = dispatch, contracts = contracts, bodycams = bodycams, home = home, map = tabletMap, audit = options.audit })
+        sessions = sessions, service = service, placement = placement, zones = zones, orders = orders, dispatch = dispatch, contracts = contracts, bodycams = bodycams, transport = options.transport, home = home, map = tabletMap, audit = options.audit })
     local checkpoint = OSSecurity.CheckpointService.new({ inventory = inventory, identity = identity, world = options.world, now = options.now,
         players = options.players, playerName = options.playerName, company = options.company, isStaff = isStaff, items = items,
         notify = options.notifyPlayer or effects.notify, send = options.checkpointSend or noop, changed = options.detectorsChanged,

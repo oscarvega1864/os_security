@@ -80,6 +80,9 @@ async function main() {
             attention:[{kind:'device',id:'osd_0000000001',title:'G6-D · osd_0000000001',subtitle:'<img src=x onerror="window.__xss=true">',reason:'triggered'},{kind:'call',id:'av_000003',title:'av_000003',subtitle:'Vinewood',reason:'panic'}],
             points:[{kind:'device',id:'osd_0000000001',x:-620,y:240,label:'G6-D · osd_0000000001',subtitle:'Propiedad 200',state:'triggered'},{kind:'call',id:'av_000003',x:-400,y:1000,label:'av_000003',subtitle:'Vinewood',state:'panic'}]};
           else if(body.action==='search') result.data={query:body.args.query,items:[{kind:'device',id:'osd_0000000001',title:'G6-D · osd_0000000001',subtitle:'Propiedad 200',type:'cctv_camera',state:'active'},{kind:'call',id:'av_000003',title:'av_000003',subtitle:'Vinewood',state:'open'}]};
+          else if(body.action==='transport') result.data={employed:true,kinds:[{value:'cash',label:'Recogida de efectivo'}],invite:{from:'Ana',title:'Cajeros',pay:900},
+            mission:{title:'Recogida de efectivo',percent:40,label:'Ve a <b>Fleeca</b>',index:2,total:5,leader:true,pay:1500,vehicle:'furgon blindado',crew:[{name:'oscar',role:'driver'}],point:{x:5,y:6,z:7}},
+            running:[{leader:'Ana',title:'Cajeros',percent:0,crew:1,lobby:true}]};
           else if(body.action==='bodycams') result.data={canWatch:true,items:[{id:7,name:'<i>vigilante</i>',since:1762700000,distance:85}]};
           else if(body.action==='contracts') result.data=window.__mode==='operations'
             ? {period:86400,summary:{active:1,suspended:0,income:1500},items:[{id:'ct_000001',plan:'alarm',planName:'Alarma conectada',fee:1500,status:'active',place:'Propiedad 7',clientName:'ana',nextCharge:1762800000,paidTotal:3000,failures:0,priority:true,discount:0.25}]}
@@ -294,6 +297,15 @@ async function main() {
     await evaluate(`window.__calls.length=0; document.querySelector('.bodycam-row .primary').click()`);
     await until(`window.__calls.some(x=>x.body.action==='bodycam_live' && x.body.args.target===7)`);
     console.log('PASS Bodycams (supervisor): list of cameras switched on and watch live');
+    await evaluate(`document.getElementById('home-button').click()`); await until(`!document.getElementById('home').hidden`);
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Transporte de fondos').click()`);
+    await until(`document.querySelector('.transport-card') && document.querySelector('.transport-offer')`);
+    assert(await evaluate(`!document.querySelector('.transport-card b') && document.querySelector('.transport-card').textContent.includes('Parada 2 de 5') && document.querySelectorAll('.transport-running .row').length===1`));
+    await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('.transport-offer button')).find(b=>b.textContent==='Unirme').click()`);
+    await until(`window.__calls.some(x=>x.body.action==='transport_action' && x.body.args.action==='accept')`);
+    await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('.transport-card button')).find(b=>b.textContent==='Marcar en el GPS').click()`);
+    await until(`window.__calls.some(x=>x.endpoint==='waypoint' && x.body.x===5)`);
+    console.log('PASS Cash transport: own mission with progress and GPS, crew offers and missions in progress');
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
     await until(`document.getElementById('app').hidden && window.__calls.some(x=>x.endpoint==='close')`);
     console.log('PASS Escape closes the browser view and invokes the native close callback');

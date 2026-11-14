@@ -84,6 +84,22 @@ function OSSecurity.TabletController.new(options)
             result, reason = options.orders.release(actor, request.args)
         elseif actor.kind == 'operations' and request.action == 'order_bill' then
             result, reason = options.orders.bill(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'transport' and next(request.args) == nil then
+            local T = OSSecurity.Brand.Text.transport
+            if not options.transport or not options.transport.available() then return failure(T.unavailable) end
+            result = options.transport.read(source)
+            if not result then return failure(T.unavailable) end
+        elseif actor.kind == 'operations' and request.action == 'transport_action' and util.object(request.args, { action = true, kind = true }) then
+            local T = OSSecurity.Brand.Text.transport
+            local action = request.args.action
+            if not ({ start = true, cancel = true, accept = true, decline = true })[action]
+                or (request.args.kind ~= nil and (type(request.args.kind) ~= 'string' or not request.args.kind:match('^[%w_]+$') or #request.args.kind > 16)) then
+                return failure(T.invalid)
+            end
+            if not options.transport or not options.transport.available() then return failure(T.unavailable) end
+            local done, text = options.transport.act(source, action, request.args.kind)
+            if not done then return failure(text or T.failed) end
+            result = { message = text or T.done }
         elseif actor.kind == 'operations' and request.action == 'bodycams' and next(request.args) == nil and options.bodycams then
             result, reason = options.bodycams.staffList(actor)
         elseif actor.kind == 'operations' and request.action == 'bodycam_live' and options.bodycams then

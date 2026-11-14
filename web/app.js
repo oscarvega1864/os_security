@@ -44,7 +44,7 @@
   // Sistema de la tablet (web/os.js): inicio, dock, buscador, mapa y avisos.
   const os = window.G6OS({ state, byId, el, button, request, post, text, date, openApp, goHome, goto, refresh: () => refresh(), modules: () => state.modules });
   // Secciones con vista propia (no son listas paginadas de dispositivos).
-  const OWN_VIEWS = ['map', 'settings', 'contracts', 'bodycams', 'inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
+  const OWN_VIEWS = ['map', 'settings', 'contracts', 'bodycams', 'cash_transport', 'inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
   function pagination() {
     const enabled = !state.selected && !OWN_VIEWS.includes(state.module);
     byId('previous').disabled = !enabled || state.offset === 0;
@@ -312,6 +312,55 @@
     }
     content.append(grid);
   }
+  // Transporte de fondos (misiones de os_gruppesechs): la propia, ofertas de companeros y las que estan en curso.
+  async function transportView(content) {
+    const X = group('transport'); const data = await request('transport'); if (!data) return;
+    simpleHero(content, X.title, X.help);
+    const act = async (action, kind) => { const result = await request('transport_action', kind ? { action, kind } : { action }); if (result) { await refresh(); message(result.message); } };
+    if (data.invite) {
+      const offer = el('section', null, 'zone-new transport-offer');
+      offer.append(el('p', format(X.offer, data.invite.from, data.invite.title, thousands(data.invite.pay))));
+      const row = el('div', null, 'zone-actions'); row.append(button(X.accept, () => act('accept'), false, 'primary'), button(X.decline, () => act('decline')));
+      offer.append(row); content.append(offer);
+    }
+    const mission = data.mission;
+    if (mission) {
+      const card = el('article', null, 'card transport-card'); const head = el('div', null, 'card-head');
+      head.append(el('span', X.current, 'overline'), el('span', mission.lobby != null ? X.lobby : format(X.step, mission.index, mission.total), 'badge'));
+      card.append(head, el('h3', mission.title), el('p', mission.label || '', 'order-note'));
+      const bar = el('div', null, 'health-line'); const fill = el('span'); fill.style.width = `${Math.max(0, Math.min(100, Number(mission.percent) || 0))}%`; bar.append(fill); card.append(bar);
+      const meta = el('div', null, 'detail-meta');
+      for (const [title, value] of [[X.pay, `${thousands(mission.pay)} $`], [X.vehicle, mission.vehicle || '—'], [X.crew, (mission.crew || []).map(m => `${m.name} (${X.roles[m.role] || m.role})`).join(', ') || '—']]) {
+        const item = el('div', title, 'subtle'); item.append(el('strong', value)); meta.append(item);
+      }
+      card.append(meta);
+      const actions = el('div', null, 'zone-actions');
+      if (mission.point) actions.append(button(X.gps, () => post('waypoint', { x: mission.point.x, y: mission.point.y }).catch(() => {}), false, 'primary'));
+      actions.append(button(mission.leader ? X.cancel : X.leave, () => act('cancel'), false, 'danger'));
+      card.append(actions); content.append(card);
+    } else {
+      const panel = el('section', null, 'zone-new'); panel.append(el('span', X.request, 'overline'));
+      if (!data.employed) panel.append(el('p', format(X.notEmployed, data.reason || ''), 'subtle'));
+      else {
+        const kind = el('select'); kind.setAttribute('aria-label', X.kind);
+        const random = el('option', X.random); random.value = ''; kind.append(random);
+        for (const option of data.kinds || []) { const node = el('option', option.label); node.value = option.value; kind.append(node); }
+        const row = el('div', null, 'zone-actions'); row.append(kind, button(X.start, () => act('start', kind.value || null), false, 'primary'));
+        panel.append(row);
+      }
+      content.append(panel, el('div', X.none, 'empty'));
+    }
+    const list = el('section', null, 'transport-running'); list.append(el('span', X.running, 'overline'));
+    if (!(data.running || []).length) list.append(el('p', X.noRunning, 'subtle'));
+    const rows = el('div', null, 'rows');
+    for (const run of data.running || []) {
+      const row = el('div', null, 'row'); const body = el('div');
+      body.append(el('strong', run.title), el('span', `${run.leader} · ${run.crew} · ${run.lobby ? X.lobby : `${run.percent} %`}`, 'subtle'));
+      row.append(el('span', null, 'row-icon car-icon'), body, el('span', ''));
+      rows.append(row);
+    }
+    list.append(rows); content.append(list);
+  }
   // Bodycams (supervisores y administradores): quien la lleva encendida y ver en directo.
   async function bodycamsView(content) {
     const B = group('bodycams'); const data = await request('bodycams'); if (!data) return;
@@ -506,7 +555,7 @@
     }
     content.append(grid);
   }
-  const VIEWS = { bodycams: bodycamsView, contracts: contractsView, locks: doorsView, trackers: trackersView, incidents: incidentsView, installations: zonesView, requests: requestsView, work_orders: ordersView,
+  const VIEWS = { cash_transport: transportView, bodycams: bodycamsView, contracts: contractsView, locks: doorsView, trackers: trackersView, incidents: incidentsView, installations: zonesView, requests: requestsView, work_orders: ordersView,
     emergencies: emergenciesView, dispatch: dispatchView };
   async function refresh() {
     if (!state.session || state.busy) return;

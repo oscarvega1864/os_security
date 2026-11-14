@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.21.0 — Transporte de fondos en la tablet
+
+- **G6 Operations → Transporte de fondos:** pedir una misión de os_gruppesechs (tipo al azar o elegido), ver la
+  propia con su paso, progreso, pago, vehículo y equipo, marcar la parada en el GPS y cancelarla (o salir del
+  equipo); aceptar o rechazar la oferta de un compañero; y ver las misiones en curso de toda la empresa.
+- Puente opcional y acotado: os_security solo llama a `TabletTransport` y `TabletTransportAction` de
+  `ossecurity_transport_resource` (por defecto `os_gruppesechs`; `none` lo quita), que solo aceptan llamadas de
+  os_security y aplican las mismas reglas que `/g6mision`. Sin ese recurso la sección dice que no está disponible.
+
 ## 0.20.0 — Bodycams
 
 - Objeto **Bodycam** (`os_bodycam`, tienda G6 solo para personal, 650 $). El vigilante de servicio la enciende o

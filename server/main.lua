@@ -374,6 +374,25 @@ local gameplay = OSSecurity.Gameplay.new({
     end,
     checkpointSend = function(player, event, payload) TriggerClientEvent('os_security:checkpoint:' .. event, player, payload) end,
     detectorsChanged = function(list) TriggerClientEvent('os_security:checkpoint:detectors', -1, list) end,
+    -- Transporte de fondos: misiones de os_gruppesechs (opcional). set ossecurity_transport_resource none la quita.
+    transport = (function()
+        local resource = GetConvar('ossecurity_transport_resource', 'os_gruppesechs')
+        local function up() return resource ~= 'none' and GetResourceState(resource) == 'started' end
+        return {
+            available = up,
+            read = function(player)
+                if not up() then return nil end
+                local ok, data = pcall(function() return exports[resource]:TabletTransport(player) end)
+                return ok and type(data) == 'table' and data or nil
+            end,
+            act = function(player, action, value)
+                if not up() then return false, nil end
+                local ok, done, message = pcall(function() return exports[resource]:TabletTransportAction(player, action, value) end)
+                if not ok then return false, nil end
+                return done == true, type(message) == 'string' and message or nil
+            end
+        }
+    end)(),
     bodycamSend = function(player, event, payload) TriggerClientEvent('os_security:bodycam:' .. event, player, payload) end,
     -- Radio de visibilidad de entidades (OneSync) de quien mira una bodycam; nil vuelve al de por defecto (0.0).
     cull = function(player, radius) SetPlayerCullingRadius(player, (radius or 0.0) + 0.0) end,

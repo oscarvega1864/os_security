@@ -76,6 +76,12 @@ local function fixture(files, external)
         company = function(source) return c.companies[source] end,
         checkpointSend = function(player, event, payload) c.sent[#c.sent + 1] = { player, event, payload } end,
         bodycamSend = function(player, event, payload) c.sent[#c.sent + 1] = { player, event, payload } end,
+        transport = {
+            available = function() return c.transportUp ~= false end,
+            read = function(player) return c.transportData and c.transportData[player] or nil end,
+            act = function(player, action, value) c.transportCalls = c.transportCalls or {}; c.transportCalls[#c.transportCalls + 1] = { player, action, value }
+                if c.transportFail then return false, 'Ya tienes una mision en curso.' end; return true, 'Mision pedida.' end
+        },
         cull = function(player, radius) c.culling = c.culling or {}; c.culling[player] = radius end,
         detectorsChanged = function(list) c.detectorList = list end,
         alarmEffects = {
@@ -1972,4 +1978,22 @@ test('Bodycams: on-duty staff with the item turn it on, only supervisors and adm
     c.aces[1][config.Ace.operations], c.aces[1][config.Ace.technician] = true, true
     assert(cams.toggle(1).on and not cams.toggle(1).on and not cams.isOn(1))
     assert(cams.toggle(1).on); c.game.drop(1); assert(not cams.isOn(1))
+end)
+
+-- Transporte de fondos (puente con os_gruppesechs) -------------------------------------------------------
+test('Cash transport: G6 Operations reads and drives os_gruppesechs missions through a narrow, validated bridge', function()
+    local c = fixture(); assert(c.loaded, c.loadError)
+    grant(c, 1, 'g6_operations_tablet'); grant(c, 2, 'g6_client_tablet')
+    c.transportData = { [1] = { employed = true, kinds = { { value = 'cash', label = 'Recogida de efectivo' } }, running = {} } }
+    local tech = open(c, 1, 'operations')
+    local view = call(c, 1, tech, 'transport'); assert(view.ok and view.data.employed and view.data.kinds[1].value == 'cash')
+    local started = call(c, 1, tech, 'transport_action', { action = 'start', kind = 'cash' }); assert(started.ok and started.data.message == 'Mision pedida.')
+    assert(c.transportCalls[1][1] == 1 and c.transportCalls[1][2] == 'start' and c.transportCalls[1][3] == 'cash')
+    assert(not call(c, 1, tech, 'transport_action', { action = 'pay_me' }).ok) -- accion no permitida
+    assert(not call(c, 1, tech, 'transport_action', { action = 'start', kind = 'cash; drop' }).ok)
+    assert(#c.transportCalls == 1)
+    c.transportFail = true
+    local refused = call(c, 1, tech, 'transport_action', { action = 'start' }); assert(not refused.ok and refused.error:find('en curso'))
+    c.transportUp = false; assert(not call(c, 1, tech, 'transport').ok)
+    assert(not call(c, 2, open(c, 2, 'client'), 'transport').ok) -- solo G6 Operations
 end)

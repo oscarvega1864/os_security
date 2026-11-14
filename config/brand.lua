@@ -240,6 +240,16 @@ OSSecurity.Brand = {
                 unscrewTitle = 'Soltar los pernos de las bases', unscrewHelp = 'Pulsa sobre cada perno y gira el raton en sentido ANTIHORARIO hasta sacarlo. Sin forzar.'
             }
         },
+        transport = {
+            title = 'Transporte de fondos', help = 'Pide una mision para tu equipo, sigue cada parada y unete a las de tus companeros.',
+            unavailable = 'Transporte de fondos no disponible en este servidor.', invalid = 'Peticion no valida.',
+            failed = 'No se pudo completar.', done = 'Hecho.', current = 'Tu mision', none = 'No tienes una mision en curso.',
+            request = 'Pedir mision', random = 'Al azar', kind = 'Tipo', start = 'Pedir', cancel = 'Cancelar mision', leave = 'Salir del equipo',
+            gps = 'Marcar en el GPS', step = 'Parada %d de %d', crew = 'Equipo', pay = 'Pago', vehicle = 'Vehiculo', lobby = 'Esperando equipo',
+            offer = 'Oferta de %s: %s (cobrarias %d $).', accept = 'Unirme', decline = 'Rechazar', running = 'Misiones en curso',
+            noRunning = 'No hay misiones en curso.', notEmployed = 'No puedes pedir misiones: %s',
+            roles = { driver = 'Conductor', porter = 'Operario', solo = 'Solo' }
+        },
         bodycams = {
             title = 'Bodycams', help = 'Camaras de pecho del personal de servicio. Pulsa Ver en directo para mirar lo que ve el vigilante.',
             empty = 'Nadie lleva la bodycam encendida ahora mismo.', watch = 'Ver en directo', since = 'Encendida desde',
@@ -327,7 +337,7 @@ OSSecurity.Brand = {
             { id = 'patrols', name = 'Rondas', implemented = false },
             { id = 'dispatch', name = 'Central de operaciones', implemented = true },
             { id = 'contracts', name = 'Contratos', implemented = true },
-            { id = 'cash_transport', name = 'Transporte de fondos', implemented = false }
+            { id = 'cash_transport', name = 'Transporte de fondos', implemented = true }
         }
     }
 }
