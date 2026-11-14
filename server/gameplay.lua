@@ -170,12 +170,14 @@ function OSSecurity.Gameplay.new(options)
         alias = (options.vehicles or {}).alias, productOfModel = placement.productOfModel,
         profile = function(source) return auth.profile(source, 'operations') end,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
-    local service = OSSecurity.TabletService.new({ inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, ownerOf = ownerOf, employeeId = options.employeeId,
+    local tabletMap = OSSecurity.TabletMap.new({ files = options.files, log = options.log,
+        audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    local service = OSSecurity.TabletService.new({ map = tabletMap, inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, ownerOf = ownerOf, employeeId = options.employeeId,
         sites = options.sites, alarms = alarms, locks = locks, cars = cars,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local home = OSSecurity.TabletHome.new({ inventory = inventory, service = service, orders = orders, dispatch = dispatch })
     local controller = OSSecurity.TabletController.new({ inventory = inventory, holdings = holdings, identity = identity, auth = auth,
-        sessions = sessions, service = service, placement = placement, zones = zones, orders = orders, dispatch = dispatch, home = home, audit = options.audit })
+        sessions = sessions, service = service, placement = placement, zones = zones, orders = orders, dispatch = dispatch, home = home, map = tabletMap, audit = options.audit })
     local checkpoint = OSSecurity.CheckpointService.new({ inventory = inventory, identity = identity, world = options.world, now = options.now,
         players = options.players, playerName = options.playerName, company = options.company, isStaff = isStaff, items = items,
         notify = options.notifyPlayer or effects.notify, send = options.checkpointSend or noop, changed = options.detectorsChanged,

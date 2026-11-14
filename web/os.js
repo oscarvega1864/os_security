@@ -43,7 +43,7 @@ window.G6OS = function createOS(api) {
   }
   os.status = message => {
     if (message.clock && Number.isFinite(message.clock.h) && Number.isFinite(message.clock.m)) os.clock = { h: message.clock.h, m: message.clock.m };
-    if (message.position && Number.isFinite(message.position.x) && Number.isFinite(message.position.y)) { os.here = { x: message.position.x, y: message.position.y }; }
+    if (message.position && Number.isFinite(message.position.x) && Number.isFinite(message.position.y)) { os.here = { x: message.position.x, y: message.position.y }; moveYou(); }
     paintClock();
     if (state.view === 'home') byId('greeting').textContent = greeting() || '';
   };
@@ -174,15 +174,132 @@ window.G6OS = function createOS(api) {
     return H().carState?.[item.state] || item.state;
   }
 
-  // ---------- Mapa: el mapa real del juego ----------
-  // La NUI no dibuja el mapa: pide al cliente que abra el mapa del juego con los puntos del resumen como iconos.
-  // Al salir del mapa el cliente vuelve a abrir la tablet en el inicio.
+  // ---------- Mapa: imagen del mapa de GTA V dentro de la tablet ----------
+  // La imagen la pone el propio servidor en web/map/ (no se distribuye con el recurso). La calibracion viene del
+  // servidor (session.map) en unidades de una imagen de 256 px: u = ax*x + bx, v = ay*y + by.
+  const MAP_FILES = () => Array.isArray(window.__g6MapFiles) ? window.__g6MapFiles : ['map/gtav.webp', 'map/gtav.jpg', 'map/gtav.png']; // __g6MapFiles: solo pruebas
+  let mapImage = null; // { src, width, height } de la primera imagen que carga
+  let mapNodes = null; let calib = null; // calib: primer punto de una calibracion en curso
+  function loadImage() {
+    if (mapImage) return Promise.resolve(mapImage);
+    return MAP_FILES().reduce((chain, src) => chain.then(found => found || new Promise(resolve => {
+      const image = new Image(); image.onload = () => resolve({ src, width: image.naturalWidth, height: image.naturalHeight }); image.onerror = () => resolve(null); image.src = src;
+    })), Promise.resolve(null)).then(found => { mapImage = found; return found; });
+  }
+  function toImage(x, y) {
+    const c = state.session?.map || { ax: 0.02072, bx: 117.3, ay: -0.0205, by: 172.8 }; if (!mapImage) return null; // de fabrica si falta
+    return { x: (c.ax * x + c.bx) * mapImage.width / 256, y: (c.ay * y + c.by) * mapImage.height / 256 };
+  }
+  function moveYou() {
+    if (!mapNodes || !os.here) return;
+    const at = toImage(os.here.x, os.here.y); if (!at) return;
+    mapNodes.you.style.left = `${at.x}px`; mapNodes.you.style.top = `${at.y}px`; mapNodes.you.hidden = false;
+  }
+  function paint() {
+    const v = mapNodes.view; mapNodes.stage.style.transform = `translate(${v.x}px, ${v.y}px) scale(${v.s})`;
+    mapNodes.stage.style.setProperty('--s', String(v.s));
+  }
+  function zoomAt(factor, cx, cy) {
+    const v = mapNodes.view; const s = Math.min(4, Math.max(mapNodes.minScale, v.s * factor));
+    v.x = cx - (cx - v.x) * s / v.s; v.y = cy - (cy - v.y) * s / v.s; v.s = s; paint();
+  }
+  function centerOn(px, py, scale) {
+    const box = mapNodes.wrap.getBoundingClientRect(); const v = mapNodes.view;
+    v.s = Math.min(4, Math.max(mapNodes.minScale, scale ?? v.s)); v.x = box.width / 2 - px * v.s; v.y = box.height / 2 - py * v.s; paint();
+  }
+  function pointsList(content, points) {
+    const list = el('div', null, 'rows');
+    for (const point of points) {
+      const row = el('div', null, 'row'); const body = el('div');
+      body.append(el('strong', point.label), el('span', [(H().kinds || {})[point.kind], point.subtitle].filter(Boolean).join(' · '), 'subtle'));
+      const actions = el('div', null, 'card-buttons'); actions.append(button(H().gps, () => gps(point)), button(H().open, () => api.goto(point)));
+      row.append(el('span', null, 'row-icon'), body, actions); list.append(row);
+    }
+    content.append(list);
+  }
   os.mapView = async content => {
     const data = await request('home'); if (!state.session) return;
     os.data = data && data.counts ? data : os.data;
     const points = Array.isArray(os.data?.points) ? os.data.points : [];
-    content.append(el('p', H().mapOpening, 'empty map-opening'));
-    post('openMap', { kind: state.session.kind, points }).catch(() => {});
+    const image = await loadImage(); if (!state.session || state.module !== 'map') return;
+    if (!image) {
+      content.append(el('div', state.session.canCalibrate ? H().mapMissingAdmin : H().mapMissing, 'empty'));
+      if (points.length) pointsList(content, points);
+      return;
+    }
+    const wrap = el('div', null, 'map-wrap'); const stage = el('div', null, 'map-stage');
+    const img = el('img', null, 'map-img'); img.src = image.src; img.alt = ''; img.draggable = false; img.width = image.width; img.height = image.height;
+    stage.style.width = `${image.width}px`; stage.style.height = `${image.height}px`; stage.append(img);
+    const popup = el('div', null, 'map-popup'); popup.hidden = true;
+    for (const point of points) {
+      const at = toImage(point.x, point.y); if (!at) continue;
+      const pin = button('', () => {
+        popup.hidden = false; popup.replaceChildren(el('span', (H().kinds || {})[point.kind], 'overline'), el('strong', point.label),
+          el('div', [point.subtitle, stateLabel({ kind: point.kind, state: point.state })].filter(Boolean).join(' · '), 'subtle'));
+        const actions = el('div', null, 'map-actions'); actions.append(button(H().gps, () => gps(point), false, 'primary'), button(H().open, () => api.goto(point)));
+        popup.append(actions);
+      }, false, `map-pin kind-${point.kind} state-${point.state}`);
+      pin.style.left = `${at.x}px`; pin.style.top = `${at.y}px`; pin.title = point.label; stage.append(pin);
+    }
+    const you = el('span', null, 'map-you'); you.hidden = true; stage.append(you);
+    const tools = el('div', null, 'map-tools'); const legend = el('div', null, 'map-legend'); const banner = el('div', null, 'map-banner'); banner.hidden = true;
+    wrap.append(stage, tools, legend, popup, banner);
+    content.append(wrap);
+    mapNodes = { wrap, stage, you, view: { x: 0, y: 0, s: 1 }, minScale: 0.1 };
+    // Encuadre: imagen entera y despues la zona con puntos (o el jugador).
+    const box = wrap.getBoundingClientRect();
+    mapNodes.minScale = Math.min(box.width / image.width, box.height / image.height);
+    const spots = points.map(p => toImage(p.x, p.y)).filter(Boolean); if (os.here) { const me = toImage(os.here.x, os.here.y); if (me) spots.push(me); }
+    if (spots.length) {
+      const xs = spots.map(p => p.x), ys = spots.map(p => p.y); const pad = image.width * 0.05;
+      const w = Math.max(...xs) - Math.min(...xs) + pad * 2, h = Math.max(...ys) - Math.min(...ys) + pad * 2;
+      centerOn((Math.max(...xs) + Math.min(...xs)) / 2, (Math.max(...ys) + Math.min(...ys)) / 2, Math.min(box.width / w, box.height / h, 1.2));
+    } else centerOn(image.width / 2, image.height / 2, mapNodes.minScale);
+    moveYou();
+    // Rueda: zoom hacia el cursor. Arrastrar: mover. Clic sin arrastrar: cierra la ficha o marca un punto de calibracion.
+    wrap.addEventListener('wheel', event => { event.preventDefault(); const b = wrap.getBoundingClientRect(); zoomAt(event.deltaY > 0 ? 1 / 1.2 : 1.2, event.clientX - b.left, event.clientY - b.top); }, { passive: false });
+    let drag = null;
+    wrap.addEventListener('pointerdown', event => { if (event.target.closest('button')) return; drag = { x: event.clientX, y: event.clientY, vx: mapNodes.view.x, vy: mapNodes.view.y, moved: false }; });
+    wrap.addEventListener('pointermove', event => {
+      if (!drag) return; const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
+      if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
+      if (drag.moved) { mapNodes.view.x = drag.vx + dx; mapNodes.view.y = drag.vy + dy; paint(); }
+    });
+    wrap.addEventListener('pointerup', event => {
+      const was = drag; drag = null; if (!was || was.moved || event.target.closest('button')) return;
+      popup.hidden = true;
+      if (calib?.picking) {
+        const b = wrap.getBoundingClientRect(); const v = mapNodes.view;
+        const px = (event.clientX - b.left - v.x) / v.s, py = (event.clientY - b.top - v.y) / v.s;
+        pick(px * 256 / image.width, py * 256 / image.height);
+      }
+    });
+    wrap.addEventListener('pointerleave', () => { drag = null; });
+    tools.append(button('+', () => { const b = wrap.getBoundingClientRect(); zoomAt(1.4, b.width / 2, b.height / 2); }),
+      button('−', () => { const b = wrap.getBoundingClientRect(); zoomAt(1 / 1.4, b.width / 2, b.height / 2); }),
+      button(H().you, () => { const me = os.here && toImage(os.here.x, os.here.y); if (me) centerOn(me.x, me.y, Math.max(mapNodes.view.s, 0.8)); }, false, 'you'));
+    for (const kind of ['device', 'order', 'call', 'car']) if (points.some(p => p.kind === kind)) legend.append(el('span', (H().legend || {})[kind], `legend kind-${kind}`));
+    // Calibracion (administrador): dos clics en el mapa sobre donde esta el jugador, en dos sitios lejanos.
+    const C = H().calibration || {};
+    function showBanner() {
+      banner.hidden = !calib; if (!calib) return;
+      banner.replaceChildren(el('span', calib.first ? (calib.picking ? C.step2 : C.waiting) : C.step1));
+      banner.append(button(state.session.brand.Text.close, () => { calib = null; showBanner(); }, false, 'mini'));
+    }
+    async function pick(u, v) {
+      if (!os.here) { message(C.noPosition); return; }
+      const point = { u, v, x: os.here.x, y: os.here.y };
+      if (!calib.first) { calib = { first: point, picking: false }; showBanner(); return; }
+      const result = await request('map_calibrate', { first: calib.first, second: point });
+      if (!result) { calib.picking = false; showBanner(); return; }
+      state.session.map = result; calib = null; api.refresh();
+    }
+    function message(value) { banner.hidden = false; banner.replaceChildren(el('span', value)); }
+    if (state.session.canCalibrate) {
+      tools.append(button(calib?.first ? C.second : C.start, () => { calib = calib || {}; calib.picking = true; showBanner(); }, false, 'calibrate'),
+        button(C.reset, async () => { const result = await request('map_calibrate', { reset: true }); if (result) { state.session.map = result; calib = null; api.refresh(); } }, false, 'calibrate'));
+      if (calib) showBanner();
+    }
   };
 
   // ---------- Configuracion (ajustes por jugador) ----------

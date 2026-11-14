@@ -1826,3 +1826,23 @@ test('Tablet home: the summary and the map show only what each profile can see, 
     assert(not call(c, 1, tech, 'search', { query = 7 }).ok and not call(c, 1, tech, 'search', { query = 'ab', other = 1 }).ok)
     assert(#call(c, 5, open(c, 5, 'client'), 'search', { query = 'camara' }).data.items == 0) -- no encuentra lo ajeno
 end)
+
+test('Tablet map: the session carries the calibration; only an admin recalibrates with two far points and it survives a restart', function()
+    local c = fixture(); assert(c.loaded, c.loadError)
+    grant(c, 1, 'g6_operations_tablet'); grant(c, 4, 'g6_operations_tablet')
+    local tech = open(c, 1, 'operations')
+    assert(tech.map and tech.map.ax == 0.02072 and tech.map.custom == false and not tech.canCalibrate)
+    local first, second = { u = 100, v = 180, x = -1000, y = -1000 }, { u = 160, v = 120, x = 2000, y = 2000 }
+    assert(not call(c, 1, tech, 'map_calibrate', { first = first, second = second }).ok) -- un tecnico no calibra
+    local admin = open(c, 4, 'operations'); assert(admin.canCalibrate)
+    assert(not call(c, 4, admin, 'map_calibrate', { first = first, second = { u = 101, v = 179, x = -900, y = -950 } }).ok) -- demasiado cerca
+    assert(not call(c, 4, admin, 'map_calibrate', { first = first, second = { u = 40, v = 120, x = 2000, y = 2000 } }).ok) -- invertido
+    assert(not call(c, 4, admin, 'map_calibrate', { first = first, second = { u = 160, v = 120, x = 2000, y = 0 / 0 } }).ok)
+    local done = call(c, 4, admin, 'map_calibrate', { first = first, second = second }); assert(done.ok, done.error)
+    assert(math.abs(done.data.ax - 0.02) < 1e-9 and math.abs(done.data.bx - 120) < 1e-9 and math.abs(done.data.ay + 0.02) < 1e-9 and done.data.custom)
+    local restarted = fixture(c.core.files); assert(restarted.loaded, restarted.loadError)
+    grant(restarted, 1, 'g6_operations_tablet')
+    local again = open(restarted, 1, 'operations'); assert(again.map.custom and math.abs(again.map.by - 160) < 1e-9)
+    grant(restarted, 4, 'g6_operations_tablet')
+    local reset = call(restarted, 4, open(restarted, 4, 'operations'), 'map_calibrate', { reset = true }); assert(reset.ok and not reset.data.custom and reset.data.ax == 0.02072)
+end)

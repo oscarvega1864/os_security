@@ -11,10 +11,12 @@
   Lista «Requiere atención» (alarmas sonando, averías, salud baja, avisos activos); tocar una fila abre lo que toca.
 - **Buscador** (acción `search`, 2–40 caracteres): dispositivos por identificador, tipo, modelo o dirección; órdenes y
   avisos por número, lugar, nombre o nota; matrículas propias. Solo busca en lo que el perfil ya puede ver.
-- **Mapa** (app Mapa): abre el **mapa real del juego** (menú de pausa) con los dispositivos instalados, órdenes,
-  avisos y vehículos propios como iconos (los que necesitan atención en rojo y parpadeando). Se marca ruta como en el
-  mapa normal; al salir del mapa se quitan los iconos y vuelve a abrirse la tablet. No se distribuye ninguna imagen
-  del juego.
+- **Mapa** (app Mapa) **dentro de la tablet**: imagen del mapa de GTA V con los dispositivos instalados, órdenes,
+  avisos y vehículos propios como puntos (los que necesitan atención en rojo y parpadeando) y tu posición en vivo.
+  Rueda o botones para acercar, arrastrar para mover; tocar un punto permite marcarlo en el GPS o abrirlo.
+  La imagen **no se distribuye** (es material del juego): cada servidor la copia en `web/map/gtav.jpg|png|webp`
+  (ver `web/map/LEEME.md`, ignorada por git). Calibración de fábrica para mapas cuadrados de la isla y calibración en
+  el juego por un administrador con dos puntos (se guarda en `data/map.json`). Sin imagen se muestra la lista de puntos.
 - **Configuración** (estilo iOS, en las dos tablets y en el dock): tema automático/claro/oscuro, seis fondos de
   pantalla, tamaño del texto, mostrar avisos en pantalla y sonido de avisos, restablecer ajustes e información de la
   tablet (modelo, versión, perfil, acreditación, sesión). Se guarda por jugador en su equipo (KVP del recurso).

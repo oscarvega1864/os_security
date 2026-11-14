@@ -34,7 +34,12 @@ OSSecurity.Brand = {
             orderStatus = { open = 'Sin asignar', accepted = 'Aceptada', billed = 'Facturada', paid = 'Pagada', cancelled = 'Cancelada' },
             carState = { sounding = 'Alarma sonando', parked = 'Localizado' },
             legend = { device = 'Dispositivos', order = 'Ordenes', call = 'Avisos', car = 'Vehiculos' },
-            mapOpening = 'Abriendo el mapa... Tus puntos aparecen como iconos; al salir del mapa vuelves a la tablet.',
+            mapMissing = 'El mapa no esta disponible en este servidor. Debajo tienes la lista de puntos con su GPS.',
+            mapMissingAdmin = 'Falta la imagen del mapa: copia un mapa de GTA V en os_security/web/map/gtav.jpg (o .png / .webp) y reinicia el recurso. Instrucciones en web/map/LEEME.md.',
+            calibration = { start = 'Calibrar', second = 'Calibrar: punto 2', reset = 'Calibracion de fabrica',
+                step1 = 'Punto 1: haz clic en el mapa justo donde estas ahora.',
+                waiting = 'Punto 1 guardado. Alejate mas de 800 m en las dos direcciones (por ejemplo a Sandy Shores), vuelve al mapa y pulsa Calibrar: punto 2.',
+                step2 = 'Punto 2: haz clic en el mapa justo donde estas ahora.', noPosition = 'Aun no se conoce tu posicion; espera un segundo.' },
             settings = {
                 title = 'Configuracion', general = 'General', display = 'Pantalla y brillo', wallpaper = 'Fondo de pantalla',
                 notifications = 'Notificaciones', about = 'Informacion',

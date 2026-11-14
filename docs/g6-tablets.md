@@ -124,9 +124,11 @@ inventario, validados por `InventoryState.detector/custody`. Requiere el inventa
   avisos del actor y vehiculos propios. No dan acceso a nada que la tablet no mostrase ya en su seccion.
 - Avisos en vivo: el cliente reenvia a la tablet abierta cada `os_security:alarm:alert` (mensaje NUI `notice`).
   Cada segundo envia `status` con la hora del juego y la posicion del jugador (marcador del mapa).
-- App Mapa: la NUI envia `openMap` con los puntos del resumen; `client/worldmap.lua` cierra la tablet, crea iconos
-  temporales y abre el mapa del menu de pausa (`ActivateFrontendMenu` + `PauseMenuceptionGoDeeper`). Al cerrar el
-  menu de pausa quita los iconos y vuelve a abrir la tablet. No se incluye ninguna imagen del mapa del juego.
+- App Mapa: la NUI carga `web/map/gtav.webp|jpg|png` (la pone cada servidor; no esta en el repositorio ni en las
+  releases) y coloca los puntos del resumen con la calibracion de `session.map` (`server/tablet/map.lua`,
+  `data/map.json`). Accion `map_calibrate` (solo perfil admin): `{ first, second }` con un punto marcado en la imagen
+  (unidades de 256) y la posicion del jugador, separados mas de 800 m en cada eje; `{ reset = true }` vuelve a la de
+  fabrica.
 - App Configuracion: la NUI envia `settings`; el cliente valida los valores y los guarda con `SetResourceKvp`
   (por jugador y equipo). Se devuelven en la sesion (`session.settings`) al abrir la tablet.
 

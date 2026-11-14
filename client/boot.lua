@@ -18,7 +18,6 @@ local minigame = OSSecurity.ClientMinigame.new({
 })
 OSSecurity.Minigame = minigame -- tambien lo usa el arco detector (client/checkpoint.lua)
 local liveView -- vista en directo de camaras (client/live.lua), creada tras el controlador
-local worldmap = OSSecurity.ClientWorldMap.new()
 -- Ajustes de la tablet (app Configuracion): por jugador, guardados en este equipo (KVP del recurso).
 local SETTINGS_KEY = 'os_security:tablet_settings'
 local SETTINGS = { theme = { auto = true, light = true, dark = true }, textSize = { normal = true, large = true } }
@@ -138,14 +137,6 @@ RegisterNUICallback('waypoint', function(body, callback)
     end
 end)
 
--- App Mapa: cierra la tablet, abre el mapa del juego con los puntos y al salir vuelve a abrir la tablet.
-RegisterNUICallback('openMap', function(body, callback)
-    callback({ ok = true })
-    if type(body) ~= 'table' or (body.kind ~= 'client' and body.kind ~= 'operations') or worldmap.open() then return end
-    local kind = body.kind
-    controller.close()
-    worldmap.show(body.points, function() controller.open(kind) end)
-end)
 RegisterNUICallback('settings', function(body, callback)
     local clean = cleanSettings(body)
     SetResourceKvp(SETTINGS_KEY, json.encode(clean))
@@ -163,7 +154,7 @@ RegisterNUICallback('request', function(body, callback)
     elseif ({ inventory = true, devices = true, device = true, maintain = true, alarm = true, doors = true, trackers = true, incidents = true,
         zones = true, zone_delete = true, requests = true, request_create = true, request_cancel = true, request_pay = true,
         orders = true, order_accept = true, order_release = true, order_bill = true,
-        home = true, search = true, emergencies = true, panic = true, panic_cancel = true, dispatch = true, call_take = true, call_assign = true,
+        home = true, search = true, map_calibrate = true, emergencies = true, panic = true, panic_cancel = true, dispatch = true, call_take = true, call_assign = true,
         call_release = true, call_resolve = true })[body.action] then controller.request(body.action, body.args, callback)
     else callback({ ok = false, error = OSSecurity.Brand.Text.unavailable }) end
 end)
@@ -191,7 +182,7 @@ end)
 
 AddEventHandler('onResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
-    minigame.cancel(); controller.stop(); placement.cancel(); props.clear(); view.hide(); worldmap.stop()
+    minigame.cancel(); controller.stop(); placement.cancel(); props.clear(); view.hide()
 end)
 
 -- Alarmas: teclado junto al dispositivo, aviso de entrada, sirena y avisos.

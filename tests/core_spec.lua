@@ -95,7 +95,7 @@ test('Manifest paths, loading order, version and Lua 5.4 syntax', function()
     for _, file in ipairs(clientScripts) do assert(loadfile(root .. file)) end
     assert(OSSecurity.Config.Version == '0.17.0')
     assert(nuiPage == 'web/index.html' and strictMode == 'true')
-    for _, file in ipairs(nuiFiles) do local handle = assert(io.open(root .. file, 'rb')); handle:close() end
+    for _, file in ipairs(nuiFiles) do if not file:find('*', 1, true) then local handle = assert(io.open(root .. file, 'rb')); handle:close() end end
     assert(#scripts > 0 and scripts[#scripts] == 'server/main.lua')
 end)
 

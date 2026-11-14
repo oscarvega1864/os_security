@@ -24,3 +24,7 @@ server.cfg
 
 # Zips de release generados localmente.
 /dist/
+
+# Imagen del mapa de la tablet: la pone cada servidor (material del juego, no se distribuye).
+/web/map/*
+!/web/map/LEEME.md

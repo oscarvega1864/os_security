@@ -42,7 +42,7 @@
     post('close', {}).catch(() => {}); state.session = null;
   }
   // Sistema de la tablet (web/os.js): inicio, dock, buscador, mapa y avisos.
-  const os = window.G6OS({ state, byId, el, button, request, post, text, date, openApp, goHome, goto, modules: () => state.modules });
+  const os = window.G6OS({ state, byId, el, button, request, post, text, date, openApp, goHome, goto, refresh: () => refresh(), modules: () => state.modules });
   // Secciones con vista propia (no son listas paginadas de dispositivos).
   const OWN_VIEWS = ['map', 'settings', 'inventory', 'installations', 'locks', 'trackers', 'incidents', 'requests', 'work_orders', 'emergencies', 'dispatch'];
   function pagination() {

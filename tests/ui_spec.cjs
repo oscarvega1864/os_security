@@ -113,9 +113,25 @@ async function main() {
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`); await until(`document.getElementById('notice-center').hidden && !document.getElementById('app').hidden`);
     console.log('PASS live notices: toast, unread badge, notice center with GPS; Escape closes the overlay first');
     await evaluate(`window.postMessage({type:'status',clock:{h:7,m:5},position:{x:-500,y:300}},'*')`); await until(`document.getElementById('clock').textContent==='07:05'`);
-    await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Mapa').click()`);
-    await until(`window.__calls.some(x=>x.endpoint==='openMap' && x.body.kind==='client' && x.body.points.length===2 && x.body.points[1].kind==='call')`);
-    console.log('PASS map: status bar clock; the Map app opens the game map with the summary points');
+    // Sin imagen del mapa: aviso y lista de puntos con GPS.
+    await evaluate(`window.__g6MapFiles=['map/no-existe.png']; Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Mapa').click()`);
+    await until(`document.querySelector('#content .empty') && document.querySelectorAll('#content .rows .row').length===2`);
+    // Con imagen (generada para la prueba): puntos sobre el mapa, posicion del jugador y ficha con GPS.
+    const zlib = require('node:zlib'); const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+    const crc = buf => { let c = 0xffffffff; for (const b of buf) c = crcTable[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+    const chunk = (type, data) => { const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const body = Buffer.concat([Buffer.from(type), data]); const sum = Buffer.alloc(4); sum.writeUInt32BE(crc(body)); return Buffer.concat([len, body, sum]); };
+    const side = 512; const header = Buffer.alloc(13); header.writeUInt32BE(side, 0); header.writeUInt32BE(side, 4); header[8] = 8; header[9] = 2;
+    const raw = Buffer.alloc((side * 3 + 1) * side); for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) raw.set([40, 74, 55], y * (side * 3 + 1) + 1 + x * 3);
+    // La NUI solo carga imagenes de su propia carpeta: archivo temporal propio en web/map/, se borra al momento.
+    const mapName = `__ui-test-${randomUUID()}.png`; const mapFile = path.join(root, 'web', 'map', mapName); fs.writeFileSync(mapFile, Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', header), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]));
+    await evaluate(`window.__g6MapFiles=['map/${mapName}']; document.getElementById('refresh').click()`);
+    try { await until(`document.querySelectorAll('.map-pin').length===2 && document.querySelector('.map-img')?.naturalWidth===512 && !document.querySelector('.map-you').hidden`); } finally { fs.rmSync(mapFile, { force: true }); }
+    assert(await evaluate(`!document.querySelector('.calibrate')`), 'Only admins calibrate the map');
+    assert(await evaluate(`Math.abs(parseFloat(document.querySelector('.map-pin.kind-call').style.left) - (0.02072*-400+117.3)*2) < 0.01`), 'Pins follow the calibration');
+    await evaluate(`window.__calls.length=0; document.querySelector('.map-pin.kind-call').click()`); await until(`!document.querySelector('.map-popup').hidden`);
+    await evaluate(`document.querySelector('.map-popup .primary').click()`); await until(`window.__calls.some(x=>x.endpoint==='waypoint' && x.body.x===-400 && x.body.y===1000)`);
+    fs.writeFileSync(path.join(output, 'map-view.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    console.log('PASS map: GTA map image inside the tablet with calibrated pins, player marker and GPS; list fallback without image');
     await evaluate(`document.getElementById('home-button').click()`); await until(`!document.getElementById('home').hidden && document.getElementById('window').hidden`);
     console.log('PASS the Inicio button in an app returns to the home screen');
     await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Configuracion').click()`);

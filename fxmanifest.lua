@@ -31,13 +31,14 @@ client_scripts {
     'client/shop.lua',
     'client/live.lua',
     'client/checkpoint.lua',
-    'client/worldmap.lua',
     'client/boot.lua'
 }
 
 ui_page 'web/index.html'
 nui_callback_strict_mode 'true'
-files { 'web/index.html', 'web/style.css', 'web/os.js', 'web/app.js', 'web/minigame.js', 'web/pinpad.js', 'web/siren.js', 'web/cylinder.js', 'web/carwire.js', 'web/lockpick.js', 'web/shop.js', 'web/live.js', 'web/checkpoint.js' }
+files { 'web/index.html', 'web/style.css', 'web/os.js', 'web/app.js', 'web/minigame.js', 'web/pinpad.js', 'web/siren.js', 'web/cylinder.js', 'web/carwire.js', 'web/lockpick.js', 'web/shop.js', 'web/live.js', 'web/checkpoint.js',
+    -- Imagen del mapa de GTA V que pone el propio servidor (no se distribuye con el recurso; ver web/map/LEEME.md).
+    'web/map/*' }
 server_scripts {
     'config/server.lua',
     'config/components.lua',
@@ -81,6 +82,7 @@ server_scripts {
     'server/checkpoint/service.lua',
     'server/tablet/service.lua',
     'server/tablet/home.lua',
+    'server/tablet/map.lua',
     'server/tablet/controller.lua',
     'server/commands/gameplay.lua',
     'server/gameplay.lua',

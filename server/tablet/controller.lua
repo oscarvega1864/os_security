@@ -53,6 +53,8 @@ function OSSecurity.TabletController.new(options)
             result, reason = options.home.summary(actor)
         elseif actor.kind ~= 'inventory' and request.action == 'search' and options.home then
             result, reason = options.home.search(actor, request.args)
+        elseif actor.kind == 'operations' and request.action == 'map_calibrate' and options.map then
+            result, reason = options.map.calibrate(actor, request.args)
         elseif actor.kind ~= 'inventory' and request.action == 'devices' then
             result, reason = options.service.list(actor, request.args)
         elseif actor.kind ~= 'inventory' and request.action == 'device' then
