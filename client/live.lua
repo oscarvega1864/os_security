@@ -2,7 +2,8 @@
 -- juego en el montaje, con filtro de videovigilancia (y ruido si la optica esta gastada) y el HUD de
 -- web/live.js. Controles: raton o flechas para girar, rueda o + / - para zoom, Q / E camara anterior /
 -- siguiente, Retroceso o Esc para salir. El personaje queda quieto mientras se mira; recibir dano o
--- morir corta la vista. Cada 20 s se revalida con el servidor (acceso y senal).
+-- morir corta la vista. Cada 20 s se revalida con el servidor (acceso y senal). Una camara instalada sin
+-- senal muestra NO VIDEO (plantilla G6) en vez de cerrar la vista, y vuelve sola si se repara.
 OSSecurity.ClientLive = {}
 
 local TURN, LOOK, ZOOM = 70.0, 4.5, 4.0         -- grados/s con flechas, sensibilidad del raton, grados de fov por paso
@@ -43,8 +44,18 @@ function OSSecurity.ClientLive.new(options)
             SetExtraTimecycleModifierStrength(math.min(1.0, noise + 0.2))
         else ClearExtraTimecycleModifier() end
     end
+    local function hud(data)
+        options.send({ type = 'live', action = 'show', data = { displayId = data.displayId, site = data.site, noise = data.noise,
+            noSignal = data.noSignal, index = data.index, total = data.cameras and #data.cameras or 1 }, text = OSSecurity.Brand.Text.live })
+    end
     local function aim(data)
         feed = data
+        -- Sin senal (NO VIDEO): la pantalla queda tapada; se deja la camara del juego donde estaba.
+        if data.noSignal then
+            if cam then SetExtraTimecycleModifier('CAMERA_secuirity_FUZZ'); SetExtraTimecycleModifierStrength(1.0) end
+            hud(data)
+            return
+        end
         local position
         position, baseYaw, pitch = OSSecurity.ClientLive.frame(data)
         yaw, fov = baseYaw, FOV_START
@@ -54,8 +65,7 @@ function OSSecurity.ClientLive.new(options)
         cam = CreateCamWithParams('DEFAULT_SCRIPTED_CAMERA', position.x, position.y, position.z, pitch, 0.0, yaw, fov, true, 2)
         RenderScriptCams(true, false, 0, true, true)
         effects(data.noise)
-        options.send({ type = 'live', action = 'show', data = { displayId = data.displayId, site = data.site, noise = data.noise,
-            index = data.index, total = data.cameras and #data.cameras or 1 }, text = OSSecurity.Brand.Text.live })
+        hud(data)
     end
     function live.stop(message, kind)
         if not live.active then return end
@@ -84,8 +94,10 @@ function OSSecurity.ClientLive.new(options)
             if not response.ok or type(response.data) ~= 'table' then
                 live.stop(response.error or OSSecurity.Brand.Text.live.lost, 'error'); return
             end
-            if retarget then DoScreenFadeOut(150); Wait(160); aim(response.data); DoScreenFadeIn(250)
-            else feed.cameras, feed.index, feed.noise = response.data.cameras, response.data.index, response.data.noise; effects(feed.noise) end
+            -- Al revalidar, si la camara pierde o recupera la senal se cambia entre imagen y NO VIDEO.
+            if retarget or (response.data.noSignal ~= nil) ~= (feed.noSignal ~= nil) then DoScreenFadeOut(150); Wait(160); aim(response.data); DoScreenFadeIn(250)
+            elseif feed.noSignal then feed.cameras, feed.index = response.data.cameras, response.data.index; hud(feed)
+            else feed.cameras, feed.index, feed.noise = response.data.cameras, response.data.index, response.data.noise; effects(feed.noise); hud(feed) end
         end)
     end
     function live.start(data)
@@ -125,7 +137,7 @@ function OSSecurity.ClientLive.new(options)
                 if IsDisabledControlJustPressed(0, CONTROLS.wheelUp) or IsDisabledControlJustPressed(0, CONTROLS.zoomIn) then fov = fov - ZOOM end
                 if IsDisabledControlJustPressed(0, CONTROLS.wheelDown) or IsDisabledControlJustPressed(0, CONTROLS.zoomOut) then fov = fov + ZOOM end
                 fov = math.max(FOV_MIN, math.min(FOV_MAX, fov))
-                if cam then SetCamRot(cam, pitch, 0.0, yaw, 2); SetCamFov(cam, fov) end
+                if cam and not (feed and feed.noSignal) then SetCamRot(cam, pitch, 0.0, yaw, 2); SetCamFov(cam, fov) end
                 local cameras = feed and feed.cameras or {}
                 if #cameras > 1 then
                     local step = IsDisabledControlJustPressed(0, CONTROLS.next) and 1 or (IsDisabledControlJustPressed(0, CONTROLS.prev) and -1 or 0)
@@ -134,7 +146,8 @@ function OSSecurity.ClientLive.new(options)
                         load(cameras[index].id, true)
                     end
                 end
-                if now - refreshed > 20000 and feed then refreshed = now; load(feed.id, false) end
+                -- Cada 20 s se revalida; sin senal, cada 5 s para volver a la imagen en cuanto se repare.
+                if feed and now - refreshed > (feed.noSignal and 5000 or 20000) then refreshed = now; load(feed.id, false) end
             end
         end)
     end

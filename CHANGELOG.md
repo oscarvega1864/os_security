@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.23.0 — Vista de cámaras con la plantilla G6
+
+- La vista en directo de las cámaras usa la plantilla de cámaras de Gruppe 6: logo arriba a la izquierda, etiqueta
+  ● REC arriba a la derecha y el nombre de la cámara abajo (`CAMARA n - sitio`), con la hora abajo a la derecha.
+  La ayuda de controles se desvanece a los pocos segundos. `Brand.Text.live.logo = false` usa la plantilla sin logo.
+- Cámaras sin señal: al pasar de cámara con Q / E (o al revalidar) una cámara instalada sin señal ya no cierra la
+  vista; muestra la pantalla **NO VIDEO** de la plantilla con el motivo y vuelve sola a la imagen si se repara
+  (comprueba cada 5 s). La lista de cámaras incluye las instaladas sin señal (`live = false`).
+- Las bodycams usan el mismo HUD con su propio título.
+
 ## 0.22.3
 
 - Bodycams: la lista incluye también la propia (marcada «tú») y se puede ver en directo; antes quedaba fuera y, con

@@ -166,7 +166,8 @@ OSSecurity.Brand = {
             paidTech = 'G6 · Has cobrado $%d por la orden %s.'
         },
         live = {
-            watch = 'Ver en directo', rec = 'REC', cam = 'CAM', noise = 'Senal degradada',
+            watch = 'Ver en directo', rec = 'REC', cam = 'CAMARA', noise = 'Senal degradada', noVideo = 'NO VIDEO',
+            logo = true, -- logo de la plantilla arriba a la izquierda (web/live/logo.png); false = plantilla sin logo
             help = 'Raton o flechas: mover · Rueda o + / -: zoom · Q / E: camara anterior / siguiente · Retroceso: salir',
             lost = 'Se ha perdido la senal de la camara.', interrupted = 'Vista interrumpida: te estan atacando.'
         },

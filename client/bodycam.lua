@@ -22,7 +22,7 @@ function OSSecurity.ClientBodycam.new(options)
     end
     local function hud(data)
         options.send({ type = 'live', action = 'show', text = OSSecurity.Brand.Text.live, data = {
-            displayId = ('%s · %s'):format(T().label, data.name or ''), site = T().recording,
+            displayId = ('%s · %s'):format(T().label, data.name or ''), site = T().recording, title = ('%s · %s'):format(T().label, data.name or ''),
             index = data.index, total = data.cameras and #data.cameras or 1, noise = 0, help = T().help2 } })
     end
     function bodycam.stop(message, kind)

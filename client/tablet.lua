@@ -149,7 +149,7 @@ function OSSecurity.ClientTablet.new(options)
     -- Desde la vista: otra camara o revalidar la actual (mantiene viva la sesion).
     function controller.liveFeed(deviceId, callback)
         if not session then callback({ ok = false, error = 'Sesion cerrada.' }); return end
-        controller.request('live', { deviceId = deviceId }, callback)
+        controller.request('live', { deviceId = deviceId, browse = true }, callback)
     end
     -- Bodycam en directo (supervisores): igual que una camara, con el vigilante como objetivo.
     function controller.bodycam(target, callback)

@@ -187,9 +187,19 @@ select{font:inherit;font-size:11px;color:var(--ink);background:var(--surface);bo
 .live:before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,#0000 0 2px,#00000026 2px 3px);mix-blend-mode:multiply}
 .live:after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at center,#0000 55%,#000a 100%)}
 .live-static{position:absolute;inset:-50%;opacity:0;background-image:repeating-radial-gradient(circle at 17% 32%,#fff3 0 1px,#0000 1px 3px),repeating-radial-gradient(circle at 71% 64%,#fff2 0 1px,#0000 1px 4px);animation:livenoise .18s steps(3) infinite}
-.live-corner{position:absolute;width:48px;height:48px;border:3px solid #ffffffcc}.live-corner.tl{left:4vw;top:6vh;border-right:0;border-bottom:0}.live-corner.tr{right:4vw;top:6vh;border-left:0;border-bottom:0}.live-corner.bl{left:4vw;bottom:8vh;border-right:0;border-top:0}.live-corner.br{right:4vw;bottom:8vh;border-left:0;border-top:0}
-.live-top{position:absolute;left:50%;transform:translateX(-50%);width:min(760px,60vw);top:calc(6vh + 6px);display:flex;justify-content:space-between;align-items:flex-start;gap:24px;font-size:16px;z-index:1}.live-rec{color:#ff4d3d;font-weight:700;animation:vfblink 1.2s steps(1) infinite}
-.live-bottom{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(8vh + 4px);width:min(760px,60vw);display:flex;justify-content:center;font-size:12px;z-index:1}.live-name{font-size:18px;font-weight:700}.live-info{text-align:right}.live-help{opacity:.85;text-align:center;background:#0008;padding:6px 12px;border-radius:4px}.live-warn{color:#ffcc66}
+/* Plantilla de camaras G6 (Template_Camaras.psd, 1920x1080): medidas en vh/vw para que escale con la pantalla. */
+.live-logo{position:absolute;left:.45vw;top:.65vh;height:6.1vh;z-index:1;filter:drop-shadow(0 1px 2px #0006)}
+.live-rec{position:absolute;right:0;top:1.5vh;width:11vw;height:6.3vh;background:#4a4a4a;display:flex;align-items:center;justify-content:center;gap:.6vw;font-family:'Segoe UI',Arial,sans-serif;font-size:4.4vh;letter-spacing:.35vw;color:#fff;text-shadow:none;z-index:1}
+.live-rec-dot{width:3.6vh;height:3.6vh;border-radius:50%;background:#e2261b;animation:vfblink 1.2s steps(1) infinite}
+.live-warn{position:absolute;right:1vw;top:9vh;color:#ffcc66;font-size:15px;z-index:1}
+.live-label{position:absolute;left:1.6vw;bottom:2.6vh;z-index:1}
+.live-name{font-family:'OCR A Extended','Lucida Console',Consolas,monospace;font-size:4.6vh;letter-spacing:.25vw;line-height:1.1;color:#fff}
+.live-id{font-size:13px;opacity:.75;margin-top:4px}
+.live-time{position:absolute;right:1.6vw;bottom:2.8vh;font-size:18px;letter-spacing:1px;z-index:1}
+.live-help{position:absolute;left:50%;transform:translateX(-50%);bottom:11vh;font-size:12px;opacity:.85;text-align:center;background:#0008;padding:6px 12px;border-radius:4px;transition:opacity 1.2s;z-index:1}.live-help.faded{opacity:0}
+.live.no-video{background:#7b7b7b}.live.no-video:after{display:none}
+.live-novideo{position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:2vh}
+.live-novideo-img{width:26.2vw}.live-reason{font-size:16px;background:#0006;padding:6px 12px;border-radius:4px}
 @keyframes livenoise{0%{transform:translate(0,0)}33%{transform:translate(-3%,2%)}66%{transform:translate(2%,-3%)}100%{transform:translate(0,0)}}
 /* Ordenes de trabajo */
 .order-form{display:grid;grid-template-columns:1fr 1fr;gap:8px}.order-form textarea{grid-column:1/-1;font:inherit;font-size:11px;color:var(--ink);background:var(--surface);border:1px solid color-mix(in srgb,var(--muted) 30%,transparent);border-radius:7px;padding:8px 10px;resize:none}.order-form button{grid-column:1/-1;justify-self:end}

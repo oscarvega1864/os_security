@@ -233,7 +233,10 @@ async function main() {
     await evaluate(`Array.from(document.querySelectorAll('#content button')).find(b=>b.textContent===window.__brand.Text.live.watch).click()`);
     await until(`window.__calls.some(x=>x.body.action==='live' && x.body.args.deviceId==='osd_0000000001')`);
     await evaluate(`window.postMessage({type:'live',action:'show',text:window.__brand.Text.live,data:{displayId:'G6-D · osd_0000000001',site:'Propiedad 200',noise:0.45,index:2,total:3}},'*')`);
-    await until(`!document.getElementById('live').hidden && document.querySelector('.live-name').textContent.includes('2/3') && document.querySelector('.live-warn') && document.querySelector('.live-static').style.opacity!=='0'`);
+    await until(`!document.getElementById('live').hidden && document.querySelector('.live-name').textContent==='CAMARA 2 - PROPIEDAD 200' && document.querySelector('.live-id').textContent.includes('2/3') && document.querySelector('.live-logo') && document.querySelector('.live-rec') && document.querySelector('.live-warn') && document.querySelector('.live-static').style.opacity!=='0'`);
+    fs.writeFileSync(path.join(output, 'live-signal.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    await evaluate(`window.postMessage({type:'live',action:'show',text:window.__brand.Text.live,data:{displayId:'G6-D · osd_0000000002',site:'<b>Tienda</b>',noSignal:'Sin senal: optica averiada.',index:3,total:3}},'*')`);
+    await until(`document.getElementById('live').classList.contains('no-video') && document.querySelector('.live-novideo-img') && !document.querySelector('.live-rec') && document.querySelector('.live-reason').textContent.includes('optica') && document.querySelector('.live-name').textContent==='CAMARA 3 - <B>TIENDA</B>' && !document.querySelector('#live b')`);
     fs.writeFileSync(path.join(output, 'live.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
     await evaluate(`window.postMessage({type:'live',action:'hide'},'*')`); await until(`document.getElementById('live').hidden`);
     await evaluate(`window.__device.live=false`);
