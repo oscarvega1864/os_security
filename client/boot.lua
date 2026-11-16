@@ -74,6 +74,19 @@ RegisterNetEvent('os_security:g6:openTablet', function(kind)
 end)
 
 -- "Usar" el kit CCTV en el inventario externo: inicia la colocacion si el servidor la autoriza.
+-- Lector de tarjetas (os_inventory, opcional): devuelve true si se ha pasado la tarjeta o si no hay lector.
+-- releaseFocus: desde un panel propio con foco (la tienda), se suelta mientras se pasa y se recupera despues.
+function OSSecurity.CardSwipe(kind, card, title, detail, releaseFocus)
+    if not (OSSecurity.GameplayConfig.CardSwipe or {})[kind] or GetResourceState('os_inventory') ~= 'started' then return true end
+    if releaseFocus then SetNuiFocus(false, false) end
+    local ok, result = pcall(function() return exports.os_inventory:CardSwipe({ card = card, title = title, detail = detail }) end)
+    if releaseFocus then SetNuiFocus(true, true) end
+    return ok and result == true
+end
+RegisterNetEvent('os_security:alarm:tagSwipe', function()
+    if source ~= 65535 then return end
+    if OSSecurity.CardSwipe('AlarmTag', 'tag', 'Chapa de alarma', 'Acerca la chapa al lector del teclado') then TriggerServerEvent('os_security:alarm:tag') end
+end)
 RegisterNetEvent('os_security:g6:useItem', function(item)
     local definition = OSSecurity.ItemCatalog[item]
     if source ~= 65535 or not definition or definition.usable ~= 'placement' then return end
@@ -416,7 +429,13 @@ end)
 RegisterNUICallback('shopBuy', function(body, callback)
     callback({ ok = true })
     if not shopOpen or type(body) ~= 'table' or type(body.cart) ~= 'table' then return end
-    TriggerServerEvent('os_security:shop:buy', body.cart, body.account)
+    CreateThread(function()
+        if body.account == 'bank' and not OSSecurity.CardSwipe('Shop', 'bank', 'Pago con tarjeta', nil, true) then
+            if shopOpen then SendNUIMessage({ type = 'shopResult', ok = false, data = 'Pago cancelado.' }) end
+            return
+        end
+        TriggerServerEvent('os_security:shop:buy', body.cart, body.account)
+    end)
 end)
 RegisterNetEvent('os_security:shop:result', function(ok, data)
     if source ~= 65535 then return end

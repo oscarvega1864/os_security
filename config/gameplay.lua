@@ -92,6 +92,9 @@ OSSecurity.GameplayConfig = {
     -- Vehiculos de os_devtools (matricula OS + ID): cierre centralizado (tecla del mando) y alarma, que se
     -- instalan sentado al volante con el motor parado. La alarma necesita el cierre; salta si alguien intenta
     -- entrar con el vehiculo cerrado y avisa al dueno.
+    -- Lector de tarjetas de os_inventory: pasar la tarjeta (arrastrarla al lector) antes de abrir/cerrar/arrancar con la
+    -- llave-tarjeta, usar la chapa de alarma o pagar con tarjeta en la tienda G6. Sin os_inventory no se pide.
+    CardSwipe = { Cars = true, AlarmTag = true, Shop = true },
     Cars = {
         Kits = { os_car_lock_kit = 'lock', os_car_alarm_kit = 'alarm' }, Tools = { 'os_screwdriver' },
         InstallSeconds = 180, KeyDistance = 15.0, ManualDistance = 3.5, TamperDistance = 8.0, AlarmSeconds = 30, AlarmCooldown = 45,

@@ -154,6 +154,11 @@ local money = {
 --   set ossecurity_sites_resource none   lo desactiva.
 local sitesResource = GetConvar('ossecurity_sites_resource', identityResource)
 local sites = sitesResource ~= 'none' and OSSecurity.Sites.new({
+    -- Llaves como objetos: abrir puertas exige llevar la llave valida del bien.
+    access = function(player, category, id)
+        if GetResourceState(sitesResource) ~= 'started' then return false end
+        return exports[sitesResource]:HasAssetAccess(player, category, id)
+    end,
     asset = function(category, id)
         if GetResourceState(sitesResource) ~= 'started' then return nil end
         return exports[sitesResource]:GetAsset(category, id)
@@ -273,6 +278,12 @@ local carVehicles = {
     asset = function(id)
         if GetResourceState(sitesResource) ~= 'started' then return nil end
         return exports[sitesResource]:GetAsset('vehicles', id)
+    end,
+    -- Llave-tarjeta del vehiculo: hace falta llevarla para abrir, cerrar y arrancar.
+    access = function(player, id)
+        if GetResourceState(sitesResource) ~= 'started' then return false end
+        local ok, has = pcall(function() return exports[sitesResource]:HasAssetAccess(player, 'vehicles', id) end)
+        return ok and has == true
     end,
     -- ID del vehiculo de os_devtools con esa matricula (las nuevas son aleatorias). Indice renovado cada 10 s.
     byPlate = (function()
@@ -599,9 +610,25 @@ RegisterNetEvent('os_security:shop:roadPoint', function(point)
     local message, err = lockCall(function() return gameplay.shop.move(player, 'road', point) end)
     TriggerClientEvent('os_security:shop:moved', player, message ~= nil, message or err)
 end)
+RegisterNetEvent('os_security:alarm:tag', function()
+    local player = source
+    if not lockAllowed(player) then return end
+    local result, err = gameplay.alarms.tagNearest(player)
+    TriggerClientEvent('os_security:alarm:result', player, result, err, nil)
+end)
 RegisterNetEvent('os_security:shop:buy', function(cart, account)
     local player = source
     if not lockAllowed(player) then return end
+    -- Pago con tarjeta: hay que llevar la tarjeta bancaria (os_inventory).
+    if account == 'bank' and GetResourceState('os_inventory') == 'started' and GetResourceState(identityResource) == 'started' then
+        local ok, count = pcall(function()
+            local character = exports[identityResource]:GetActiveCharacter(player)
+            return character and exports.os_inventory:GetItemCount(character.characterId, 'bank_card') or 0
+        end)
+        if not ok or (tonumber(count) or 0) < 1 then
+            return TriggerClientEvent('os_security:shop:result', player, false, 'Para pagar con tarjeta necesitas tu tarjeta bancaria.')
+        end
+    end
     local result, err = lockCall(function() return gameplay.shop.buy(player, cart, account) end)
     TriggerClientEvent('os_security:shop:result', player, result ~= nil, result or err)
 end)
@@ -811,8 +838,13 @@ local function registerUsableTablets()
                         local result, err = lockCall(function() return gameplay.bodycams.toggle(player) end)
                         TriggerClientEvent('os_security:alarm:alert', player, result and result.message or err or OSSecurity.Brand.Text.failed, result and 'info' or 'warning')
                     elseif definition.usable == 'tag' then
-                        local result, err = gameplay.alarms.tagNearest(player)
-                        TriggerClientEvent('os_security:alarm:result', player, result, err, nil)
+                        -- Con lector de tarjetas: primero se pasa la chapa en el cliente y despues se arma/desarma.
+                        if (OSSecurity.GameplayConfig.CardSwipe or {}).AlarmTag and GetResourceState('os_inventory') == 'started' then
+                            TriggerClientEvent('os_security:alarm:tagSwipe', player)
+                        else
+                            local result, err = gameplay.alarms.tagNearest(player)
+                            TriggerClientEvent('os_security:alarm:result', player, result, err, nil)
+                        end
                     else TriggerClientEvent('os_security:g6:useItem', player, item) end
                 end)
             end)

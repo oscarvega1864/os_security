@@ -43,8 +43,10 @@ function OSSecurity.CarService.new(options)
         if type(record) ~= 'table' or trim(record.plate) ~= trim(plate) then return nil end
         return { id = id, plate = trim(plate), owner = type(record.owner) == 'string' and record.owner or nil }
     end
-    -- La llave es del personaje dueno (tambien para los administradores: no abren coches de otros personajes).
+    -- Hace falta la llave-tarjeta del vehiculo (os_devtools 0.1.8+, vehicles.access), tambien al dueno. Sin ese
+    -- proveedor, la llave es del personaje dueno (tambien para administradores: no abren coches de otros).
     local function owns(source, car)
+        if options.vehicles.access then return options.vehicles.access(source, car.id) == true end
         local alias = options.vehicles.alias(source)
         return car.owner ~= nil and alias ~= nil and alias == car.owner
     end

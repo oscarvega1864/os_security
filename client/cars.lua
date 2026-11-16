@@ -31,6 +31,8 @@ function OSSecurity.ClientCars.new(options)
     function cars.key()
         local vehicle = cars.target(15.0, 3.5)
         if not vehicle then options.notify('No hay ningun vehiculo tuyo a mano (acercate a la puerta).', 'info'); return end
+        -- Llave-tarjeta: pasarla por el lector (solo en vehiculos de os_devtools).
+        if type(Entity(vehicle).state.osdev) == 'table' and OSSecurity.CardSwipe and not OSSecurity.CardSwipe('Cars', 'vehicle', 'Llave-tarjeta', GetVehicleNumberPlateText(vehicle)) then return end
         local ped = PlayerPedId()
         if not IsPedInAnyVehicle(ped, false) then
             RequestAnimDict('anim@mp_player_intmenu@key_fob@')
@@ -80,6 +82,9 @@ function OSSecurity.ClientCars.new(options)
         local vehicle = GetVehiclePedIsIn(ped, false)
         if vehicle == 0 or GetPedInVehicleSeat(vehicle, -1) ~= ped then options.notify('Sientate al volante.', 'info'); return end
         if GetGameTimer() < hotwireUntil then hotwireUntil = 0; TriggerServerEvent('os_security:car:hotwire'); return end
+        -- Arrancar (no apagar) un vehiculo de os_devtools: pasar la llave-tarjeta.
+        if not GetIsVehicleEngineRunning(vehicle) and type(Entity(vehicle).state.osdev) == 'table' and OSSecurity.CardSwipe
+            and not OSSecurity.CardSwipe('Cars', 'vehicle', 'Arrancar', GetVehicleNumberPlateText(vehicle)) then return end
         TriggerServerEvent('os_security:car:engine')
     end
     function cars.engineResult(ok, message, canHotwire)

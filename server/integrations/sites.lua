@@ -21,7 +21,13 @@ function OSSecurity.Sites.new(options)
         local asset = sites.get(site)
         return asset and type(asset.owner) == 'string' and asset.owner or nil
     end
+    -- Abrir puertas: con llaves como objetos (os_devtools 0.1.8+, options.access) hace falta llevar la llave valida,
+    -- tambien al titular. Sin ese proveedor, vale ser el titular del personaje activo.
     function sites.owns(source, site)
+        if options.access then
+            if not OSSecurity.InventoryState.site(site) then return false end
+            return call(options.access, source, OSSecurity.Sites.Categories[site.kind], site.id) == true
+        end
         local owner = sites.owner(site)
         if not owner then return false end
         local character = call(options.active, source)
