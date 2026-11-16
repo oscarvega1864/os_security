@@ -403,8 +403,10 @@ local gameplay = OSSecurity.Gameplay.new({
         for _, value in ipairs(GetPlayers()) do list[#list + 1] = tonumber(value) end
         return list
     end,
+    -- Nombre visible: el alias del personaje como nombre (oscar_vega -> Oscar Vega) y el de FiveM.
     playerName = function(player)
         local name, alias = GetPlayerName(player), activeAlias(player)
+        if alias then alias = alias:gsub('_', ' '):gsub('(%a)([%w]*)', function(first, rest) return first:upper() .. rest end) end
         if alias and name then return alias .. ' · ' .. name end
         return alias or name
     end,

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.24.2 — Nombres legibles
+
+- La central, los contratos, las rondas y las bodycams muestran el personaje como nombre («Oscar Vega · jugador»)
+  en lugar del alias interno (`oscar_vega`). La identidad interna no cambia.
+
 ## 0.24.1 — Registro más claro
 
 - Los mensajes informativos («N puertas detectadas en…», «Datos de… asignados al personaje…») ya no salen con la
