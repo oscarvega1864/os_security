@@ -740,7 +740,11 @@ RegisterNetEvent('os_security:patrol:check', function()
     TriggerClientEvent('os_security:alarm:alert', player, result and result.message or err or OSSecurity.Brand.Text.failed, result and (result.done and 'success' or 'info') or 'warning')
 end)
 RegisterCommand('ronda', function(player, args)
-    if player == 0 or not lockAllowed(player) or args[1] ~= 'cancelar' then return end
+    if player == 0 or not lockAllowed(player) then return end
+    if args[1] ~= 'cancelar' then
+        -- Sin argumento no hacia nada: se explica como se usa.
+        return TriggerClientEvent('os_security:alarm:alert', player, 'Las rondas se empiezan en G6 Operations → Rondas. Usa /ronda cancelar para abandonar la tuya.', 'info')
+    end
     local result, err = lockCall(function() return gameplay.patrols.cancel(player) end)
     TriggerClientEvent('os_security:alarm:alert', player, result and result.message or err or OSSecurity.Brand.Text.failed, 'info')
 end, false)

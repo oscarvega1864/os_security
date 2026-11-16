@@ -118,6 +118,22 @@ RegisterCommand('g6inventory', function() controller.open('inventory') end, fals
 RegisterCommand('g6client', function() controller.open('client') end, false)
 RegisterCommand('g6operations', function() controller.open('operations') end, false)
 
+-- Sugerencias del chat (solo ayuda; el servidor sigue validando objeto, empleo y permisos de cada comando).
+for _, suggestion in ipairs({
+    { '/g6client', 'Abrir la tablet G6 Client (necesitas la tablet de cliente)' },
+    { '/g6operations', 'Abrir la tablet G6 Operations (personal de Gruppe Sechs con su tablet)' },
+    { '/g6inventory', 'Ver tu equipo de Gruppe Sechs' },
+    { '/bodycam', 'Encender o apagar tu bodycam (de servicio y con la bodycam encima)' },
+    { '/bodycamajuste', 'Ajustar dónde ves la bodycam en el pecho (solo en tu pantalla)',
+        { { name = 'x' }, { name = 'y' }, { name = 'z' }, { name = 'rx' }, { name = 'ry' }, { name = 'rz' } } },
+    { '/g6web', 'Vincular tu personaje con gruppe6.es', { { name = 'acción', help = 'vacío, estado o desvincular' } } },
+    { '/g6puerta', 'Registrar la puerta que apuntas en una propiedad o negocio (administración)',
+        { { name = 'tipo', help = 'propiedad, negocio o borrar' }, { name = 'id', help = 'ID del bien' } } },
+    { '/g6anchor', 'Marcar una zona de montaje apuntando a la pared o al techo (administración)',
+        { { name = 'id', help = 'Nombre de la zona' }, { name = 'idCliente', help = 'ID del jugador titular' }, { name = 'idInstalador', help = 'Opcional' } } },
+    { '/arcomodelo', 'Ver qué modelo usa el arco detector en este juego' },
+}) do TriggerEvent('chat:addSuggestion', suggestion[1], suggestion[2], suggestion[3] or {}) end
+
 RegisterNUICallback('minigame', function(body, callback) minigame.finish(body); callback({ ok = true }) end)
 -- Efectos por fase (herramienta, animacion y sonidos); solo visuales y solo durante el minijuego.
 RegisterNUICallback('minigameFx', function(body, callback)

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.25.1 — Ayuda de los comandos
+
+- El chat sugiere con su descripción y parámetros `/g6client`, `/g6operations`, `/g6inventory`, `/bodycam`,
+  `/bodycamajuste`, `/g6web`, `/g6puerta`, `/g6anchor` y `/arcomodelo` (antes solo `/arco`, `/cacheo`,
+  `/custodia` y `/ronda`).
+- `/ronda` sin argumentos ya no se queda en silencio: explica dónde se empiezan las rondas y cómo abandonarlas.
+
 ## 0.25.0 — Textos con tildes y eñes
 
 - Todos los textos visibles (tablets, vista de cámaras, avisos, minijuegos, tienda, objetos, armas, mensajes del
