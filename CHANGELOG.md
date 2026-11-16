@@ -9,6 +9,8 @@
   vista; muestra la pantalla **NO VIDEO** de la plantilla con el motivo y vuelve sola a la imagen si se repara
   (comprueba cada 5 s). La lista de cámaras incluye las instaladas sin señal (`live = false`).
 - Las bodycams usan el mismo HUD con su propio título.
+- **Cacheo de armas**: las armas que son objetos del inventario salen una sola vez (como objeto, en su zona del cuerpo)
+  y, junto con la munición (`weapon_*`, `ammo_*`), se pueden retener y pasan a custodia como el resto de objetos.
 - **Llaves como objetos** (os_devtools 0.1.8 + os_inventory 0.2.0): las puertas con cerradura de propiedades y negocios
   y el mando, el cierre y el arranque de los vehículos exigen llevar la llave válida del bien (`HasAssetAccess`),
   también al titular. Sin esos recursos se sigue usando el titular del personaje activo.

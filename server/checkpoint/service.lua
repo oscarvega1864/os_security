@@ -227,22 +227,27 @@ function OSSecurity.CheckpointService.new(options)
         options.send(target, 'friskAsk', { from = name(guard), company = company(guard) or OSSecurity.Brand.Name, seconds = config.RequestSeconds })
         return { message = T.asked:format(name(target)) }
     end
+    -- Retenibles: los de la lista y cualquier arma o municion del inventario (weapon_*, ammo_*).
+    local function retainable(item) return config.Retainable[item] == true or item:match('^weapon_') ~= nil or item:match('^ammo_') ~= nil end
     local function findingsOf(holder, weapons)
         local zones = {}
         for _, zone in ipairs(OSSecurity.Weapons.Zones) do zones[zone] = {} end
+        local items = holder and options.items.contents(holder) or {}
+        -- Las armas que son objetos del inventario (os_inventory 0.2.0+) salen una vez, como objeto retenible.
         for index, weapon in ipairs(weapons) do
             local info = OSSecurity.Weapons.List[weapon.name]
-            table.insert(zones[info.zone], { kind = 'weapon', name = weapon.name, label = info.label, count = 1, retainable = true, metal = info.metal })
+            if not items[weapon.name] then
+                table.insert(zones[info.zone], { kind = 'weapon', name = weapon.name, label = info.label, count = 1, retainable = true, metal = info.metal })
+            end
         end
-        local items = holder and options.items.contents(holder) or {}
         local names = {}
         for item in pairs(items) do names[#names + 1] = item end
         table.sort(names)
         for index, item in ipairs(names) do
             if index > config.MaxItems then break end
-            local zone = ITEM_ZONES[item] or POCKETS[(index - 1) % #POCKETS + 1]
+            local zone = ITEM_ZONES[item] or (OSSecurity.Weapons.List[item] and OSSecurity.Weapons.List[item].zone) or POCKETS[(index - 1) % #POCKETS + 1]
             table.insert(zones[zone], { kind = 'item', name = item, label = items[item].label, count = items[item].count,
-                retainable = config.Retainable[item] == true, metal = config.Metal[item] == true })
+                retainable = retainable(item), metal = config.Metal[item] == true or (OSSecurity.Weapons.List[item] and OSSecurity.Weapons.List[item].metal) or false })
         end
         return zones
     end
