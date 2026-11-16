@@ -15,6 +15,7 @@
 - **Lector de tarjetas** (`CardSwipe` de os_inventory, `GameplayConfig.CardSwipe`): hay que arrastrar la llave-tarjeta al
   lector para abrir/cerrar (L) o arrancar (Y), la chapa para armar o desarmar la alarma y la tarjeta bancaria para pagar
   con tarjeta en la tienda G6, que además comprueba en el servidor que se lleva la tarjeta.
+  Los vehículos clásicos (lista de os_devtools) usan llave física: no piden pasar la tarjeta.
 - Identificadores que ve el jugador como números enteros: dispositivos `G6-D · 12` (antes `osd_0000000012`), órdenes,
   avisos y contratos `#7`. Los datos guardados no cambian.
 - Matrículas aleatorias de os_devtools (p. ej. `8KDR472`): el cierre centralizado y la alarma encuentran el vehículo por

@@ -13,6 +13,11 @@ function OSSecurity.ClientCars.new(options)
         return GetVehicleNumberPlateText(vehicle):gsub('%s+', ''):match('^OS%d+$') ~= nil
     end
     cars.owned = owned
+    -- Llave-tarjeta: vehiculos de os_devtools que no son clasicos (state bag osdev.classic).
+    local function cardKey(vehicle)
+        local bag = Entity(vehicle).state.osdev
+        return type(bag) == 'table' and bag.classic ~= true
+    end
     -- Vehiculo para la llave: en el que vas; si no, el mas cercano con matricula OS a mano (3,5 m) o, con
     -- cierre centralizado (state bag), a distancia de mando.
     function cars.target(reach, manual)
@@ -31,8 +36,8 @@ function OSSecurity.ClientCars.new(options)
     function cars.key()
         local vehicle = cars.target(15.0, 3.5)
         if not vehicle then options.notify('No hay ningun vehiculo tuyo a mano (acercate a la puerta).', 'info'); return end
-        -- Llave-tarjeta: pasarla por el lector (solo en vehiculos de os_devtools).
-        if type(Entity(vehicle).state.osdev) == 'table' and OSSecurity.CardSwipe and not OSSecurity.CardSwipe('Cars', 'vehicle', 'Llave-tarjeta', GetVehicleNumberPlateText(vehicle)) then return end
+        -- Vehiculo moderno de os_devtools: pasar la llave-tarjeta por el lector. Los clasicos llevan llave fisica.
+        if cardKey(vehicle) and OSSecurity.CardSwipe and not OSSecurity.CardSwipe('Cars', 'vehicle', 'Llave-tarjeta', GetVehicleNumberPlateText(vehicle)) then return end
         local ped = PlayerPedId()
         if not IsPedInAnyVehicle(ped, false) then
             RequestAnimDict('anim@mp_player_intmenu@key_fob@')
@@ -83,7 +88,7 @@ function OSSecurity.ClientCars.new(options)
         if vehicle == 0 or GetPedInVehicleSeat(vehicle, -1) ~= ped then options.notify('Sientate al volante.', 'info'); return end
         if GetGameTimer() < hotwireUntil then hotwireUntil = 0; TriggerServerEvent('os_security:car:hotwire'); return end
         -- Arrancar (no apagar) un vehiculo de os_devtools: pasar la llave-tarjeta.
-        if not GetIsVehicleEngineRunning(vehicle) and type(Entity(vehicle).state.osdev) == 'table' and OSSecurity.CardSwipe
+        if not GetIsVehicleEngineRunning(vehicle) and cardKey(vehicle) and OSSecurity.CardSwipe
             and not OSSecurity.CardSwipe('Cars', 'vehicle', 'Arrancar', GetVehicleNumberPlateText(vehicle)) then return end
         TriggerServerEvent('os_security:car:engine')
     end
