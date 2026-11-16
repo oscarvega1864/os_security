@@ -232,7 +232,6 @@ RegisterNUICallback('pinpad', function(body, callback)
     if body.action == 'tag' then TriggerServerEvent('os_security:alarm:tag', alarms.open)
     elseif ({ arm = true, partial = true, disarm = true })[body.action] then TriggerServerEvent('os_security:alarm:keypad', alarms.open, body.action, type(body.pin) == 'string' and body.pin or '') end
 end)
-RegisterNUICallback('pinpadKey', function(_, callback) callback({ ok = true }) end)
 RegisterNUICallback('pinpadClose', function(_, callback) callback({ ok = true }); alarms.close() end)
 CreateThread(function()
     while true do
