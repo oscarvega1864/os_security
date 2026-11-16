@@ -40,7 +40,7 @@ function OSSecurity.Sites.new(options)
             local list = call(options.list, category)
             for _, asset in ipairs(type(list) == 'table' and list or {}) do
                 local p = type(asset) == 'table' and asset.position
-                if type(asset.owner) == 'string' and OSSecurity.Util.integer(asset.id, 1, 2147483646) and type(p) == 'table'
+                if p and type(asset.owner) == 'string' and OSSecurity.Util.integer(asset.id, 1, 2147483646) and type(p) == 'table'
                     and OSSecurity.Util.finite(p.x) and OSSecurity.Util.finite(p.y) and OSSecurity.Util.finite(p.z) then
                     result[#result + 1] = { kind = kind, id = asset.id, owner = asset.owner, position = { x = p.x, y = p.y, z = p.z } }
                 end

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.23.1 — Vista en directo de las cámaras
+
+- **Arreglado**: «Ver en directo» no hacía nada en la tablet cuando, entre los dispositivos que ve el perfil, había
+  alguno que no era una cámara (por ejemplo una central de alarma). Al montar la lista de cámaras para cambiar con
+  Q / E el servidor daba una excepción y la petición fallaba. Ahora solo se tienen en cuenta las cámaras.
+- El registro de fallos de solicitudes de la tablet indica la acción y el punto del código (sin payload ni texto de la
+  excepción), para poder localizar un fallo así sin depurar.
+- La lista de bienes con puertas ignora entradas sin datos válidos del proveedor en lugar de fallar.
+
 ## 0.23.0 — Vista de cámaras con la plantilla G6
 
 - La vista en directo de las cámaras usa la plantilla de cámaras de Gruppe 6: logo arriba a la izquierda, etiqueta

@@ -160,9 +160,11 @@ function OSSecurity.TabletService.new(options)
     -- Con browse (cambiar de camara o revalidar desde la propia vista), una camara instalada sin senal no es un
     -- error: se devuelve noSignal con el motivo y la vista muestra NO VIDEO en lugar de cerrarse.
     local function mounted(device, snapshot)
-        local installationId = device.type == 'cctv_camera' and device.metadata and device.metadata.installationId
+        -- Solo camaras: con otros dispositivos (centrales de alarma...) la cadena "and" daba false y se indexaba.
+        if device.type ~= 'cctv_camera' then return false end
+        local installationId = device.metadata and device.metadata.installationId
         local installation = installationId and snapshot and snapshot.installations[installationId]
-        return installation ~= nil and installation.status == 'committed' and installation.deviceId == device.id
+        return type(installation) == 'table' and installation.status == 'committed' and installation.deviceId == device.id
     end
     function service.live(actor, args)
         if not util.object(args, { deviceId = true, browse = true }) or (args.browse ~= nil and type(args.browse) ~= 'boolean') then return nil, 'Consulta no valida.' end

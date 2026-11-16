@@ -1525,6 +1525,10 @@ test('Live CCTV: only viewers of an installed, powered camera get its framing; w
     assert(not call(c, 2, client, 'live', { deviceId = id, browse = 'si' }).ok)
     local noCamera = alarmPanel(c, 2)
     assert(not call(c, 2, client, 'live', { deviceId = noCamera.id }).ok)
+    -- Con una central de alarma entre sus dispositivos la vista sigue funcionando (antes daba una excepcion).
+    live = c.game.handle(2, { id = 900001, action = 'live', token = client.token, sequence = client.sequence + 1, args = { deviceId = id, browse = true } })
+    client.sequence = client.sequence + 1
+    assert(live.ok and #live.data.cameras == 1 and live.data.cameras[1].id == id, live.error)
 end)
 
 -- Ordenes de trabajo ---------------------------------------------------------------------------------

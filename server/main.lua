@@ -454,7 +454,10 @@ RegisterNetEvent('os_security:g6:request', function(request)
     if not OSSecurity.Util.integer(requestId, 1, 2147483647) then return end
     local ok, response = pcall(gameplay.handle, player, request)
     if not ok then
-        storageLog('Fallo de solicitud G6; no se registra el payload ni la excepcion.')
+        -- Sin payload ni texto de la excepcion: solo la accion y el punto del codigo, para poder localizar el fallo.
+        local action = type(request.action) == 'string' and request.action:match('^[%a_]+$') and request.action:sub(1, 32) or '?'
+        local where = type(response) == 'string' and response:match('([%w_/%.]+%.lua:%d+)') or '?'
+        storageLog(('Fallo de solicitud G6 (accion %s, %s); no se registra el payload ni la excepcion.'):format(action, where))
         response = { ok = false, error = OSSecurity.Brand.Text.failed, close = true }
     end
     TriggerClientEvent('os_security:g6:response', player, requestId, response)
