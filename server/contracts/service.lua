@@ -36,6 +36,9 @@ function OSSecurity.ContractService.new(options)
     local function notify(source, text, kind) if source and options.notify then options.notify(source, text, kind or 'info') end end
     local function siteKey(site) return type(site) == 'table' and ('%s:%s'):format(site.kind, tostring(site.id)) or nil end
     local function planLabel(plan) return T.plans[plan] and T.plans[plan].name or plan end
+    -- Plan de un contrato guardado; si se quito de la configuracion, sin ventajas (no rompe listas ni cobros).
+    local NO_PLAN = { fee = 0, priority = false, discount = 0 }
+    local function planOf(id) return config.Plans[id] or NO_PLAN end
     -- Propiedades y negocios del personaje activo.
     local function ownedSites(source)
         local alias = options.alias and options.alias(source)
@@ -50,7 +53,7 @@ function OSSecurity.ContractService.new(options)
         return result
     end
     local function public(contract)
-        local plan = config.Plans[contract.plan]
+        local plan = planOf(contract.plan)
         return { id = contract.id, plan = contract.plan, planName = planLabel(contract.plan), fee = contract.fee, status = contract.status,
             place = contract.place, clientName = contract.clientName, nextCharge = contract.nextCharge, paidTotal = contract.paidTotal,
             failures = contract.failures, createdAt = contract.createdAt, priority = plan.priority == true, discount = plan.discount,
@@ -70,8 +73,10 @@ function OSSecurity.ContractService.new(options)
         local list = {}
         for _, id in ipairs(config.PlanOrder) do
             local plan, text = config.Plans[id], T.plans[id] or {}
-            list[#list + 1] = { value = id, name = text.name or id, description = text.description, fee = plan.fee,
-                priority = plan.priority == true, discount = plan.discount }
+            if plan then -- un plan en PlanOrder sin definir no se ofrece
+                list[#list + 1] = { value = id, name = text.name or id, description = text.description, fee = plan.fee,
+                    priority = plan.priority == true, discount = plan.discount }
+            end
         end
         return list
     end
@@ -91,7 +96,7 @@ function OSSecurity.ContractService.new(options)
         local key, best = siteKey(site), nil
         for _, contract in pairs(all()) do
             if contract.client == principal and contract.status == 'active' and (not key or siteKey(contract.site) == key) then
-                local plan = config.Plans[contract.plan]
+                local plan = planOf(contract.plan)
                 if not best or plan.discount > best.discount or (plan.priority and not best.priority) then
                     best = { id = contract.id, plan = contract.plan, priority = plan.priority == true, discount = plan.discount }
                 end

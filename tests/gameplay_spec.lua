@@ -1931,6 +1931,10 @@ test('Contracts: a client hires a plan for an owned property, is charged each pe
     assert(hired.data.id == 'ct_000001' and c.wallet[2].bank == 10000 - plans.Plans.alarm.fee)
     assert(not call(c, 2, client, 'contract_create', { place = 'site:property:7', plan = 'basic' }).ok) -- ya tiene contrato
     assert(#call(c, 2, client, 'contracts').data.places == 0)
+    -- Un plan quitado de la configuracion no rompe la lista: el contrato sigue, sin ventajas.
+    local savedPlan = plans.Plans.alarm; plans.Plans.alarm = nil
+    local orphan = call(c, 2, client, 'contracts'); plans.Plans.alarm = savedPlan
+    assert(orphan.ok and orphan.data.items[1].discount == 0 and orphan.data.items[1].priority == false, orphan.error)
     -- Prioridad: el panico desde su propiedad sale por delante de otro anterior sin contrato.
     grant(c, 5, 'g6_client_tablet'); c.aces[5][config.Ace.client] = true; c.players[5].point = { x = 1, y = 1, z = 1 }
     assert(call(c, 5, open(c, 5, 'client'), 'panic', { place = 'here', note = 'Primero' }).ok)

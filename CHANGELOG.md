@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.23.3 — Contratos y rondas más robustos
+
+- Contratos: si se quita o renombra un plan en `config/gameplay.lua`, los contratos que ya lo tenían siguen
+  apareciendo (sin ventajas) en lugar de romper la lista de contratos, la central y las rondas; un plan de
+  `PlanOrder` sin definir simplemente no se ofrece.
+- Rondas: lejos del siguiente punto de control el cliente ya no ejecuta un bucle en cada frame (comprueba cada
+  medio segundo y solo dibuja el marcador a menos de 60 m).
+
 ## 0.23.2 — Chapa de alarma
 
 - **Arreglado**: la chapa de alarma actuaba dos veces. El pase de chapa del teclado y el del objeto (sin teclado

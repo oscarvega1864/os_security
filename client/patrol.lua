@@ -18,14 +18,12 @@ end)
 CreateThread(function()
     local pressed = 0
     while true do
-        if not run then Wait(500) else
+        local p = run and run.point
+        local d = p and #(GetEntityCoords(PlayerPedId()) - vector3(p.x, p.y, p.z))
+        -- Lejos del punto no hay nada que dibujar: se comprueba cada medio segundo en vez de cada frame.
+        if not d or d >= DRAW then Wait(500) else
             Wait(0)
-            local p = run.point
-            local here = GetEntityCoords(PlayerPedId())
-            local d = #(here - vector3(p.x, p.y, p.z))
-            if d < DRAW then
-                DrawMarker(1, p.x, p.y, p.z - 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.2, 0.6, 120, 200, 110, 140, false, false, 2, false, nil, nil, false)
-            end
+            DrawMarker(1, p.x, p.y, p.z - 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.2, 1.2, 0.6, 120, 200, 110, 140, false, false, 2, false, nil, nil, false)
             if d < NEAR then
                 BeginTextCommandDisplayHelp('STRING'); AddTextComponentSubstringPlayerName(T().help3D); EndTextCommandDisplayHelp(0, false, false, -1)
                 if IsControlJustPressed(0, CHECK_KEY) and GetGameTimer() - pressed > 1000 then
