@@ -14,7 +14,7 @@
 - **Llaves como objetos** (os_devtools 0.1.8 + os_inventory 0.2.0): las puertas con cerradura de propiedades y negocios
   y el mando, el cierre y el arranque de los vehículos exigen llevar la llave válida del bien (`HasAssetAccess`),
   también al titular. Sin esos recursos se sigue usando el titular del personaje activo.
-- **Lector de tarjetas** (`CardSwipe` de os_inventory, `GameplayConfig.CardSwipe`): hay que arrastrar la llave-tarjeta al
+- **Lector de tarjetas** (`CardSwipe` de os_inventory, `CardSwipe` en `config/shared_gameplay.lua`): hay que arrastrar la llave-tarjeta al
   lector para abrir/cerrar (L) o arrancar (Y), la chapa para armar o desarmar la alarma y la tarjeta bancaria para pagar
   con tarjeta en la tienda G6, que además comprueba en el servidor que se lleva la tarjeta.
   Los vehículos clásicos (lista de os_devtools) usan llave física: no piden pasar la tarjeta.
@@ -26,7 +26,11 @@
 - Arco detector y cacheo: cuentan también las armas que el jugador lleva como objetos del inventario (os_inventory
   0.2.0+, export `GetCarriedWeapons`), además de las guardadas del sistema anterior y las que informa el cliente.
 - Bodycam puesta: mientras está encendida se ve una camarita en el pecho del vigilante (objeto del juego, configurable
-  en `Bodycams.Wear`; `/bodycamajuste` para ajustar la posición en el juego). Se quita al apagarla o al morir.
+  en `BodycamWear` de `config/shared_gameplay.lua`; `/bodycamajuste` para ajustar la posición en el juego). Se quita al
+  apagarla o al morir.
+- Nuevo `config/shared_gameplay.lua` (cliente y servidor) con los ajustes de juego que necesita el cliente; corrige el
+  `SCRIPT ERROR` de `client/boot.lua:80` al pasar la tarjeta y la camarita de la bodycam, que leían una configuración
+  que solo existe en el servidor.
 
 ## 0.22.3
 
