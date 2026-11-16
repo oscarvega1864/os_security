@@ -274,6 +274,25 @@ local carVehicles = {
         if GetResourceState(sitesResource) ~= 'started' then return nil end
         return exports[sitesResource]:GetAsset('vehicles', id)
     end,
+    -- ID del vehiculo de os_devtools con esa matricula (las nuevas son aleatorias). Indice renovado cada 10 s.
+    byPlate = (function()
+        local index, builtAt = {}, -1
+        return function(plate)
+            local now = GetGameTimer()
+            if builtAt < 0 or now - builtAt > 10000 then
+                builtAt, index = now, {}
+                if GetResourceState(sitesResource) == 'started' then
+                    local ok, list = pcall(function() return exports[sitesResource]:ListAssets('vehicles') end)
+                    if ok and type(list) == 'table' then
+                        for key, record in pairs(list) do
+                            if type(record) == 'table' and type(record.plate) == 'string' then index[(record.plate:gsub('%s+', ''))] = record.id or tonumber(key) end
+                        end
+                    end
+                end
+            end
+            return index[plate]
+        end
+    end)(),
     alias = activeAlias,
     -- Posicion de un vehiculo por matricula (Localizadores de la tablet Client), redondeada.
     locate = function(plate)

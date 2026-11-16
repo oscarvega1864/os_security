@@ -1,5 +1,7 @@
 (() => {
   'use strict';
+  // Identificadores que ve el jugador: solo el numero entero (ord_0000000007 -> 7).
+  const shortId = id => { const m = String(id ?? '').match(/(\d+)$/); return m ? String(Number(m[1])) : String(id ?? ''); };
   const state = { session: null, module: 'overview', offset: 0, total: 0, limit: 12, selected: null, epoch: 0, busy: false, view: 'home', modules: [] };
   const byId = id => document.getElementById(id);
   const app = byId('app');
@@ -275,7 +277,7 @@
     const card = el('article', null, `card order-card status-${/^[a-z]+$/.test(order.status) ? order.status : 'open'}`);
     const head = el('div', null, 'card-head');
     head.append(el('strong', T.kinds?.[order.kind] || order.kind), el('span', T.status?.[order.status] || order.status, `badge order-${order.status}`));
-    card.append(head, el('div', `${order.id} · ${date(order.createdAt)}`, 'subtle'), el('p', order.note, 'order-note'));
+    card.append(head, el('div', `#${shortId(order.id)} · ${date(order.createdAt)}`, 'subtle'), el('p', order.note, 'order-note'));
     const facts = [order.place, order.distance != null ? format(T.distance, order.distance) : null, order.techName ? `${T.tech}: ${order.techName}` : null,
       order.clientName && state.session.kind === 'operations' ? order.clientName : null].filter(Boolean).join(' · ');
     if (facts) card.append(el('div', facts, 'subtle'));
@@ -412,7 +414,7 @@
   function contractCard(contract, C) {
     const card = el('article', null, `card contract-card status-${contract.status}`); const head = el('div', null, 'card-head');
     head.append(el('span', contract.planName, 'overline'), el('span', C.status[contract.status] || contract.status, `badge state-${contract.status}`));
-    card.append(head, el('h3', contract.place || contract.id));
+    card.append(head, el('h3', contract.place || `#${shortId(contract.id)}`));
     if (contract.clientName && state.session.kind === 'operations') card.append(el('div', `${C.client}: ${contract.clientName}`, 'subtle'));
     const perks = [contract.priority ? C.priority : null, contract.discount >= 1 ? C.free : contract.discount > 0 ? `${C.discount}: ${Math.round(contract.discount * 100)} %` : null].filter(Boolean);
     if (perks.length) card.append(el('div', perks.join(' · '), 'site'));
@@ -509,7 +511,7 @@
     const head = el('div', null, 'card-head');
     head.append(el('strong', D.kinds?.[call.kind] || call.kind), el('span', D.status?.[call.status] || call.status, `badge call-status-${status}`));
     if (call.contract === true) head.append(el('span', group('contracts').contractBadge || 'Contrato', 'badge contract-badge'));
-    card.append(head, el('div', `${call.id} · ${date(call.createdAt)}${call.count > 1 ? ' · ' + format(D.times, call.count) : ''}`, 'subtle'));
+    card.append(head, el('div', `#${shortId(call.id)} · ${date(call.createdAt)}${call.count > 1 ? ' · ' + format(D.times, call.count) : ''}`, 'subtle'));
     if (call.note) card.append(el('p', call.note, 'order-note'));
     const facts = [call.place, call.distance != null ? format(D.distance, call.distance) : null, call.techName ? `${D.tech}: ${call.techName}` : null,
       call.clientName && state.session.kind === 'operations' ? `${D.client}: ${call.clientName}` : null].filter(Boolean).join(' · ');

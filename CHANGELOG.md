@@ -9,6 +9,11 @@
   vista; muestra la pantalla **NO VIDEO** de la plantilla con el motivo y vuelve sola a la imagen si se repara
   (comprueba cada 5 s). La lista de cámaras incluye las instaladas sin señal (`live = false`).
 - Las bodycams usan el mismo HUD con su propio título.
+- Identificadores que ve el jugador como números enteros: dispositivos `G6-D · 12` (antes `osd_0000000012`), órdenes,
+  avisos y contratos `#7`. Los datos guardados no cambian.
+- Matrículas aleatorias de os_devtools (p. ej. `4821BCD`): el cierre centralizado y la alarma encuentran el vehículo por
+  su matrícula en el registro (`vehicles.byPlate`) y el cliente lo reconoce por su state bag `osdev`. Las matrículas
+  antiguas `OS000012` siguen funcionando.
 - Arco detector y cacheo: cuentan también las armas que el jugador lleva como objetos del inventario (os_inventory
   0.2.0+, export `GetCarriedWeapons`), además de las guardadas del sistema anterior y las que informa el cliente.
 - Bodycam puesta: mientras está encendida se ve una camarita en el pecho del vigilante (objeto del juego, configurable

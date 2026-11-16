@@ -55,7 +55,7 @@ function OSSecurity.TabletService.new(options)
             local page = options.registry.serviceHistory(0, device.id, history.total - 1, 1)
             if page and page.items[1] then latest = { kind = page.items[1].kind, at = page.items[1].at } end
         end
-        return { id = device.id, displayId = OSSecurity.Brand.DevicePrefix .. ' · ' .. device.id, type = device.type,
+        return { id = device.id, displayId = OSSecurity.Brand.deviceLabel(device.id), type = device.type,
             model = device.model, state = device.state, schemaVersion = device.schemaVersion, updatedAt = device.updatedAt,
             health = diagnosis.health, components = components, lastIntervention = latest, actions = actions,
             physical = installation ~= nil and installation.status == 'committed' and installation.deviceId == device.id,
@@ -121,7 +121,7 @@ function OSSecurity.TabletService.new(options)
         local installation = installationId and snapshot and snapshot.installations[installationId]
         local physical = installation ~= nil and installation.status == 'committed' and installation.deviceId == device.id
         local alarm = device.type == 'alarm_panel' and options.alarms and options.alarms.summary(device) or nil
-        return { id = device.id, displayId = OSSecurity.Brand.DevicePrefix .. ' · ' .. device.id, type = device.type, model = device.model,
+        return { id = device.id, displayId = OSSecurity.Brand.deviceLabel(device.id), type = device.type, model = device.model,
             state = device.state, health = OSSecurity.ComponentLifecycle.diagnose(device).health,
             site = site and (options.sites and options.sites.label(site) or OSSecurity.Sites.Labels[site.kind] .. ' ' .. site.id) or nil,
             position = physical and util.copy(installation.position) or nil,
@@ -180,7 +180,7 @@ function OSSecurity.TabletService.new(options)
             if camera.id == device.id then index = #cameras end
         end
         local site = options.inventory.site(device.id)
-        local result = { id = device.id, displayId = OSSecurity.Brand.DevicePrefix .. ' · ' .. device.id, model = device.model,
+        local result = { id = device.id, displayId = OSSecurity.Brand.deviceLabel(device.id), model = device.model,
             site = site and options.sites and options.sites.label(site) or nil, cameras = cameras, index = index }
         if not feed then result.noSignal = reason; return result end
         options.audit('live_view', actor.source, device.id)
@@ -209,7 +209,7 @@ function OSSecurity.TabletService.new(options)
             local siteLabel = site and (options.sites and options.sites.label(site) or OSSecurity.Sites.Labels[site.kind] .. ' ' .. site.id) or nil
             for _, event in ipairs(options.alarms.summary(device).events or {}) do
                 items[#items + 1] = { at = event.at, kind = event.kind, by = event.by, deviceId = device.id,
-                    device = OSSecurity.Brand.DevicePrefix .. ' · ' .. device.id, site = siteLabel }
+                    device = OSSecurity.Brand.deviceLabel(device.id), site = siteLabel }
             end
         end
         table.sort(items, function(a, b) if a.at ~= b.at then return a.at > b.at end; return a.deviceId < b.deviceId end)

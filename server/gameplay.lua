@@ -121,7 +121,7 @@ function OSSecurity.Gameplay.new(options)
                 end
             end
             if central then
-                dispatchRef.raise(device, reason, ownerOf(device), siteLabel(device.id) or (OSSecurity.Brand.DevicePrefix .. ' · ' .. device.id))
+                dispatchRef.raise(device, reason, ownerOf(device), siteLabel(device.id) or (OSSecurity.Brand.deviceLabel(device.id)))
             end
         end
     })

@@ -6,8 +6,12 @@ OSSecurity.ClientCars = {}
 function OSSecurity.ClientCars.new(options)
     local cars = {}
     local function state(vehicle) local value = Entity(vehicle).state.g6car; return type(value) == 'table' and value or nil end
-    -- Matricula de os_devtools (OS + cifras): esos vehiculos tienen llave.
-    local function owned(vehicle) return vehicle ~= 0 and GetVehicleNumberPlateText(vehicle):gsub('%s+', ''):match('^OS%d+$') ~= nil end
+    -- Vehiculos de os_devtools: llevan su state bag 'osdev' (matricula aleatoria) o la matricula antigua OS + cifras.
+    local function owned(vehicle)
+        if vehicle == 0 then return false end
+        if type(Entity(vehicle).state.osdev) == 'table' then return true end
+        return GetVehicleNumberPlateText(vehicle):gsub('%s+', ''):match('^OS%d+$') ~= nil
+    end
     cars.owned = owned
     -- Vehiculo para la llave: en el que vas; si no, el mas cercano con matricula OS a mano (3,5 m) o, con
     -- cierre centralizado (state bag), a distancia de mando.

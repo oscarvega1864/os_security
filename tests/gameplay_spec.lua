@@ -1149,7 +1149,7 @@ local function logged(v, kind) local n = 0; for _, entry in ipairs(v.log) do if 
 
 test('Plates map to os_devtools vehicle IDs only in the OS + digits format', function()
     assert(OSSecurity.CarService.plateId('OS000012') == 12 and OSSecurity.CarService.plateId(' OS000012 ') == 12)
-    assert(not OSSecurity.CarService.plateId('ABC123') and not OSSecurity.CarService.plateId('OS') and not OSSecurity.CarService.plateId(nil))
+    assert(not OSSecurity.CarService.plateId('ABC123') and not OSSecurity.CarService.plateId('OS') and not OSSecurity.CarService.plateId(nil)) -- las aleatorias se buscan con vehicles.byPlate
 end)
 
 test('Installing in a vehicle needs the driver seat, engine off, ownership or a technician, the kit and a screwdriver; lock before alarm', function()

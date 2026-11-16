@@ -53,7 +53,7 @@ function OSSecurity.AlarmService.new(options)
     end
     local function label(device)
         local site = options.site and options.site(device.id)
-        return site or (OSSecurity.Brand.DevicePrefix .. ' · ' .. device.id)
+        return site or (OSSecurity.Brand.deviceLabel(device.id))
     end
 
     local function setMode(device, mode, by)

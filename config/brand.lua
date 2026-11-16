@@ -356,3 +356,10 @@ OSSecurity.Brand = {
         }
     }
 }
+
+-- Identificadores que ve el jugador: solo el numero entero ('osd_0000000012' -> 12). El dato guardado no cambia.
+function OSSecurity.Brand.number(id)
+    local digits = type(id) == 'string' and id:match('(%d+)$')
+    return digits and tonumber(digits) or id
+end
+function OSSecurity.Brand.deviceLabel(id) return OSSecurity.Brand.DevicePrefix .. ' · ' .. tostring(OSSecurity.Brand.number(id)) end

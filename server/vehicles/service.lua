@@ -8,7 +8,8 @@ OSSecurity.CarService = {}
 
 local function distance(a, b) return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2) end
 
--- Matricula de os_devtools: OS + ID con seis cifras (OS000012). Devuelve el ID o nil.
+-- Matricula antigua de os_devtools: OS + ID con seis cifras (OS000012). Devuelve el ID o nil. Las nuevas son
+-- aleatorias (p. ej. 4821BCD) y se buscan en el registro con options.vehicles.byPlate.
 function OSSecurity.CarService.plateId(plate)
     if type(plate) ~= 'string' then return nil end
     local digits = plate:gsub('%s+', ''):match('^OS(%d+)$')
@@ -26,9 +27,17 @@ function OSSecurity.CarService.new(options)
 
     local function records() return options.inventory.cars() or {} end
     local function trim(plate) return type(plate) == 'string' and (plate:gsub('%s+', '')) or nil end
+    local function idOf(plate)
+        local id = OSSecurity.CarService.plateId(plate)
+        if id then return id end
+        local clean = trim(plate)
+        if not clean or clean == '' or not options.vehicles.byPlate then return nil end
+        id = options.vehicles.byPlate(clean)
+        return math.tointeger(tonumber(id)) or nil
+    end
     -- Vehiculo de os_devtools por matricula, comprobado contra su registro.
     local function asset(plate)
-        local id = OSSecurity.CarService.plateId(plate)
+        local id = idOf(plate)
         if not id then return nil end
         local record = options.vehicles.asset(id)
         if type(record) ~= 'table' or trim(record.plate) ~= trim(plate) then return nil end
@@ -223,7 +232,7 @@ function OSSecurity.CarService.new(options)
     end
     -- Estado que deben tener las entidades de ese vehiculo (sincronizacion periodica).
     function cars.desired(plate)
-        local id = OSSecurity.CarService.plateId(plate)
+        local id = idOf(plate)
         local record = id and options.inventory.car(tostring(id))
         if not record or (not record.lock and not record.locked) then return nil end
         return { locked = record.locked, alarm = record.alarm }

@@ -81,7 +81,7 @@ function OSSecurity.TabletHome.new(options)
                 if order.status == 'open' then counts.ordersOpen = counts.ordersOpen + 1 end
                 if order.mine then counts.ordersMine = counts.ordersMine + 1 end
                 local at = point(order.position)
-                if at then add({ kind = 'order', id = order.id, x = at.x, y = at.y, label = order.id, subtitle = order.place, state = order.status }) end
+                if at then add({ kind = 'order', id = order.id, x = at.x, y = at.y, label = '#' .. tostring(OSSecurity.Brand.number(order.id)), subtitle = order.place, state = order.status }) end
             end
         end
         for _, call in ipairs(calls(actor)) do
@@ -89,10 +89,10 @@ function OSSecurity.TabletHome.new(options)
                 counts.calls = counts.calls + 1
                 if call.mine then counts.callsMine = counts.callsMine + 1 end
                 if #attention < LIMITS.attention then
-                    attention[#attention + 1] = { kind = 'call', id = call.id, title = call.id, subtitle = call.place, reason = call.kind, state = call.status }
+                    attention[#attention + 1] = { kind = 'call', id = call.id, title = '#' .. tostring(OSSecurity.Brand.number(call.id)), subtitle = call.place, reason = call.kind, state = call.status }
                 end
                 local at = point(call.position)
-                if at then add({ kind = 'call', id = call.id, x = at.x, y = at.y, label = call.id, subtitle = call.place, state = call.kind }) end
+                if at then add({ kind = 'call', id = call.id, x = at.x, y = at.y, label = '#' .. tostring(OSSecurity.Brand.number(call.id)), subtitle = call.place, state = call.kind }) end
             end
         end
         for _, car in ipairs(options.service.cars(actor)) do
@@ -135,13 +135,13 @@ function OSSecurity.TabletHome.new(options)
         local orderKinds = Text.orders and Text.orders.kinds or {}
         for _, order in ipairs(orders(actor)) do
             if matches(query, order.id, order.place, order.clientName, order.techName, order.note, orderKinds[order.kind]) then
-                push({ kind = 'order', id = order.id, title = order.id, subtitle = order.place, state = order.status, position = point(order.position) })
+                push({ kind = 'order', id = order.id, title = '#' .. tostring(OSSecurity.Brand.number(order.id)), subtitle = order.place, state = order.status, position = point(order.position) })
             end
         end
         local callKinds = Text.dispatch and Text.dispatch.kinds or {}
         for _, call in ipairs(calls(actor)) do
             if matches(query, call.id, call.place, call.clientName, call.techName, call.note, callKinds[call.kind]) then
-                push({ kind = 'call', id = call.id, title = call.id, subtitle = call.place, state = call.status, position = point(call.position) })
+                push({ kind = 'call', id = call.id, title = '#' .. tostring(OSSecurity.Brand.number(call.id)), subtitle = call.place, state = call.status, position = point(call.position) })
             end
         end
         for _, car in ipairs(options.service.cars(actor)) do
