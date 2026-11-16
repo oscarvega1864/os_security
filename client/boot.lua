@@ -77,7 +77,7 @@ end)
 -- Lector de tarjetas (os_inventory, opcional): devuelve true si se ha pasado la tarjeta o si no hay lector.
 -- releaseFocus: desde un panel propio con foco (la tienda), se suelta mientras se pasa y se recupera despues.
 function OSSecurity.CardSwipe(kind, card, title, detail, releaseFocus)
-    if not (OSSecurity.GameplayConfig.CardSwipe or {})[kind] or GetResourceState('os_inventory') ~= 'started' then return true end
+    if not (OSSecurity.SharedGameplay.CardSwipe or {})[kind] or GetResourceState('os_inventory') ~= 'started' then return true end
     if releaseFocus then SetNuiFocus(false, false) end
     local ok, result = pcall(function() return exports.os_inventory:CardSwipe({ card = card, title = title, detail = detail }) end)
     if releaseFocus then SetNuiFocus(true, true) end

@@ -8,7 +8,7 @@ local function remove()
 end
 local function wear()
     remove()
-    local config = OSSecurity.GameplayConfig.Bodycams.Wear
+    local config = OSSecurity.SharedGameplay.BodycamWear
     if not config or not config.Model then return end
     local model = GetHashKey(config.Model)
     if not IsModelInCdimage(model) then return end
@@ -51,7 +51,7 @@ RegisterCommand('bodycamajuste', function(_, args)
         TriggerEvent('chat:addMessage', { args = { 'Bodycam', 'Uso: /bodycamajuste x y z rx ry rz (con la bodycam encendida)' } })
         return
     end
-    local config = OSSecurity.GameplayConfig.Bodycams.Wear
+    local config = OSSecurity.SharedGameplay.BodycamWear
     config.Offset = { values[1], values[2], values[3] }
     config.Rotation = { values[4], values[5], values[6] }
     if on then wear() end

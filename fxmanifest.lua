@@ -10,6 +10,7 @@ shared_scripts {
     'shared/constants.lua',
     'shared/geometry.lua',
     'config/config.lua',
+    'config/shared_gameplay.lua',
     'shared/items.lua',
     'shared/weapons.lua',
     'config/shop.lua'

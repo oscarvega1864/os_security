@@ -38,10 +38,7 @@ OSSecurity.GameplayConfig = {
         MaxRoundSeconds = 3600 },
     -- Bodycams: el vigilante de servicio con el objeto la enciende; supervisores y administradores la ven en directo.
     -- CullingRadius: radio de visibilidad de entidades de quien mira mientras mira (para que exista el vigilante).
-    -- Wear: camarita sujeta al pecho mientras la bodycam esta encendida (objeto del juego, hueso SKEL_Spine3).
-    -- Para ajustar la posicion en el juego: /bodycamajuste x y z rx ry rz (solo en tu pantalla) y copiar aqui.
-    Bodycams = { CullingRadius = 6000.0, TickSeconds = 5,
-        Wear = { Model = 'prop_npc_phone_02', Bone = 24818, Offset = { 0.16, 0.12, 0.13 }, Rotation = { 0.0, 90.0, 180.0 } } },
+    Bodycams = { CullingRadius = 6000.0, TickSeconds = 5, Wear = OSSecurity.SharedGameplay.BodycamWear },
     -- Contratos de seguridad por propiedad o negocio del cliente. La cuota se cobra al contratar y despues cada
     -- PeriodSeconds (tiempo real) del banco del cliente cuando esta conectado. Si no se puede cobrar, el contrato
     -- queda suspendido (sin ventajas) y se reintenta cada RetrySeconds; a los MaxFailures fallos se cancela.
@@ -92,9 +89,8 @@ OSSecurity.GameplayConfig = {
     -- Vehiculos de os_devtools (matricula OS + ID): cierre centralizado (tecla del mando) y alarma, que se
     -- instalan sentado al volante con el motor parado. La alarma necesita el cierre; salta si alguien intenta
     -- entrar con el vehiculo cerrado y avisa al dueno.
-    -- Lector de tarjetas de os_inventory: pasar la tarjeta (arrastrarla al lector) antes de abrir/cerrar/arrancar con la
-    -- llave-tarjeta, usar la chapa de alarma o pagar con tarjeta en la tienda G6. Sin os_inventory no se pide.
-    CardSwipe = { Cars = true, AlarmTag = true, Shop = true },
+    -- Lector de tarjetas y camarita de la bodycam: se configuran en config/shared_gameplay.lua (los usa el cliente).
+    CardSwipe = OSSecurity.SharedGameplay.CardSwipe,
     Cars = {
         Kits = { os_car_lock_kit = 'lock', os_car_alarm_kit = 'alarm' }, Tools = { 'os_screwdriver' },
         InstallSeconds = 180, KeyDistance = 15.0, ManualDistance = 3.5, TamperDistance = 8.0, AlarmSeconds = 30, AlarmCooldown = 45,
