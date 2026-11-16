@@ -43,8 +43,8 @@ function OSSecurity.TabletAuthorization.new(options)
             local site = actor.kind == 'client' and options.sites and options.inventory.site(device.id)
             return site and options.sites.owns(actor.source, site) == true or false
         end
-        return (grant == 'technician' and ({ inspect = true, repair = true, replace = true, provision = true })[action] == true)
-            or (grant == 'supervisor' and ({ inspect = true, beginMaintenance = true })[action] == true)
+        return (grant == 'technician' and ({ inspect = true, repair = true, replace = true, provision = true, endMaintenance = true })[action] == true)
+            or (grant == 'supervisor' and ({ inspect = true, beginMaintenance = true, endMaintenance = true })[action] == true)
     end
     return auth
 end

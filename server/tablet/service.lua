@@ -43,7 +43,7 @@ function OSSecurity.TabletService.new(options)
         end
         table.sort(components, function(a, b) return a.slot < b.slot end)
         local actions = {}
-        for _, action in ipairs({ 'inspect', 'repair', 'replace', 'provision', 'beginMaintenance' }) do
+        for _, action in ipairs({ 'inspect', 'repair', 'replace', 'provision', 'beginMaintenance', 'endMaintenance' }) do
             actions[action] = options.auth.access(actor, device, action)
         end
         local site = options.inventory.site(device.id)
@@ -80,7 +80,7 @@ function OSSecurity.TabletService.new(options)
         table.sort(items, function(a, b) return a.id < b.id end)
         return { items = items }
     end
-    local ABILITY_ORDER = { 'view', 'inspect', 'repair', 'replace', 'provision', 'beginMaintenance', 'install' }
+    local ABILITY_ORDER = { 'view', 'inspect', 'repair', 'replace', 'provision', 'beginMaintenance', 'endMaintenance', 'install' }
     function service.abilities(actor)
         local profile = actor.kind == 'operations' and OSSecurity.GameplayConfig.Profiles[actor.role] or nil
         local list = {}
@@ -250,10 +250,24 @@ function OSSecurity.TabletService.new(options)
         local device, err = service.device(actor, args.deviceId)
         if not device then return nil, err end
         local action = args.action
-        if type(action) ~= 'string' or not ({ inspect = true, repair = true, replace = true, provision = true, beginMaintenance = true })[action]
+        if type(action) ~= 'string' or not ({ inspect = true, repair = true, replace = true, provision = true, beginMaintenance = true, endMaintenance = true })[action]
             or not options.auth.access(actor, device, action) then return nil, 'Perfil o alcance insuficiente.' end
         local updated, reason
         if action == 'beginMaintenance' then updated, reason = options.registry.setState(0, device.id, 'maintenance')
+        elseif action == 'endMaintenance' then
+            -- Volver a servicio: activo si esta montado fisicamente, instalado si es solo un registro. Con una pieza
+            -- averiada (salud 0) no: primero hay que sustituirla.
+            if device.state ~= 'maintenance' then return nil, OSSecurity.Brand.Text.notInMaintenance end
+            if device.schemaVersion == 2 then
+                for _, component in pairs(device.condition.components) do
+                    if component.health <= 0 then return nil, OSSecurity.Brand.Text.failedParts end
+                end
+            end
+            local snapshot = options.inventory.snapshot()
+            local installationId = device.metadata and device.metadata.installationId
+            local installation = installationId and snapshot and snapshot.installations[installationId]
+            local physical = type(installation) == 'table' and installation.status == 'committed' and installation.deviceId == device.id
+            updated, reason = options.registry.setState(0, device.id, physical and 'active' or 'installed')
         else
             local arguments = {}
             if action == 'repair' or action == 'replace' then arguments.slot = args.slot end

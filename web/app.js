@@ -121,6 +121,7 @@
     if (device.actions?.inspect && device.schemaVersion === 2) actions.append(button(text('inspect'), () => act('inspect')));
     if (device.actions?.provision && device.schemaVersion === 1) actions.append(button(text('provision'), () => act('provision'), !['registered', 'installed', 'maintenance'].includes(device.state)));
     if (device.actions?.beginMaintenance) actions.append(button(text('beginMaintenance'), () => act('beginMaintenance'), !['installed', 'active', 'fault'].includes(device.state)));
+    if (device.actions?.endMaintenance && device.state === 'maintenance') actions.append(button(text('endMaintenance'), () => act('endMaintenance'), false, 'primary'));
     content.append(actions);
     for (const component of device.components || []) {
       const row = el('section', null, 'component'); const identity = el('div');

@@ -62,7 +62,9 @@ OSSecurity.Brand = {
         noSignal = 'Sin senal de video.', session = 'Sesion autorizada',
         noInventory = 'No dispone de equipo.', use = 'Utilizar', items = 'Articulos', condition = 'Condicion',
         details = 'Consultar', maintenance = 'Mantenimiento', inspect = 'Inspeccionar', repair = 'Reparar', replace = 'Sustituir',
-        provision = 'Equipar registro antiguo', beginMaintenance = 'Pasar a mantenimiento', installed = 'Instalacion vinculada',
+        provision = 'Equipar registro antiguo', beginMaintenance = 'Pasar a mantenimiento', endMaintenance = 'Volver a servicio',
+        notInMaintenance = 'El dispositivo no esta en mantenimiento.', failedParts = 'Hay piezas averiadas: sustituyelas antes de volver a servicio.',
+        installed = 'Instalacion vinculada',
         logical = 'Registro logico', back = 'Volver', health = 'Salud', hours = 'Horas', history = 'Ultima intervencion',
         noHistory = 'Sin intervenciones', employee = 'Acreditacion', client = 'Titular autorizado',
         clientHero = 'La tranquilidad empieza por saber.', operationsHero = 'Cada dispositivo. Una responsabilidad.',
@@ -323,7 +325,7 @@ OSSecurity.Brand = {
         },
         profileAbilities = 'Funciones de su perfil',
         abilities = { view = 'Consultar', inspect = 'Inspeccionar', repair = 'Reparar', replace = 'Sustituir piezas',
-            provision = 'Equipar registros', beginMaintenance = 'Abrir mantenimiento', install = 'Instalar CCTV' },
+            provision = 'Equipar registros', beginMaintenance = 'Abrir mantenimiento', endMaintenance = 'Cerrar mantenimiento', install = 'Instalar CCTV' },
         serviceNames = { cctv = 'Registro CCTV', maintenance = 'Servicio tecnico', installation = 'Instalaciones', inventory = 'Inventario tecnico' }
     },
     Modules = {

@@ -119,8 +119,8 @@ OSSecurity.GameplayConfig = {
     },
     Profiles = {
         client = { view = true },
-        technician = { view = true, inspect = true, repair = true, replace = true, provision = true, install = true },
-        supervisor = { view = true, inspect = true, beginMaintenance = true },
-        admin = { view = true, inspect = true, repair = true, replace = true, provision = true, beginMaintenance = true, install = true }
+        technician = { view = true, inspect = true, repair = true, replace = true, provision = true, endMaintenance = true, install = true },
+        supervisor = { view = true, inspect = true, beginMaintenance = true, endMaintenance = true },
+        admin = { view = true, inspect = true, repair = true, replace = true, provision = true, beginMaintenance = true, endMaintenance = true, install = true }
     }
 }

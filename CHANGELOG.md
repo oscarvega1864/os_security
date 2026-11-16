@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.24.0 — Volver a servicio desde la tablet
+
+- **Nuevo**: botón **Volver a servicio** en la ficha de un dispositivo en mantenimiento (G6 Operations). Hasta ahora
+  la tablet podía abrir el mantenimiento pero no cerrarlo, y los dispositivos se quedaban en `maintenance` (sin
+  imagen en directo) hasta que un administrador los cambiaba desde F10.
+  - Lo pueden usar técnico, supervisor y administrador (con su alcance sobre el dispositivo).
+  - Vuelve a `active` si está montado físicamente y a `installed` si es solo un registro.
+  - Con alguna pieza averiada (salud 0) se niega: primero hay que sustituirla.
+
 ## 0.23.3 — Contratos y rondas más robustos
 
 - Contratos: si se quita o renombra un plan en `config/gameplay.lua`, los contratos que ya lo tenían siguen

@@ -198,7 +198,7 @@ test('On-duty gruppe6 employment grants technician/supervisor operations profile
     assert(not denied(5, 'operations').ok) -- fuera de servicio
     c.jobs[5].duty = true
     local session = open(c, 5, 'operations'); assert(session.profile == OSSecurity.Brand.Profiles.technician)
-    assert(session.role == 'technician' and table.concat(session.abilities, ',') == 'view,inspect,repair,replace,provision,install')
+    assert(session.role == 'technician' and table.concat(session.abilities, ',') == 'view,inspect,repair,replace,provision,endMaintenance,install')
     assert(call(c, 5, session, 'inventory', {}).ok)
     assert(not denied(5, 'client').ok) -- el empleo no concede la tablet Client
     c.core.time = c.core.time + 10
@@ -207,7 +207,7 @@ test('On-duty gruppe6 employment grants technician/supervisor operations profile
     c.core.time = c.core.time + 10
     c.jobs[5] = { job = 'gruppe6', rank = 'supervisor', duty = true }
     session = open(c, 5, 'operations'); assert(session.profile == OSSecurity.Brand.Profiles.supervisor)
-    assert(session.role == 'supervisor' and table.concat(session.abilities, ',') == 'view,inspect,beginMaintenance' and not session.canInstall)
+    assert(session.role == 'supervisor' and table.concat(session.abilities, ',') == 'view,inspect,beginMaintenance,endMaintenance' and not session.canInstall)
     c.core.time = c.core.time + 10
     for _, job in ipairs({ { job = 'gruppe6', rank = 'vigilante', duty = true }, { job = 'gruppe6', rank = 'admin', duty = true },
         { job = 'police', rank = 'tecnico', duty = true }, 'gruppe6', false }) do
@@ -463,6 +463,29 @@ test('Technician and supervisor permissions intersect their assigned device scop
     assert(not call(c, 3, supervisor, 'maintain', { deviceId = device.id, action = 'repair', slot = 'power' }).ok)
     local leaked = call(c, 1, tech, 'device', { deviceId = device.id, role = 'admin' })
     assert(not leaked.ok)
+end)
+
+test('Maintenance can be closed from the tablet: back to service only from maintenance and without failed parts', function()
+    local c = fixture(); grant(c, 1, 'g6_operations_tablet'); grant(c, 3, 'g6_operations_tablet')
+    local device = create(c.core, 'cctv_camera')
+    StorageTest.transition(c.core, device.id, 'installing'); StorageTest.transition(c.core, device.id, 'installed')
+    grantAccess(c, 1, device.id, 'technician'); grantAccess(c, 3, device.id, 'supervisor')
+    local tech, supervisor = open(c, 1, 'operations'), open(c, 3, 'operations')
+    local summary = call(c, 1, tech, 'device', { deviceId = device.id }); assert(summary.data.actions.endMaintenance == true)
+    local early = call(c, 1, tech, 'maintain', { deviceId = device.id, action = 'endMaintenance' })
+    assert(not early.ok and early.error == OSSecurity.Brand.Text.notInMaintenance)
+    assert(call(c, 3, supervisor, 'maintain', { deviceId = device.id, action = 'beginMaintenance' }).ok)
+    assert(c.core.registry.get(0, device.id).schemaVersion == 2, 'schema')
+    do
+        assert(c.core.registry.service(0, device.id, 'fault', { slot = 'optics', health = 0 }))
+        local blocked = call(c, 1, tech, 'maintain', { deviceId = device.id, action = 'endMaintenance' })
+        assert(not blocked.ok and blocked.error == OSSecurity.Brand.Text.failedParts)
+        assert(call(c, 1, tech, 'maintain', { deviceId = device.id, action = 'replace', slot = 'optics' }).ok)
+    end
+    local done = call(c, 1, tech, 'maintain', { deviceId = device.id, action = 'endMaintenance' }); assert(done.ok, done.error)
+    assert(done.data.state == 'installed') -- sin montaje fisico vuelve a instalado
+    grant(c, 2, 'g6_client_tablet')
+    assert(not call(c, 2, open(c, 2, 'client'), 'maintain', { deviceId = device.id, action = 'endMaintenance' }).ok)
 end)
 
 test('Administrative grants target connected identities, reject public use and validate anchors', function()
