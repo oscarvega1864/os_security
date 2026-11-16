@@ -11,7 +11,7 @@
 - Las bodycams usan el mismo HUD con su propio título.
 - Identificadores que ve el jugador como números enteros: dispositivos `G6-D · 12` (antes `osd_0000000012`), órdenes,
   avisos y contratos `#7`. Los datos guardados no cambian.
-- Matrículas aleatorias de os_devtools (p. ej. `4821BCD`): el cierre centralizado y la alarma encuentran el vehículo por
+- Matrículas aleatorias de os_devtools (p. ej. `8KDR472`): el cierre centralizado y la alarma encuentran el vehículo por
   su matrícula en el registro (`vehicles.byPlate`) y el cliente lo reconoce por su state bag `osdev`. Las matrículas
   antiguas `OS000012` siguen funcionando.
 - Arco detector y cacheo: cuentan también las armas que el jugador lleva como objetos del inventario (os_inventory

@@ -9,7 +9,7 @@ OSSecurity.CarService = {}
 local function distance(a, b) return math.sqrt((a.x - b.x) ^ 2 + (a.y - b.y) ^ 2 + (a.z - b.z) ^ 2) end
 
 -- Matricula antigua de os_devtools: OS + ID con seis cifras (OS000012). Devuelve el ID o nil. Las nuevas son
--- aleatorias (p. ej. 4821BCD) y se buscan en el registro con options.vehicles.byPlate.
+-- aleatorias (p. ej. 8KDR472) y se buscan en el registro con options.vehicles.byPlate.
 function OSSecurity.CarService.plateId(plate)
     if type(plate) ~= 'string' then return nil end
     local digits = plate:gsub('%s+', ''):match('^OS(%d+)$')
