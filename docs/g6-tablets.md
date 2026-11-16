@@ -1,4 +1,4 @@
-# Gruppe Sechs — Tablets e instalación CCTV 0.4.1
+# Gruppe Sechs — Tablets e instalación CCTV
 
 Esta entrega incluye inventario y colocación CCTV, según el alcance autorizado.
 La marca comercial cambia; `os_security`, `OSSecurity`, los IDs `osd_*`, los tipos
@@ -132,6 +132,27 @@ inventario, validados por `InventoryState.detector/custody`. Requiere el inventa
 - App Configuracion: la NUI envia `settings`; el cliente valida los valores y los guarda con `SetResourceKvp`
   (por jugador y equipo). Se devuelven en la sesion (`session.settings`) al abrir la tablet.
 
+## Contratos, bodycams, transporte y rondas (0.19–0.22)
+
+| Sección | Tablet / perfil | Módulo | Resumen |
+| --- | --- | --- | --- |
+| Contratos | Client: contratar y dar de baja. Operations: cartera. | `server/contracts/service.lua` | Un plan por propiedad o negocio propio (`Contracts.Plans`). Cuota al contratar y cada `PeriodSeconds` desde el banco, con el cliente conectado. Impago: suspendido y reintento cada `RetrySeconds`; a `MaxFailures`, cancelado. Ventajas: prioridad en la Central y descuento en órdenes de esa propiedad. Un plan retirado de la configuración deja el contrato sin ventajas (no rompe nada). |
+| Bodycams | Supervisor / admin | `server/bodycams/service.lua`, `client/bodycam.lua` | Objeto `os_bodycam`; el vigilante la enciende con «Usar» o `/bodycam`. «Ver en directo» sigue al vigilante con el HUD de las cámaras. Durante la vista se amplía el radio de entidades de quien mira (`Bodycams.CullingRadius`). |
+| Transporte de fondos | Operations | puente a `os_gruppesechs` | Solo llama a `TabletTransport` y `TabletTransportAction` de `ossecurity_transport_resource` (`none` lo quita). |
+| Rondas | Crear rutas: supervisor / admin. Recorrerlas: Operations. | `server/patrols/service.lua`, `client/patrol.lua` | Hasta `Patrols.MaxPoints` puntos separados `MinPointGap` m. **E** ficha a menos de `CheckDistance` m y en orden; `/ronda cancelar` la abandona; caduca a `MaxRoundSeconds`. Las rondas en curso viven en memoria. |
+
+## Vista en directo y mantenimiento (0.23–0.24)
+
+- **Ver en directo** (`live`): la cámara del juego se coloca en el montaje con el filtro de videovigilancia y el HUD de
+  `web/live.js`. Q / E pasan a otra cámara del mismo perfil; una cámara instalada sin señal muestra **NO VIDEO** con
+  el motivo y vuelve sola si se repara. Se revalida con el servidor cada 20 s (cada 5 s sin señal).
+- Señal: instalada físicamente, en estado `active` o `installed`, con alimentación y óptica por encima de 0. Una
+  óptica gastada añade ruido.
+- **Volver a servicio** (`maintain` con `action = 'endMaintenance'`): técnico, supervisor y admin, con su alcance
+  sobre el dispositivo. De `maintenance` pasa a `active` si está montado físicamente y a `installed` si no. Con una
+  pieza a salud 0 se niega: primero hay que sustituirla.
+- El buscador de la tablet no distingue mayúsculas ni tildes.
+
 ## Inventario standalone y persistencia
 
 Ítems distintos de tablet: `g6_client_tablet`, `g6_operations_tablet`.
@@ -237,6 +258,14 @@ del servidor; conocer el comando no evita el requisito de ítem/permisos.
 | `osg6 anchor <id> <cliente> <instalador> <x> <y> <z> <nx> <ny> <nz> [radio]` | Registrar/actualizar un montaje autorizado; normaliza la normal. |
 | `osg6 installations` | Consultar estado de instalaciones y vínculo Core. |
 | `osg6 diagnose` | Ver disponibilidad del Core, inventario y flujo G6. |
+| `/bodycam` | Encender o apagar la propia bodycam (personal de servicio con el objeto). |
+| `/bodycamajuste x y z rx ry rz` | Ajuste fino de dónde se ve la bodycam en el pecho (solo en tu pantalla). |
+| `/ronda cancelar` | Abandonar la ronda de vigilancia en curso. |
+| `/arco`, `/cacheo`, `/custodia` | Arco detector, cacheo con consentimiento y recogida de lo retenido. |
+| `/arcomodelo` | Informa del modelo del arco detector que se está usando (diagnóstico). |
+| `/g6puerta <propiedad\|negocio> <id>` / `borrar` | Registrar a mano la puerta apuntada, o quitarla. |
+| Teclas **L** / **Y** | Mando del vehículo (`g6mando`) y motor (`g6motor`); se cambian en Ajustes → Teclas → FiveM. |
+| `g6bridge` (consola) | Estado del puente con la web de Gruppe Sechs. |
 
 Todos los subcomandos `osg6` requieren consola o `ossecurity.admin`. Los IDs de
 jugador solo resuelven la identidad conectada en ese momento; no son claves

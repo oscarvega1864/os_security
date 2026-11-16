@@ -1,7 +1,8 @@
-# Integración gruppe6.es ↔ os_security (propuesta, sin implementar)
+# Integración gruppe6.es ↔ os_security
 
-Estado: **propuesta para revisión**. No se ha modificado código de GruppeNGRP ni de os_security.
-Revisado: GruppeNGRP `87e228a` (D:\OTROS\ROL\BOTS\GruppeNGRP) y os_security 0.12.1.
+Estado: **fases 1 y 2 implementadas** (puente firmado desde os_security 0.13.0 y vinculación `/g6web` desde
+0.14.0); las fases 3 a 5 siguen pendientes (ver «Plan por fases»). El diseño original se revisó con GruppeNGRP
+`87e228a` (D:\OTROS\ROL\BOTS\GruppeNGRP) y os_security 0.12.1.
 
 ## 1. Qué se reutiliza de GruppeNGRP
 
