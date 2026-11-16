@@ -393,11 +393,19 @@ local gameplay = OSSecurity.Gameplay.new({
             end
         }
     end)(),
-    -- Armas guardadas del personaje activo (os_devtools 0.1.6+); sin ese export, solo cuentan las que informa el cliente.
+    -- Armas que el servidor sabe que lleva: las del inventario (os_inventory 0.2.0+, armas como objetos) y las
+    -- guardadas del personaje (os_devtools, sistema anterior). Sin ninguno, solo cuentan las que informa el cliente.
     savedWeapons = function(player)
-        if GetResourceState(identityResource) ~= 'started' then return nil end
-        local ok, list = pcall(function() return exports[identityResource]:GetCharacterWeapons(player) end)
-        return ok and type(list) == 'table' and list or nil
+        local result = {}
+        if GetResourceState('os_inventory') == 'started' then
+            local ok, list = pcall(function() return exports.os_inventory:GetCarriedWeapons(player) end)
+            if ok and type(list) == 'table' then for _, entry in ipairs(list) do result[#result + 1] = entry end end
+        end
+        if GetResourceState(identityResource) == 'started' then
+            local ok, list = pcall(function() return exports[identityResource]:GetCharacterWeapons(player) end)
+            if ok and type(list) == 'table' then for _, entry in ipairs(list) do result[#result + 1] = entry end end
+        end
+        return #result > 0 and result or nil
     end,
     patrolSend = function(player, event, payload) TriggerClientEvent('os_security:patrol:' .. event, player, payload) end,
     bodycamSend = function(player, event, payload) TriggerClientEvent('os_security:bodycam:' .. event, player, payload) end,

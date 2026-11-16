@@ -9,6 +9,8 @@
   vista; muestra la pantalla **NO VIDEO** de la plantilla con el motivo y vuelve sola a la imagen si se repara
   (comprueba cada 5 s). La lista de cámaras incluye las instaladas sin señal (`live = false`).
 - Las bodycams usan el mismo HUD con su propio título.
+- Arco detector y cacheo: cuentan también las armas que el jugador lleva como objetos del inventario (os_inventory
+  0.2.0+, export `GetCarriedWeapons`), además de las guardadas del sistema anterior y las que informa el cliente.
 - Bodycam puesta: mientras está encendida se ve una camarita en el pecho del vigilante (objeto del juego, configurable
   en `Bodycams.Wear`; `/bodycamajuste` para ajustar la posición en el juego). Se quita al apagarla o al morir.
 
