@@ -143,7 +143,8 @@ function OSSecurity.LockService.new(options)
         end
         if added > 0 then
             notify()
-            if options.log then options.log(('%d puertas detectadas en %s.'):format(added, options.sites.label(site) or key(site))) end
+            local info = options.info or options.log
+            if info then info(('%d puertas detectadas en %s.'):format(added, options.sites.label(site) or key(site))) end
         end
         return added
     end

@@ -388,6 +388,8 @@ local gameplay = OSSecurity.Gameplay.new({
     end,
     employeeId = function(principal) return OSSecurity.Brand.EmployeePrefix .. '-' .. ('%08X'):format(GetHashKey(principal) & 0xffffffff) end,
     log = storageLog,
+    -- Mensajes informativos (no son fallos): sin la etiqueta [ERROR].
+    info = function(message) print(('%s %s'):format(constants.LOG_PREFIX, message)) end,
     items = externalItems,
     -- Con objetos por personaje, cada personaje es titular de sus dispositivos, zonas y solicitudes.
     --   set ossecurity_ownership account   -> vuelve a compartirlos entre los personajes de la cuenta.

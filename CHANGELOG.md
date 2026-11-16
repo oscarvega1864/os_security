@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.24.1 — Registro más claro
+
+- Los mensajes informativos («N puertas detectadas en…», «Datos de… asignados al personaje…») ya no salen con la
+  etiqueta `[ERROR]` en la consola del servidor; esa etiqueta queda solo para fallos reales.
+
 ## 0.24.0 — Volver a servicio desde la tablet
 
 - **Nuevo**: botón **Volver a servicio** en la ficha de un dispositivo en mantenimiento (G6 Operations). Hasta ahora

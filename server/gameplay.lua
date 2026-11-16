@@ -128,7 +128,7 @@ function OSSecurity.Gameplay.new(options)
     alarmsRef = alarms
     local locks = OSSecurity.LockService.new({ inventory = inventory, world = options.world, now = options.now, sites = options.sites,
         isAdmin = function(source) return options.permissions ~= nil and options.permissions.isAdmin(source) == true end,
-        employment = options.employment, holdings = holdings, log = options.log, changed = options.locksChanged,
+        employment = options.employment, holdings = holdings, log = options.log, info = options.info or options.log, changed = options.locksChanged,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local noop = function() end
     local carEffects = options.carEffects or {}
@@ -231,7 +231,8 @@ function OSSecurity.Gameplay.new(options)
             if count == 1 and OSSecurity.Identity.character(target) then
                 local done, err = inventory.apply({ kind = 'rehome', principal = principal, target = target })
                 if not done then return nil, 'No se pudieron pasar los datos de la cuenta a su personaje: ' .. tostring(err) end
-                if options.log then options.log(('Datos de %s... asignados al personaje %s.'):format(principal:sub(1, 14), only)) end
+                local info = options.info or options.log
+                if info then info(('Datos de %s... asignados al personaje %s.'):format(principal:sub(1, 14), only)) end
             elseif options.log then
                 options.log(('Cuenta %s... sin un personaje claro (%d); sus datos no se muestran a ningun personaje.'):format(principal:sub(1, 14), count))
             end
