@@ -34,12 +34,12 @@ function validation.metadata(value, schema)
         if count > 32 or not rule then return nil, 'Metadatos: propiedad no admitida.' end
         if rule.type == 'string' then
             if not util.text(item, math.min(rule.maxLength or 256, 256)) then
-                return nil, 'Metadatos: texto invalido o demasiado largo.'
+                return nil, 'Metadatos: texto inválido o demasiado largo.'
             end
         elseif rule.type == 'number' then
             if not util.finite(item) or item < (rule.min or -1000000)
                 or item > (rule.max or 1000000) then
-                return nil, 'Metadatos: numero fuera de limites.'
+                return nil, 'Metadatos: número fuera de límites.'
             end
         elseif rule.type == 'boolean' then
             if type(item) ~= 'boolean' then return nil, 'Metadatos: booleano requerido.' end
@@ -57,25 +57,25 @@ local function common(value)
     local definition = catalog.get(value.type)
     if not definition then return nil, 'Tipo de dispositivo inexistente.' end
     if not util.text(value.model, 64) or not value.model:match('^[%w_.%-]+$') then
-        return nil, 'Modelo logico invalido (maximo 64 caracteres).'
+        return nil, 'Modelo lógico inválido (máximo 64 caracteres).'
     end
     for _, field in ipairs({ 'owner', 'propertyId', 'vehicleId' }) do
         if value[field] ~= nil and not util.text(value[field], 128) then
-            return nil, 'Identificador opcional invalido: ' .. field
+            return nil, 'Identificador opcional inválido: ' .. field
         end
     end
-    if value.propertyId and value.vehicleId then return nil, 'Usar propiedad o vehiculo, no ambos.' end
+    if value.propertyId and value.vehicleId then return nil, 'Usar propiedad o vehículo, no ambos.' end
     if value.position ~= nil and not vector(value.position, 1000000) then
-        return nil, 'Posicion invalida: coordenadas finitas dentro de +/-1000000.'
+        return nil, 'Posición inválida: coordenadas finitas dentro de +/-1000000.'
     end
     if value.rotation ~= nil and not vector(value.rotation, 360) then
-        return nil, 'Rotacion invalida: grados finitos dentro de +/-360.'
+        return nil, 'Rotación inválida: grados finitos dentro de +/-360.'
     end
     return validation.metadata(value.metadata, definition.metadataSchema)
 end
 
 function validation.create(input)
-    if not util.object(input, inputFields) then return nil, 'Campos de creacion invalidos.' end
+    if not util.object(input, inputFields) then return nil, 'Campos de creación inválidos.' end
     local definition = catalog.get(input.type)
     if not definition then return nil, 'Tipo de dispositivo inexistente.' end
     -- No copiar entrada sin validar: podria contener ciclos o funciones.
@@ -137,35 +137,35 @@ function validation.device(value, limits)
         or (value.schemaVersion ~= 1 and value.schemaVersion ~= validation.DeviceSchemaVersion) or not states.exists(value.state)
         or not util.integer(value.createdAt, 0, 253402300799)
         or not util.integer(value.updatedAt, value.createdAt, 253402300799) then
-        return nil, 'Contrato de dispositivo invalido.'
+        return nil, 'Contrato de dispositivo inválido.'
     end
     local ok, err = common(value)
     if not ok then return nil, err end
-    if not util.object(value.installation, { quality = true }) then return nil, 'Instalacion invalida.' end
+    if not util.object(value.installation, { quality = true }) then return nil, 'Instalación inválida.' end
     local quality = value.installation.quality
     if quality ~= nil and (not util.finite(quality) or quality < 0 or quality > 100) then
-        return nil, 'Calidad de instalacion invalida.'
+        return nil, 'Calidad de instalación inválida.'
     end
     if value.schemaVersion == 1 then
-        if not condition(value.condition) then return nil, 'Contrato de salud de componentes invalido.' end
-        if not maintenance(value.maintenance, value, limits) then return nil, 'Contrato de mantenimiento invalido.' end
+        if not condition(value.condition) then return nil, 'Contrato de salud de componentes inválido.' end
+        if not maintenance(value.maintenance, value, limits) then return nil, 'Contrato de mantenimiento inválido.' end
     else
         local valid, reason = OSSecurity.ComponentValidation.device(value, limits, condition, maintenance)
         if not valid then return nil, reason end
     end
     if not util.array(value.history, limits.MaxHistory) or #value.history < 1 then
-        return nil, 'Historial invalido o fuera del limite.'
+        return nil, 'Historial inválido o fuera del límite.'
     end
     local previous, timestamp = nil, value.createdAt
     for index, event in ipairs(value.history) do
         if not util.object(event, { from = true, to = true, at = true })
-            or not util.integer(event.at, timestamp, value.updatedAt) then return nil, 'Evento de historial invalido.' end
+            or not util.integer(event.at, timestamp, value.updatedAt) then return nil, 'Evento de historial inválido.' end
         if index == 1 then
             if event.from ~= nil or event.to ~= 'registered' or event.at ~= value.createdAt then
-                return nil, 'Registro inicial invalido.'
+                return nil, 'Registro inicial inválido.'
             end
         elseif event.from ~= previous or not states.canTransition(event.from, event.to) then
-            return nil, 'Transicion de historial invalida.'
+            return nil, 'Transición de historial inválida.'
         end
         previous, timestamp = event.to, event.at
     end
@@ -180,12 +180,12 @@ function validation.snapshot(snapshot, limits)
         or snapshot.schemaVersion ~= validation.SchemaVersion
         or not util.integer(snapshot.revision, 0, 9007199254740990)
         or not util.integer(snapshot.nextId, 1, validation.MaxSequence + 1)
-        or not util.object(snapshot.devices) then return nil, 'Formato o version de almacenamiento incompatible.' end
+        or not util.object(snapshot.devices) then return nil, 'Formato o versión de almacenamiento incompatible.' end
     local count, largest, events = 0, 0, 0
     for id, device in pairs(snapshot.devices) do
         count = count + 1
         if count > limits.MaxDevices or not validation.id(id) or type(device) ~= 'table' or device.id ~= id then
-            return nil, 'Indice de dispositivos invalido o limite excedido.'
+            return nil, 'Indice de dispositivos inválido o límite excedido.'
         end
         local ok, err = validation.device(device, limits)
         if not ok then return nil, id .. ': ' .. err end
@@ -194,7 +194,7 @@ function validation.snapshot(snapshot, limits)
         largest = math.max(largest, tonumber(id:sub(5)))
     end
     if snapshot.nextId <= largest or snapshot.revision ~= events then
-        return nil, 'Secuencia de identificadores o revision inconsistente.'
+        return nil, 'Secuencia de identificadores o revisión inconsistente.'
     end
     return true
 end
@@ -203,11 +203,11 @@ end
 -- sustitucion libre de objetos. La misma comprobacion se aplica al recuperar.
 function validation.successor(older, newer, limits)
     limits = limits or OSSecurity.ServerConfig
-    if newer.revision ~= older.revision + 1 then return nil, 'Salto de revision.' end
+    if newer.revision ~= older.revision + 1 then return nil, 'Salto de revisión.' end
     local changes, created = 0, false
     for id, previous in pairs(older.devices) do
         local current = newer.devices[id]
-        if not current then return nil, 'Eliminacion permanente no permitida.' end
+        if not current then return nil, 'Eliminación permanente no permitida.' end
         if not util.equal(previous, current) then
             changes = changes + 1
             local expected
@@ -227,11 +227,11 @@ function validation.successor(older, newer, limits)
         if not older.devices[id] then
             changes, created = changes + 1, true
             if id ~= ('osd_%010d'):format(older.nextId) or current.state ~= 'registered' or #current.history ~= 1 then
-                return nil, 'Creacion o secuencia de ID invalida.'
+                return nil, 'Creación o secuencia de ID inválida.'
             end
             if current.schemaVersion == 2 then
                 if current.maintenance.sequence ~= 0 or not util.equal(current.maintenance.legacy, { components = {}, events = {} }) then
-                    return nil, 'Creacion con historial de servicio previo.'
+                    return nil, 'Creación con historial de servicio previo.'
                 end
                 for _, component in pairs(current.condition.components) do
                     if component.health ~= 100 or component.generation ~= 1 or component.installedAt ~= current.createdAt
@@ -244,7 +244,7 @@ function validation.successor(older, newer, limits)
         end
     end
     if changes ~= 1 or newer.nextId ~= older.nextId + (created and 1 or 0) then
-        return nil, 'Una revision debe contener exactamente una operacion.'
+        return nil, 'Una revisión debe contener exactamente una operación.'
     end
     return true
 end

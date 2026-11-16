@@ -23,7 +23,7 @@ function OSSecurity.ClientTablet.new(options)
         requestId = requestId + 1
         local packet = { id = requestId, action = action, args = args or {} }
         if action ~= 'open' and action ~= 'stream' then
-            if not session then callback({ ok = false, error = 'Sesion cerrada.', close = true }); return end
+            if not session then callback({ ok = false, error = 'Sesión cerrada.', close = true }); return end
             session.sequence = session.sequence + 1
             packet.token, packet.sequence = session.token, session.sequence
         end
@@ -62,7 +62,7 @@ function OSSecurity.ClientTablet.new(options)
                 controller.request(proposal and 'place_confirm' or 'place_cancel', proposal or {}, function(result)
                     controller.placing = false; options.cancelPlacement()
                     if failure and result.ok then options.notify(failure, 'error'); return end
-                    options.notify(result.ok and (result.data and result.data.id and ('Dispositivo instalado: ' .. result.data.id) or 'Colocacion cancelada.') or result.error,
+                    options.notify(result.ok and (result.data and result.data.id and ('Dispositivo instalado: ' .. result.data.id) or 'Colocación cancelada.') or result.error,
                         result.ok and (result.data and result.data.id and 'success' or 'info') or 'error')
                     if result.ok then controller.stream() end
                 end)
@@ -148,7 +148,7 @@ function OSSecurity.ClientTablet.new(options)
     end
     -- Desde la vista: otra camara o revalidar la actual (mantiene viva la sesion).
     function controller.liveFeed(deviceId, callback)
-        if not session then callback({ ok = false, error = 'Sesion cerrada.' }); return end
+        if not session then callback({ ok = false, error = 'Sesión cerrada.' }); return end
         controller.request('live', { deviceId = deviceId, browse = true }, callback)
     end
     -- Bodycam en directo (supervisores): igual que una camara, con el vigilante como objetivo.
@@ -162,7 +162,7 @@ function OSSecurity.ClientTablet.new(options)
         end)
     end
     function controller.bodycamFeed(target, callback)
-        if not session then callback({ ok = false, error = 'Sesion cerrada.' }); return end
+        if not session then callback({ ok = false, error = 'Sesión cerrada.' }); return end
         controller.request('bodycam_live', { target = target }, callback)
     end
     function controller.bodycamEnd()
@@ -195,7 +195,7 @@ function OSSecurity.ClientTablet.new(options)
         hide(); controller.placing = false; options.cancelPlacement()
         if pending then
             local waiting = pending; pending = nil
-            waiting.callback({ ok = false, error = 'Sesion cerrada.', close = true })
+            waiting.callback({ ok = false, error = 'Sesión cerrada.', close = true })
         end
         if current and not pending then controller.request('close', {}, function() end) end
         session = nil; epoch = epoch + 1

@@ -16,7 +16,7 @@
     root.replaceChildren();
     const noSignal = typeof data.noSignal === 'string' && data.noSignal !== '';
     root.classList.toggle('no-video', noSignal);
-    const name = (typeof data.title === 'string' && data.title ? data.title : `${text.cam || 'CAMARA'} ${data.index || 1}${data.site ? ` - ${data.site}` : ''}`).toUpperCase();
+    const name = (typeof data.title === 'string' && data.title ? data.title : `${text.cam || 'CÁMARA'} ${data.index || 1}${data.site ? ` - ${data.site}` : ''}`).toUpperCase();
     if (noSignal) {
       const center = el('div', null, 'live-novideo');
       center.append(img('live/novideo.png', 'live-novideo-img'), el('div', data.noSignal, 'live-reason'));
@@ -28,7 +28,7 @@
       if (text.logo !== false) root.append(img('live/logo.png', 'live-logo'));
       const rec = el('div', null, 'live-rec'); rec.append(el('span', null, 'live-rec-dot'), el('span', text.rec || 'REC'));
       root.append(rec);
-      if (noise > 0) root.append(el('div', text.noise || 'Senal degradada', 'live-warn'));
+      if (noise > 0) root.append(el('div', text.noise || 'Señal degradada', 'live-warn'));
     }
     const label = el('div', null, 'live-label');
     label.append(el('div', name, 'live-name'));

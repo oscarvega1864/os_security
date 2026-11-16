@@ -29,7 +29,7 @@ function OSSecurity.TabletMap.new(options)
         end)
         if ok and valid(saved) then
             current = { ax = saved.ax, bx = saved.bx, ay = saved.ay, by = saved.by, custom = true }
-        elseif not ok and options.log then options.log('Mapa de la tablet: data/map.json ilegible; se usa la calibracion de fabrica.') end
+        elseif not ok and options.log then options.log('Mapa de la tablet: data/map.json ilegible; se usa la calibración de fábrica.') end
     end
     function map.calibration() return util.copy(current) end
 
@@ -42,22 +42,22 @@ function OSSecurity.TabletMap.new(options)
             if options.files then options.files.write(FILE, OSSecurity.JsonCodec.encode({ reset = true })) end
             return map.calibration()
         end
-        if not util.object(args, { first = true, second = true }) then return nil, 'Calibracion no valida.' end
+        if not util.object(args, { first = true, second = true }) then return nil, 'Calibración no válida.' end
         local points = {}
         for _, key in ipairs({ 'first', 'second' }) do
             local point = args[key]
             if not util.object(point, { u = true, v = true, x = true, y = true }) or not finite(point.u, 300) or not finite(point.v, 300)
-                or not finite(point.x, 10000) or not finite(point.y, 10000) then return nil, 'Punto de calibracion no valido.' end
+                or not finite(point.x, 10000) or not finite(point.y, 10000) then return nil, 'Punto de calibración no válido.' end
             points[#points + 1] = point
         end
         local a, b = points[1], points[2]
         if math.abs(b.x - a.x) < MIN_SPAN or math.abs(b.y - a.y) < MIN_SPAN then
-            return nil, ('Los dos puntos deben estar a mas de %d m en horizontal y en vertical.'):format(MIN_SPAN)
+            return nil, ('Los dos puntos deben estar a más de %d m en horizontal y en vertical.'):format(MIN_SPAN)
         end
         local ax = (b.u - a.u) / (b.x - a.x); local ay = (b.v - a.v) / (b.y - a.y)
         local result = { ax = ax, bx = a.u - ax * a.x, ay = ay, by = a.v - ay * a.y }
-        if not valid(result) or ax <= 0 or ay >= 0 then return nil, 'Calibracion incoherente: revisa los puntos marcados.' end
-        if options.files and not options.files.write(FILE, OSSecurity.JsonCodec.encode(result)) then return nil, 'No se pudo guardar la calibracion.' end
+        if not valid(result) or ax <= 0 or ay >= 0 then return nil, 'Calibración incoherente: revisa los puntos marcados.' end
+        if options.files and not options.files.write(FILE, OSSecurity.JsonCodec.encode(result)) then return nil, 'No se pudo guardar la calibración.' end
         current = result; current.custom = true
         if options.audit then options.audit('map_calibrate', actor.source) end
         return map.calibration()

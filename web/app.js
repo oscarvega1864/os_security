@@ -82,8 +82,8 @@
       button(A.disarm || 'Desarmar', () => send('disarm'), alarm.mode === 'disarmed' && !alarm.triggered));
     block.append(modes);
     const pinRow = el('div', null, 'alarm-row');
-    const pin = el('input'); pin.type = 'password'; pin.inputMode = 'numeric'; pin.maxLength = 6; pin.placeholder = alarm.hasPin ? (A.newPin || 'Nuevo codigo') : (A.createPin || 'Crear codigo (4-6 cifras)');
-    pinRow.append(pin, button(A.savePin || 'Guardar codigo', () => { if (/^\d{4,6}$/.test(pin.value)) send('pin', { pin: pin.value }); else message(A.pinFormat || 'El codigo debe tener entre 4 y 6 cifras.'); }));
+    const pin = el('input'); pin.type = 'password'; pin.inputMode = 'numeric'; pin.maxLength = 6; pin.placeholder = alarm.hasPin ? (A.newPin || 'Nuevo código') : (A.createPin || 'Crear código (4-6 cifras)');
+    pinRow.append(pin, button(A.savePin || 'Guardar código', () => { if (/^\d{4,6}$/.test(pin.value)) send('pin', { pin: pin.value }); else message(A.pinFormat || 'El código debe tener entre 4 y 6 cifras.'); }));
     block.append(pinRow);
     const tags = el('div', null, 'alarm-row');
     tags.append(el('span', `${A.tags || 'Chapas'}: ${alarm.tags}`, 'subtle'), button(A.programTag || 'Programar chapa', () => send('tag')), button(A.revokeTags || 'Revocar chapas', () => send('revoke'), alarm.tags === 0));
@@ -673,7 +673,7 @@
     state.modules = modules;
     for (const module of modules) navigation.append(os.appButton(module.id, module.name, () => openApp(module.id)));
     if (session.kind !== 'inventory') navigation.append(os.appButton('map', brand.Text.home?.map || 'Mapa', () => openApp('map')),
-      os.appButton('settings', brand.Text.home?.settings?.title || 'Configuracion', () => openApp('settings')));
+      os.appButton('settings', brand.Text.home?.settings?.title || 'Configuración', () => openApp('settings')));
     os.reset(session);
     const wanted = typeof session.module === 'string' && (modules.some(module => module.id === session.module) || (['map', 'settings'].includes(session.module) && session.kind !== 'inventory')) ? session.module : null;
     if (session.kind === 'inventory') { state.module = 'inventory'; show('app'); refresh(); }

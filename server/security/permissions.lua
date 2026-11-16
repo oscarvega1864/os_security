@@ -20,7 +20,7 @@ function OSSecurity.Permissions.new(options)
         end
         local key = writing and 'writes' or 'reads'
         local maximum = writing and options.limits.WriteRequestsPerWindow or options.limits.ReadRequestsPerWindow
-        if bucket[key] >= maximum then return nil, 'Limite de solicitudes alcanzado; espera unos segundos.' end
+        if bucket[key] >= maximum then return nil, 'Límite de solicitudes alcanzado; espera unos segundos.' end
         bucket[key] = bucket[key] + 1
         return true
     end

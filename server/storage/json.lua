@@ -16,7 +16,7 @@ function OSSecurity.JsonStorage.new(options)
 
     -- Solo campos tecnicos controlados: nunca JSON, propietarios o excepciones.
     local function diagnostic(stage, message, context)
-        local summary = ('[storage:%s] %s | revision=%s active=%s'):format(
+        local summary = ('[storage:%s] %s | revisión=%s active=%s'):format(
             stage, message, current and current.revision or '-', active and paths[active] or '-')
         return summary .. (context and ' | ' .. context or '')
     end
@@ -79,7 +79,7 @@ function OSSecurity.JsonStorage.new(options)
 
     local function decode(content)
         if type(content) ~= 'string' or #content > options.limits.MaxFileBytes then
-            return nil, 'JSON vacio, ilegible o demasiado grande.', 'validation'
+            return nil, 'JSON vacío, ilegible o demasiado grande.', 'validation'
         end
         local ok, data = pcall(options.decode, content)
         if not ok then return nil, 'JSON corrupto.', 'corruption' end
@@ -95,14 +95,14 @@ function OSSecurity.JsonStorage.new(options)
             if err then return fail(readStage(details), 'Error al cargar snapshot.', readDetails(path, details)) end
             if content ~= nil then
                 local data, reason, stage = decode(content)
-                if not data then return fail(stage, reason .. ' No se sobrescribira.', 'path=' .. path) end
+                if not data then return fail(stage, reason .. ' No se sobrescribirá.', 'path=' .. path) end
                 snapshots[index] = data
             end
             known[index] = content
         end
         if snapshots[1] and snapshots[2] then
             if snapshots[1].revision == snapshots[2].revision then
-                return fail('integrity', 'Snapshots con revision duplicada; revisar manualmente.')
+                return fail('integrity', 'Snapshots con revisión duplicada; revisar manualmente.')
             end
             active = snapshots[1].revision > snapshots[2].revision and 1 or 2
             local older = snapshots[3 - active]
@@ -127,19 +127,19 @@ function OSSecurity.JsonStorage.new(options)
         if not consecutive then return reject('validation', sequenceError) end
         local ok, encoded = pcall(options.encode, snapshot)
         if not ok or type(encoded) ~= 'string' or #encoded > options.limits.MaxFileBytes then
-            return reject('serialization', 'No se pudo serializar el cambio dentro del limite.')
+            return reject('serialization', 'No se pudo serializar el cambio dentro del límite.')
         end
         local decoded, reason = decode(encoded)
-        if not decoded then return reject('serialization', 'Serializacion invalida: ' .. reason) end
+        if not decoded then return reject('serialization', 'Serialización inválida: ' .. reason) end
         if not OSSecurity.Util.equal(snapshot, decoded) then
-            return reject('integrity', 'Serializacion altera los datos.', difference(snapshot, decoded, '$'))
+            return reject('integrity', 'Serialización altera los datos.', difference(snapshot, decoded, '$'))
         end
         -- Detectar ediciones/corrupcion externa antes de sobrescribir un slot.
         for index, path in ipairs(paths) do
             local content, readError, details = read(path)
             if readError then return fail(readStage(details), 'Error de lectura previo al guardado.', readDetails(path, details)) end
             if content ~= known[index] then
-                return fail('integrity', 'Almacenamiento modificado externamente. No se sobrescribira.', 'path=' .. path)
+                return fail('integrity', 'Almacenamiento modificado externamente. No se sobrescribirá.', 'path=' .. path)
             end
         end
         local target = active == 1 and 2 or 1

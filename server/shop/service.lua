@@ -47,16 +47,16 @@ function OSSecurity.ShopService.new(options)
         local target
         if mode == 'here' then target = here
         elseif mode == 'road' then
-            if not util.object(point, { x = true, y = true, z = true }) or not finite(point.x) or not finite(point.y) or not finite(point.z) then return nil, 'Punto no valido.' end
-            if distance(point, config.RoadFrom) > config.RoadMaxDistance then return nil, 'No hay carretera cerca de Union Depository: acercate y repite.' end
+            if not util.object(point, { x = true, y = true, z = true }) or not finite(point.x) or not finite(point.y) or not finite(point.z) then return nil, 'Punto no válido.' end
+            if distance(point, config.RoadFrom) > config.RoadMaxDistance then return nil, 'No hay carretera cerca de Union Depository: acércate y repite.' end
             target = point
-        else return nil, 'Modo no valido.' end
+        else return nil, 'Modo no válido.' end
         location.x, location.y, location.z = util.round(target.x, 2), util.round(target.y, 2), util.round(target.z, 2)
         if options.files then
             local saved = { locations = {} }
             for _, item in ipairs(locations) do saved.locations[item.id] = { x = item.x, y = item.y, z = item.z } end
             if not options.files.write(FILE, OSSecurity.JsonCodec.encode(saved)) and options.log then
-                options.log('Tienda G6: no se pudo guardar data/shop.json; la ubicacion nueva dura hasta reiniciar.')
+                options.log('Tienda G6: no se pudo guardar data/shop.json; la ubicación nueva dura hasta reiniciar.')
             end
         end
         if options.moved then options.moved(shop.locations()) end
@@ -81,7 +81,7 @@ function OSSecurity.ShopService.new(options)
 
     function shop.catalog(source)
         local location = counter(source)
-        if not location then return nil, 'Acercate al mostrador de Gruppe Sechs.' end
+        if not location then return nil, 'Acércate al mostrador de Gruppe Sechs.' end
         if not options.money.available() then return nil, 'Pago no disponible en este servidor.' end
         local staff = options.isStaff(source) == true
         local list = {}
@@ -100,17 +100,17 @@ function OSSecurity.ShopService.new(options)
     function shop.buy(source, cart, account)
         local now = options.now()
         if lastBuy[source] and now - lastBuy[source] < 2 then return nil, 'Espera un momento antes de otra compra.' end
-        if not counter(source) then return nil, 'Acercate al mostrador de Gruppe Sechs.' end
+        if not counter(source) then return nil, 'Acércate al mostrador de Gruppe Sechs.' end
         if not options.money.available() then return nil, 'Pago no disponible en este servidor.' end
-        if type(account) ~= 'string' or not accounts[account] then return nil, 'Forma de pago no valida.' end
-        if type(cart) ~= 'table' or #cart == 0 or #cart > config.MaxLines then return nil, 'Carrito no valido.' end
+        if type(account) ~= 'string' or not accounts[account] then return nil, 'Forma de pago no válida.' end
+        if type(cart) ~= 'table' or #cart == 0 or #cart > config.MaxLines then return nil, 'Carrito no válido.' end
         local staff = options.isStaff(source) == true
         local lines, seen, total = {}, {}, 0
         for _, entry in ipairs(cart) do
-            if not util.object(entry, { item = true, amount = true }) then return nil, 'Carrito no valido.' end
+            if not util.object(entry, { item = true, amount = true }) then return nil, 'Carrito no válido.' end
             local product = type(entry.item) == 'string' and products[entry.item]
             if not product or not OSSecurity.ItemCatalog[entry.item] or seen[entry.item] then return nil, 'Producto no disponible.' end
-            if not util.integer(entry.amount, 1, config.MaxQuantity) then return nil, ('Maximo %d unidades por producto.'):format(config.MaxQuantity) end
+            if not util.integer(entry.amount, 1, config.MaxQuantity) then return nil, ('Máximo %d unidades por producto.'):format(config.MaxQuantity) end
             if product.audience == 'staff' and not staff then return nil, 'Ese producto es solo para personal de Gruppe Sechs de servicio.' end
             seen[entry.item] = true
             lines[#lines + 1] = { item = entry.item, amount = entry.amount, cost = price(product) * entry.amount }
@@ -147,15 +147,15 @@ function OSSecurity.ShopService.new(options)
         local refunded = true
         if refund > 0 then
             refunded = options.money.refund(source, refund, account, orderId) == true
-            if not refunded and options.log then options.log(('Tienda G6 %s: devolucion de $%d PENDIENTE; revisar a mano.'):format(orderId, refund)) end
+            if not refunded and options.log then options.log(('Tienda G6 %s: devolución de $%d PENDIENTE; revisar a mano.'):format(orderId, refund)) end
         end
         options.audit('shop_purchase', source)
         local message
         if #missing == 0 then message = ('Compra realizada: $%d.'):format(total)
         elseif #delivered == 0 then message = refunded and 'No se pudo entregar nada (inventario lleno o no disponible). Se te ha devuelto el dinero.'
-            or 'No se pudo entregar nada y la devolucion ha fallado: avisa a un administrador.'
+            or 'No se pudo entregar nada y la devolución ha fallado: avisa a un administrador.'
         else message = ('Compra parcial: no caben %s.%s'):format(table.concat(missing, ', '),
-            refunded and (' Devueltos $%d.'):format(refund) or ' La devolucion ha fallado: avisa a un administrador.') end
+            refunded and (' Devueltos $%d.'):format(refund) or ' La devolución ha fallado: avisa a un administrador.') end
         return { order = orderId, total = total - (refunded and refund or 0), delivered = delivered, message = message,
             balance = options.money.balance(source), partial = #missing > 0 }
     end

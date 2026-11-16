@@ -378,8 +378,8 @@ function state.snapshot(snapshot, limits)
     for id, installation in pairs(snapshot.installations) do
         count = count + 1
         if count > limits.MaxInstallations or not placement(installation) or installation.id ~= id
-            or tonumber(id:sub(5)) >= snapshot.nextInstallation then return nil, 'Instalacion de inventario invalida.' end
-        if not materials(installation, limits) then return nil, 'Contrato de materiales invalido.' end
+            or tonumber(id:sub(5)) >= snapshot.nextInstallation then return nil, 'Instalación de inventario inválida.' end
+        if not materials(installation, limits) then return nil, 'Contrato de materiales inválido.' end
         local anchor = snapshot.anchors[installation.anchorId]
         if not state.anchor(anchor) or not snapshot.accounts[installation.installer]
             or (installation.status == 'pending' and (anchor.owner ~= installation.owner
@@ -397,9 +397,9 @@ function state.snapshot(snapshot, limits)
         count = count + 1
         if count > limits.MaxAccounts or not identity.valid(principal) or not util.object(account, { items = true, grants = true, migrated = true })
             or not util.object(account.items) or not util.object(account.grants)
-            or (account.migrated ~= nil and not util.object(account.migrated)) then return nil, 'Cuenta de inventario invalida.' end
+            or (account.migrated ~= nil and not util.object(account.migrated)) then return nil, 'Cuenta de inventario inválida.' end
         for item, amount in pairs(account.migrated or {}) do
-            if not OSSecurity.ItemCatalog[item] or not util.integer(amount, 1, 2147483647) then return nil, 'Registro de migracion invalido.' end
+            if not OSSecurity.ItemCatalog[item] or not util.integer(amount, 1, 2147483647) then return nil, 'Registro de migración inválido.' end
         end
         local total, grants = 0, 0
         for item, definition in pairs(OSSecurity.ItemCatalog) do
@@ -407,88 +407,88 @@ function state.snapshot(snapshot, limits)
             local held = state.held(snapshot, principal, item)
             if entry ~= nil and (not util.object(entry, { count = true, metadata = true })
                 or not util.integer(entry.count, 1, limits.MaxItemQuantity) or not util.object(entry.metadata, {})) then
-                return nil, 'Cantidad o metadatos de item invalidos.'
+                return nil, 'Cantidad o metadatos de item inválidos.'
             end
             local amount = (entry and entry.count or 0) + held
-            if amount > limits.MaxItemQuantity then return nil, 'Limite de items reservados excedido.' end
+            if amount > limits.MaxItemQuantity then return nil, 'Límite de items reservados excedido.' end
             total = total + amount
         end
         for item in pairs(account.items) do if not OSSecurity.ItemCatalog[item] then return nil, 'Item desconocido.' end end
-        if total > limits.MaxTotalItems then return nil, 'Limite de inventario excedido.' end
+        if total > limits.MaxTotalItems then return nil, 'Límite de inventario excedido.' end
         for id, role in pairs(account.grants) do
             grants = grants + 1
             if grants > limits.MaxGrantsPerAccount or not OSSecurity.DeviceValidation.id(id)
-                or not ({ client = true, technician = true, supervisor = true })[role] then return nil, 'Concesion de acceso invalida.' end
+                or not ({ client = true, technician = true, supervisor = true })[role] then return nil, 'Concesión de acceso inválida.' end
         end
     end
     count = 0
     for id, anchor in pairs(snapshot.anchors) do
         count = count + 1
-        if count > limits.MaxAnchors or not state.anchor(anchor) or id ~= anchor.id then return nil, 'Montaje autorizado invalido.' end
+        if count > limits.MaxAnchors or not state.anchor(anchor) or id ~= anchor.id then return nil, 'Montaje autorizado inválido.' end
     end
     count = 0
     for deviceId, site in pairs(snapshot.sites or {}) do
         count = count + 1
         if count > limits.MaxInstallations or not OSSecurity.DeviceValidation.id(deviceId) or not state.site(site) then
-            return nil, 'Vinculo de propiedad o negocio invalido.'
+            return nil, 'Vinculo de propiedad o negocio inválido.'
         end
     end
     for deviceId, alarm in pairs(snapshot.alarms or {}) do
-        if not OSSecurity.DeviceValidation.id(deviceId) or not state.alarm(alarm) then return nil, 'Alarma invalida.' end
+        if not OSSecurity.DeviceValidation.id(deviceId) or not state.alarm(alarm) then return nil, 'Alarma inválida.' end
     end
     count = 0
     for carId, car in pairs(snapshot.cars or {}) do
-        if not state.carId(carId) or not state.car(car) or tostring(car.id) ~= carId then return nil, 'Vehiculo con equipo de seguridad invalido.' end
+        if not state.carId(carId) or not state.car(car) or tostring(car.id) ~= carId then return nil, 'Vehículo con equipo de seguridad inválido.' end
     end
     count = 0
     for deviceId, owner in pairs(snapshot.owners or {}) do
         count = count + 1
         if count > limits.MaxInstallations or not OSSecurity.DeviceValidation.id(deviceId) or not identity.valid(owner) then
-            return nil, 'Titular de dispositivo invalido.'
+            return nil, 'Titular de dispositivo inválido.'
         end
     end
     local orders = 0
     for orderId, order in pairs(snapshot.orders or {}) do
         orders = orders + 1
-        if orders > OSSecurity.GameplayConfig.Orders.MaxOrders or not state.order(order) or order.id ~= orderId then return nil, 'Orden de trabajo invalida.' end
+        if orders > OSSecurity.GameplayConfig.Orders.MaxOrders or not state.order(order) or order.id ~= orderId then return nil, 'Orden de trabajo inválida.' end
     end
     local calls = 0
     for callId, call in pairs(snapshot.calls or {}) do
         calls = calls + 1
-        if calls > OSSecurity.GameplayConfig.Dispatch.MaxCalls or not state.call(call) or call.id ~= callId then return nil, 'Aviso de la central invalido.' end
+        if calls > OSSecurity.GameplayConfig.Dispatch.MaxCalls or not state.call(call) or call.id ~= callId then return nil, 'Aviso de la central inválido.' end
     end
     local contracts = 0
     for contractId, contract in pairs(snapshot.contracts or {}) do
         contracts = contracts + 1
-        if contracts > OSSecurity.GameplayConfig.Contracts.MaxContracts or not state.contract(contract) or contract.id ~= contractId then return nil, 'Contrato invalido.' end
+        if contracts > OSSecurity.GameplayConfig.Contracts.MaxContracts or not state.contract(contract) or contract.id ~= contractId then return nil, 'Contrato inválido.' end
     end
     local patrols = 0
     for patrolId, patrol in pairs(snapshot.patrols or {}) do
         patrols = patrols + 1
-        if patrols > OSSecurity.GameplayConfig.Patrols.MaxRoutes or not state.patrol(patrol) or patrol.id ~= patrolId then return nil, 'Ruta de rondas invalida.' end
+        if patrols > OSSecurity.GameplayConfig.Patrols.MaxRoutes or not state.patrol(patrol) or patrol.id ~= patrolId then return nil, 'Ruta de rondas inválida.' end
     end
     local detectors, custody = 0, 0
     for detectorId, detector in pairs(snapshot.detectors or {}) do
         detectors = detectors + 1
-        if detectors > OSSecurity.GameplayConfig.Checkpoint.MaxDetectors or not state.detector(detector) or detector.id ~= detectorId then return nil, 'Arco detector invalido.' end
+        if detectors > OSSecurity.GameplayConfig.Checkpoint.MaxDetectors or not state.detector(detector) or detector.id ~= detectorId then return nil, 'Arco detector inválido.' end
     end
     for custodyId, record in pairs(snapshot.custody or {}) do
         custody = custody + 1
-        if custody > OSSecurity.GameplayConfig.Checkpoint.MaxCustody or not state.custody(record) or record.id ~= custodyId then return nil, 'Custodia invalida.' end
+        if custody > OSSecurity.GameplayConfig.Checkpoint.MaxCustody or not state.custody(record) or record.id ~= custodyId then return nil, 'Custodia inválida.' end
     end
     for doorId, door in pairs(snapshot.doors or {}) do
         count = count + 1
-        if count > OSSecurity.GameplayConfig.Locks.MaxDoors or not state.door(door) or door.id ~= doorId then return nil, 'Puerta con cerradura invalida.' end
+        if count > OSSecurity.GameplayConfig.Locks.MaxDoors or not state.door(door) or door.id ~= doorId then return nil, 'Puerta con cerradura inválida.' end
     end
     if snapshot.revision == 0 and (next(snapshot.accounts) or next(snapshot.anchors) or next(snapshot.installations)) then
-        return nil, 'Inventario inicial no vacio.'
+        return nil, 'Inventario inicial no vacío.'
     end
     return true
 end
 
 function state.apply(snapshot, op, limits)
     if not operation(op, limits) or (snapshot.lastOperation and op.at < snapshot.lastOperation.at) then
-        return nil, 'Operacion de inventario invalida.'
+        return nil, 'Operación de inventario inválida.'
     end
     local nextState = util.copy(snapshot)
     local function account(principal)
@@ -521,7 +521,7 @@ function state.apply(snapshot, op, limits)
         if op.order and not nextState.orders[op.orderId] then
             local count = 0
             for _ in pairs(nextState.orders) do count = count + 1 end
-            if count >= OSSecurity.GameplayConfig.Orders.MaxOrders then return nil, 'Limite de ordenes de trabajo alcanzado.' end
+            if count >= OSSecurity.GameplayConfig.Orders.MaxOrders then return nil, 'Límite de órdenes de trabajo alcanzado.' end
         end
         nextState.orders[op.orderId] = op.order and util.copy(op.order) or nil
         if next(nextState.orders) == nil then nextState.orders = nil end
@@ -530,7 +530,7 @@ function state.apply(snapshot, op, limits)
         if op.call and not nextState.calls[op.callId] then
             local count = 0
             for _ in pairs(nextState.calls) do count = count + 1 end
-            if count >= OSSecurity.GameplayConfig.Dispatch.MaxCalls then return nil, 'Limite de avisos de la central alcanzado.' end
+            if count >= OSSecurity.GameplayConfig.Dispatch.MaxCalls then return nil, 'Límite de avisos de la central alcanzado.' end
         end
         nextState.calls[op.callId] = op.call and util.copy(op.call) or nil
         if next(nextState.calls) == nil then nextState.calls = nil end
@@ -539,7 +539,7 @@ function state.apply(snapshot, op, limits)
         if op.patrol and not nextState.patrols[op.patrolId] then
             local count = 0
             for _ in pairs(nextState.patrols) do count = count + 1 end
-            if count >= OSSecurity.GameplayConfig.Patrols.MaxRoutes then return nil, 'Limite de rutas de rondas alcanzado.' end
+            if count >= OSSecurity.GameplayConfig.Patrols.MaxRoutes then return nil, 'Límite de rutas de rondas alcanzado.' end
         end
         nextState.patrols[op.patrolId] = op.patrol and util.copy(op.patrol) or nil
         if next(nextState.patrols) == nil then nextState.patrols = nil end
@@ -548,7 +548,7 @@ function state.apply(snapshot, op, limits)
         if op.contract and not nextState.contracts[op.contractId] then
             local count = 0
             for _ in pairs(nextState.contracts) do count = count + 1 end
-            if count >= OSSecurity.GameplayConfig.Contracts.MaxContracts then return nil, 'Limite de contratos alcanzado.' end
+            if count >= OSSecurity.GameplayConfig.Contracts.MaxContracts then return nil, 'Límite de contratos alcanzado.' end
         end
         nextState.contracts[op.contractId] = op.contract and util.copy(op.contract) or nil
         if next(nextState.contracts) == nil then nextState.contracts = nil end
@@ -559,7 +559,7 @@ function state.apply(snapshot, op, limits)
         if value and not nextState[key][id] then
             local count = 0
             for _ in pairs(nextState[key]) do count = count + 1 end
-            if count >= limit then return nil, 'Limite de ' .. label .. ' alcanzado.' end
+            if count >= limit then return nil, 'Límite de ' .. label .. ' alcanzado.' end
         end
         nextState[key][id] = value and util.copy(value) or nil
         if next(nextState[key]) == nil then nextState[key] = nil end
@@ -625,7 +625,7 @@ function state.apply(snapshot, op, limits)
         if next(nextState.sites) == nil then nextState.sites = nil end
     elseif op.kind == 'anchor' then
         for _, installation in pairs(snapshot.installations) do
-            if installation.anchorId == op.anchor.id and installation.status == 'pending' then return nil, 'Montaje con operacion pendiente.' end
+            if installation.anchorId == op.anchor.id and installation.status == 'pending' then return nil, 'Montaje con operación pendiente.' end
         end
         nextState.anchors[op.anchor.id] = util.copy(op.anchor)
     elseif op.kind == 'unanchor' then
@@ -639,13 +639,13 @@ function state.apply(snapshot, op, limits)
         local anchor = snapshot.anchors[proposed.anchorId]
         if proposed.id ~= ('g6i_%010d'):format(snapshot.nextInstallation) or not anchor
             or anchor.owner ~= proposed.owner or anchor.installer ~= proposed.installer or anchor.bucket ~= proposed.bucket then
-            return nil, 'Reserva de instalacion no autorizada.'
+            return nil, 'Reserva de instalación no autorizada.'
         end
         for _, existing in pairs(snapshot.installations) do
             if existing.anchorId == proposed.anchorId and existing.status ~= 'cancelled' and existing.status ~= 'removed' then return nil, 'Montaje ocupado o pendiente.' end
         end
         local target = account(proposed.installer)
-        if not util.object(proposed.materials) or not util.array(proposed.tools, 8) then return nil, 'Contrato de materiales invalido.' end
+        if not util.object(proposed.materials) or not util.array(proposed.tools, 8) then return nil, 'Contrato de materiales inválido.' end
         -- Con titular externo, el proveedor cobra y devuelve los materiales; aqui solo se registra la reserva.
         if proposed.holder == nil then
             for _, item in ipairs(proposed.tools) do
@@ -662,7 +662,7 @@ function state.apply(snapshot, op, limits)
         nextState.nextInstallation = snapshot.nextInstallation + 1
     elseif op.kind == 'remove' then
         local installation = nextState.installations[op.installationId]
-        if not installation or installation.status ~= 'committed' then return nil, 'Instalacion no montada.' end
+        if not installation or installation.status ~= 'committed' then return nil, 'Instalación no montada.' end
         installation.status, installation.updatedAt = 'removed', op.at
         if op.principal then
             local target = account(op.principal)
@@ -694,7 +694,7 @@ function state.apply(snapshot, op, limits)
 end
 
 function state.successor(previous, current, limits)
-    if current.revision ~= previous.revision + 1 then return nil, 'Revision de inventario no consecutiva.' end
+    if current.revision ~= previous.revision + 1 then return nil, 'Revisión de inventario no consecutiva.' end
     local expected, err = state.apply(previous, current.lastOperation, limits)
     if not expected or not util.equal(expected, current) then return nil, err or 'Cambio de inventario no reproducible.' end
     return true

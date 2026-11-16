@@ -12,7 +12,7 @@ function OSSecurity.JsonCodec.decode(content)
     local objectMeta, arrayMeta = {}, {}
     local value, position, err = json.decode(content, 1, json.null, objectMeta, arrayMeta)
     if err or not position or content:sub(position):find('%S') then
-        error('Documento JSON invalido o con contenido adicional.')
+        error('Documento JSON inválido o con contenido adicional.')
     end
     local function normalize(item)
         if type(item) ~= 'table' or item == json.null then return end

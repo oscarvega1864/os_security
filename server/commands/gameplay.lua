@@ -21,7 +21,7 @@ function OSSecurity.GameplayCommands.register(options)
         local installer = options.identity.resolve(tonumber(installerSource))
         if not owner or not installer or not OSSecurity.InventoryState.vector(position, 1000000)
             or not OSSecurity.InventoryState.vector(normal, 1000) or not OSSecurity.Util.finite(radius) then
-            return nil, 'Identidades o coordenadas de montaje invalidas.'
+            return nil, 'Identidades o coordenadas de montaje inválidas.'
         end
         local round = OSSecurity.Util.round
         position, normal = OSSecurity.ZoneService.normalize(position, normal)
@@ -38,7 +38,7 @@ function OSSecurity.GameplayCommands.register(options)
             if not actor then options.reply(source, actorError); return end
             local amount = tonumber(args[4])
             if not OSSecurity.ItemCatalog[args[3]] or not OSSecurity.Util.integer(amount, 1, OSSecurity.GameplayConfig.MaxItemQuantity) then
-                options.reply(source, 'Objeto o cantidad no validos.'); return
+                options.reply(source, 'Objeto o cantidad no válidos.'); return
             end
             if holdings.external() then result, err = holdings.grant(actor.holder, args[3], amount)
             else result, err = options.inventory.apply({ kind = 'grant', principal = actor.principal, item = args[3], amount = amount }) end
@@ -54,7 +54,7 @@ function OSSecurity.GameplayCommands.register(options)
         elseif action == 'migrate' and #args == 2 then
             -- Pasa los objetos locales de la cuenta al personaje activo en el proveedor externo.
             -- Clave de operacion = total migrado tras esta entrega: tras un corte se repite sin duplicar.
-            if not holdings.external() then options.reply(source, 'Migracion disponible solo con ossecurity_items=os_inventory.'); return end
+            if not holdings.external() then options.reply(source, 'Migración disponible solo con ossecurity_items=os_inventory.'); return end
             local actor, actorError = target(args[2])
             if not actor then options.reply(source, actorError); return end
             local account, reason = options.inventory.get(actor.principal)
@@ -69,9 +69,9 @@ function OSSecurity.GameplayCommands.register(options)
                 local total = ((account.migrated or {})[item] or 0) + amount
                 local operationId = ('g6mig:%s:%s:%d'):format(actor.principal:sub(9, 24), item, total)
                 local granted, grantError = holdings.grant(actor.holder, item, amount, operationId)
-                if not granted then options.reply(source, ('Migracion detenida en %s: %s'):format(item, tostring(grantError))); return end
+                if not granted then options.reply(source, ('Migración detenida en %s: %s'):format(item, tostring(grantError))); return end
                 local saved, saveError = options.inventory.apply({ kind = 'migrate', principal = actor.principal, item = item, amount = amount })
-                if not saved then options.reply(source, ('Migracion detenida en %s: %s. Repetir el comando no duplica.'):format(item, tostring(saveError))); return end
+                if not saved then options.reply(source, ('Migración detenida en %s: %s. Repetir el comando no duplica.'):format(item, tostring(saveError))); return end
                 moved[#moved + 1] = ('%s=%d'):format(item, amount)
             end
             options.reply(source, ('Migrado a %s: %s'):format(actor.holder, table.concat(moved, ' | ')))
@@ -88,7 +88,7 @@ function OSSecurity.GameplayCommands.register(options)
             if #args == 4 then
                 local kind = ({ propiedad = 'property', property = 'property', negocio = 'business', business = 'business' })[args[3]]
                 site = { kind = kind, id = tonumber(args[4]) }
-                if not kind or not OSSecurity.InventoryState.site(site) then options.reply(source, 'Tipo o ID no validos.'); return end
+                if not kind or not OSSecurity.InventoryState.site(site) then options.reply(source, 'Tipo o ID no válidos.'); return end
                 if not options.sites or not options.sites.available() then options.reply(source, 'Proveedor de propiedades no disponible.'); return end
                 if not options.sites.get(site) then options.reply(source, ('%s inexistente.'):format(OSSecurity.Sites.Labels[kind] .. ' ' .. site.id)); return end
             elseif args[3] ~= 'none' then options.reply(source, usage); return end
@@ -101,7 +101,7 @@ function OSSecurity.GameplayCommands.register(options)
             local position = { x = tonumber(args[5]), y = tonumber(args[6]), z = tonumber(args[7]) }
             local normal = { x = tonumber(args[8]), y = tonumber(args[9]), z = tonumber(args[10]) }
             local radius = args[11] and tonumber(args[11]) or 0.75
-            if args[11] and not tonumber(args[11]) then options.reply(source, 'Identidades o coordenadas de montaje invalidas.'); return end
+            if args[11] and not tonumber(args[11]) then options.reply(source, 'Identidades o coordenadas de montaje inválidas.'); return end
             result, err = createAnchor(args[2], args[3], args[4], position, normal, radius)
         elseif action == 'installations' and #args == 1 then
             local snapshot, reason = options.inventory.snapshot()
@@ -122,7 +122,7 @@ function OSSecurity.GameplayCommands.register(options)
             options.reply(source, message or reason); return
         elseif action == 'cars' and #args == 1 then
             local lines = options.cars.describe()
-            options.reply(source, ('Vehiculos con equipo de seguridad: %d'):format(#lines))
+            options.reply(source, ('Vehículos con equipo de seguridad: %d'):format(#lines))
             for _, line in ipairs(lines) do options.reply(source, line) end
             return
         elseif action == 'diagnose' and #args == 1 then
@@ -131,7 +131,7 @@ function OSSecurity.GameplayCommands.register(options)
                 holdings.external() and ('externo:' .. tostring(holdings.available())) or 'local', tostring(options.ready())))
             return
         else options.reply(source, usage); return end
-        options.reply(source, result and 'Operacion Gruppe Sechs persistida.' or (err or 'Operacion rechazada.'))
+        options.reply(source, result and 'Operación Gruppe Sechs persistida.' or (err or 'Operación rechazada.'))
     end, false)
 
     -- /g6anchor: el administrador apunta a la pared; el cliente solo propone punto y normal.
@@ -148,11 +148,11 @@ function OSSecurity.GameplayCommands.register(options)
         local site
         if payload.site ~= nil then
             site = OSSecurity.Util.object(payload.site, { kind = true, id = true }) and { kind = payload.site.kind, id = payload.site.id } or nil
-            if not site or not OSSecurity.InventoryState.site(site) then return nil, 'Propiedad o negocio no valido.' end
+            if not site or not OSSecurity.InventoryState.site(site) then return nil, 'Propiedad o negocio no válido.' end
             if not options.sites or not options.sites.get(site) then return nil, ('%s %d inexistente.'):format(OSSecurity.Sites.Labels[site.kind], site.id) end
         end
         local here, bucket = options.world(source)
-        if not here then return nil, 'Posicion del administrador no disponible.' end
+        if not here then return nil, 'Posición del administrador no disponible.' end
         local dx, dy, dz = payload.position.x - here.x, payload.position.y - here.y, payload.position.z - here.z
         if math.sqrt(dx * dx + dy * dy + dz * dz) > OSSecurity.GameplayConfig.AnchorAimDistance then return nil, 'El punto apuntado esta demasiado lejos.' end
         local result, err = createAnchor(payload.id, payload.client, payload.installer or source, payload.position, payload.normal, payload.radius or 0.75, bucket, site)

@@ -312,7 +312,7 @@ RegisterNUICallback('cylinderFx', function(body, callback)
 end)
 -- Vehiculos: mando (L por defecto, configurable en Ajustes > Teclas > FiveM), efectos e instalacion.
 RegisterCommand('g6mando', function() if not carwireOpen and not cylinderOpen then cars.key() end end, false)
-RegisterKeyMapping('g6mando', 'Llave del vehiculo: abrir / cerrar (Gruppe Sechs)', 'keyboard', 'L')
+RegisterKeyMapping('g6mando', 'Llave del vehículo: abrir / cerrar (Gruppe Sechs)', 'keyboard', 'L')
 RegisterNetEvent('os_security:car:fx', function(netId, locked, remote) if source == 65535 and type(netId) == 'number' then cars.fx(netId, locked == true, remote == true) end end)
 -- Motor: Y por defecto. Solo en vehiculos con matricula OS hace falta la llave.
 RegisterCommand('g6motor', function() if not carwireOpen and not cylinderOpen then cars.engine() end end, false)
@@ -410,7 +410,7 @@ end)
 RegisterNetEvent('os_security:shop:findRoad', function(around)
     if source ~= 65535 or type(around) ~= 'table' then return end
     local ok, position = GetClosestVehicleNodeWithHeading(around.x + 0.0, around.y + 0.0, around.z + 0.0, 1, 3.0, 0)
-    if not ok or ok == 0 then OSSecurity.Notify('No hay carretera cargada cerca: acercate a Union Depository y repite.', 'error'); return end
+    if not ok or ok == 0 then OSSecurity.Notify('No hay carretera cargada cerca: acércate a Union Depository y repite.', 'error'); return end
     TriggerServerEvent('os_security:shop:roadPoint', { x = position.x, y = position.y, z = position.z })
 end)
 RegisterNetEvent('os_security:shop:moved', function(ok, message)

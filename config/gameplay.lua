@@ -82,7 +82,7 @@ OSSecurity.GameplayConfig = {
         DetectRadius = 15.0, ReportRange = 60.0, ScanCooldown = 60, PairDistance = 2.6,
         LockedByDefault = { property = true, business = false },
         Tools = { 'os_screwdriver' },
-        Tiers = { 'Bombin de serie', 'Bombin de seguridad', 'Bombin de alta seguridad' },
+        Tiers = { 'Bombín de serie', 'Bombín de seguridad', 'Bombín de alta seguridad' },
         -- Kit -> nivel. El bombin retirado vuelve al inventario (el de serie se desecha).
         Cylinders = { os_lock_kit = 2, os_lock_kit_high = 3 }
     },

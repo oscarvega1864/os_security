@@ -82,7 +82,7 @@ local function fixture(files, external)
             available = function() return c.transportUp ~= false end,
             read = function(player) return c.transportData and c.transportData[player] or nil end,
             act = function(player, action, value) c.transportCalls = c.transportCalls or {}; c.transportCalls[#c.transportCalls + 1] = { player, action, value }
-                if c.transportFail then return false, 'Ya tienes una mision en curso.' end; return true, 'Mision pedida.' end
+                if c.transportFail then return false, 'Ya tienes una misión en curso.' end; return true, 'Misión pedida.' end
         },
         cull = function(player, radius) c.culling = c.culling or {}; c.culling[player] = radius end,
         detectorsChanged = function(list) c.detectorList = list end,
@@ -1068,9 +1068,9 @@ test('Changing the cylinder needs the open door, a screwdriver and the kit; char
     c.active[2] = { alias = 'ana' }
     c.players[2].point = { x = 102, y = 100, z = 30 }
     assert(c.game.locks.report(2, doorReport(7, { FRONT })) == 1)
-    local _, why = c.game.locks.changeBegin(2, 'os_lock_kit'); assert(why == 'Abre la puerta antes de cambiar el bombin.')
+    local _, why = c.game.locks.changeBegin(2, 'os_lock_kit'); assert(why == 'Abre la puerta antes de cambiar el bombín.')
     assert(c.game.locks.toggle(2))
-    _, why = c.game.locks.changeBegin(2, 'os_lock_kit'); assert(why == 'No tienes ese bombin.')
+    _, why = c.game.locks.changeBegin(2, 'os_lock_kit'); assert(why == 'No tienes ese bombín.')
     e.give(2, 'os_lock_kit'); e.give(2, 'os_lock_kit_high')
     _, why = c.game.locks.changeBegin(2, 'os_lock_kit'); assert(why == 'Necesitas un destornillador.')
     e.give(2, 'os_screwdriver')
@@ -1098,7 +1098,7 @@ test('A stranger cannot change a cylinder but an on-duty G6 technician can; movi
     assert(c.game.locks.report(2, doorReport(7, { FRONT })) == 1); assert(c.game.locks.toggle(2))
     e.give(5, 'os_lock_kit'); e.give(5, 'os_screwdriver')
     c.players[5].point = { x = 102.5, y = 100, z = 30 }
-    local _, why = c.game.locks.changeBegin(5, 'os_lock_kit'); assert(why:find('titular o un tecnico'))
+    local _, why = c.game.locks.changeBegin(5, 'os_lock_kit'); assert(why:find('titular o un técnico'))
     c.jobs[5] = { job = 'gruppe6', rank = 'tecnico', duty = true, characterId = e.holders[5] }
     assert(c.game.locks.changeBegin(5, 'os_lock_kit'))
     c.players[5].point = { x = 120, y = 100, z = 30 }
@@ -1187,8 +1187,8 @@ test('Installing in a vehicle needs the driver seat, engine off, ownership or a 
     _, why = v.cars.installBegin(2, 'os_car_lock_kit'); assert(why:find('destornillador'))
     e.give(2, 'os_screwdriver')
     v.driving[5] = { plate = 'OS000012', engine = false, speed = 0 }; e.give(5, 'os_car_lock_kit'); e.give(5, 'os_screwdriver')
-    _, why = v.cars.installBegin(5, 'os_car_lock_kit'); assert(why:find('dueno o un tecnico'))
-    v.driving[2].plate = 'XX12345'; _, why = v.cars.installBegin(2, 'os_car_lock_kit'); assert(why:find('matricula OS'))
+    _, why = v.cars.installBegin(5, 'os_car_lock_kit'); assert(why:find('dueño o un técnico'))
+    v.driving[2].plate = 'XX12345'; _, why = v.cars.installBegin(2, 'os_car_lock_kit'); assert(why:find('matrícula OS'))
     v.driving[2].plate = 'OS000012'
     assert(v.cars.installBegin(2, 'os_car_lock_kit'))
     assert(not v.cars.installFinish(2, false) and e.count(2, 'os_car_lock_kit') == 1) -- cancelado: no gasta
@@ -1242,7 +1242,7 @@ end)
 test('Without a kit the owner still locks with the key next to the car, and only the owner can start the engine', function()
     local c, e, v = carFixture()
     c.players[2].point = { x = 3, y = 0, z = 1 }; c.players[5].point = { x = 1, y = 0, z = 1 }
-    local _, why = v.cars.toggle(2, { plate = 'XX1234', position = { x = 0, y = 0, z = 1 } }); assert(why:find('matricula OS'))
+    local _, why = v.cars.toggle(2, { plate = 'XX1234', position = { x = 0, y = 0, z = 1 } }); assert(why:find('matrícula OS'))
     c.players[2].point = { x = 6, y = 0, z = 1 }
     _, why = v.cars.toggle(2, carAt()); assert(why:find('puerta')) -- sin cierre centralizado: hay que estar junto al coche
     c.players[2].point = { x = 3, y = 0, z = 1 }
@@ -1267,7 +1267,7 @@ test('Lockpicking a locked property door: difficulty by cylinder, minimum time p
         now = function() return c.core.time end, locks = c.game.locks, cars = { pickTarget = function() return nil end },
         random = function() return roll end, notifyOwner = function(alias, text) alerts[#alerts + 1] = { alias, text } end, audit = function() end })
     c.players[5].point = { x = 102.5, y = 100, z = 30 }
-    local _, why = pick.begin(5, nil); assert(why == 'No tienes ganzua.')
+    local _, why = pick.begin(5, nil); assert(why == 'No tienes ganzúa.')
     e.give(5, 'os_lockpick', 2)
     local challenge = assert(pick.begin(5, nil)); assert(challenge.kind == 'door' and challenge.pins == 3 and challenge.tier == 1)
     c.core.time = c.core.time + 1 -- 3 pines en 1 s: demasiado rapido
@@ -1377,7 +1377,7 @@ test('Tablet zones: the installer picks a nearby client, marks the zone with the
     assert(card.site:find('Propiedad 7', 1, true) and card.distance == 1)
     assert(not call(c, 1, session, 'zone_install', { anchorId = 'zona_1', kit = 'os_alarm_kit' }).ok) -- no tiene ese kit
     c.players[1].point = { x = 30, y = 0, z = 1 }
-    local far = call(c, 1, session, 'zone_install', { anchorId = 'zona_1', kit = 'os_cctv_kit' }); assert(not far.ok and far.error:find('Acercate'))
+    local far = call(c, 1, session, 'zone_install', { anchorId = 'zona_1', kit = 'os_cctv_kit' }); assert(not far.ok and far.error:find('Acércate'))
     c.players[1].point = { x = 0, y = 0, z = 1 }
     session = reopen()
     local placement = call(c, 1, session, 'zone_install', { anchorId = 'zona_1', kit = 'os_cctv_kit' })
@@ -1471,9 +1471,9 @@ test('Shop: purchases are validated, charged once and delivered to the local led
     assert(count(c, 2, 'os_lock_kit') == 2 and count(c, 2, 'os_screwdriver') == 1)
     local _, why = buy({ { item = 'os_cctv_kit', amount = 1 } }, 'bank'); assert(why:find('personal'))
     _, why = buy({ { item = 'os_lockpick', amount = 1 } }, 'bank'); assert(why == 'Producto no disponible.')
-    _, why = buy({ { item = 'os_lock_kit', amount = 11 } }, 'bank'); assert(why:find('Maximo'))
+    _, why = buy({ { item = 'os_lock_kit', amount = 11 } }, 'bank'); assert(why:find('Máximo'))
     _, why = buy({ { item = 'os_battery', amount = 1 }, { item = 'os_battery', amount = 1 } }, 'bank'); assert(why == 'Producto no disponible.')
-    _, why = buy({ { item = 'os_battery', amount = 1, price = 0 } }, 'bank'); assert(why == 'Carrito no valido.')
+    _, why = buy({ { item = 'os_battery', amount = 1, price = 0 } }, 'bank'); assert(why == 'Carrito no válido.')
     _, why = buy({ { item = 'os_battery', amount = 1 } }, 'crypto'); assert(why:find('Forma de pago'))
     _, why = buy({ { item = 'os_lock_kit_high', amount = 1 } }, 'cash'); assert(why == 'Saldo insuficiente.' and c.wallet[2].cash == 100)
     assert(c.wallet[2].bank == 3240 and count(c, 2, 'os_cctv_kit') == 0) -- los rechazos no cobran
@@ -1540,11 +1540,11 @@ test('Live CCTV: only viewers of an installed, powered camera get its framing; w
     assert(c.core.registry.service(0, id, 'fault', { slot = 'optics', health = 40 }))
     live = call(c, 2, client, 'live', { deviceId = id }); assert(live.ok and live.data.noise == 0.45)
     assert(c.core.registry.service(0, id, 'fault', { slot = 'optics', health = 0 }))
-    live = call(c, 2, client, 'live', { deviceId = id }); assert(not live.ok and live.error:find('optica'))
-    summary = call(c, 2, client, 'device', { deviceId = id }); assert(not summary.data.live and summary.data.liveReason:find('optica'))
+    live = call(c, 2, client, 'live', { deviceId = id }); assert(not live.ok and live.error:find('óptica'))
+    summary = call(c, 2, client, 'device', { deviceId = id }); assert(not summary.data.live and summary.data.liveReason:find('óptica'))
     -- Desde la propia vista (browse) una camara instalada sin senal no cierra la vista: NO VIDEO con el motivo.
     live = call(c, 2, client, 'live', { deviceId = id, browse = true })
-    assert(live.ok and live.data.noSignal:find('optica') and live.data.position == nil and #live.data.cameras == 1 and live.data.cameras[1].live == false)
+    assert(live.ok and live.data.noSignal:find('óptica') and live.data.position == nil and #live.data.cameras == 1 and live.data.cameras[1].live == false)
     assert(not call(c, 2, client, 'live', { deviceId = id, browse = 'si' }).ok)
     local noCamera = alarmPanel(c, 2)
     assert(not call(c, 2, client, 'live', { deviceId = noCamera.id }).ok)
@@ -1565,8 +1565,8 @@ test('Work orders: a client requests, an on-duty technician accepts and bills, t
     assert(#list.data.items == 0 and #list.data.places == 2 and list.data.places[2].value == 'site:property:7' and list.data.places[2].label:find('Propiedad 7', 1, true) and #list.data.kinds == 6)
     assert(not call(c, 2, client, 'request_create', { kind = 'cctv', place = 'here', note = '   ' }).ok) -- sin descripcion
     assert(not call(c, 2, client, 'request_create', { kind = 'hack', place = 'here', note = 'x' }).ok)
-    assert(not call(c, 2, client, 'request_create', { kind = 'cctv', place = 'site:property:99', note = 'Camara' }).ok) -- no es suya
-    local created = call(c, 2, client, 'request_create', { kind = 'cctv', place = 'site:property:7', note = 'Dos camaras <b>en la entrada</b>' })
+    assert(not call(c, 2, client, 'request_create', { kind = 'cctv', place = 'site:property:99', note = 'Cámara' }).ok) -- no es suya
+    local created = call(c, 2, client, 'request_create', { kind = 'cctv', place = 'site:property:7', note = 'Dos cámaras <b>en la entrada</b>' })
     assert(created.ok, created.error) assert(created.data.id == 'ot_000001')
     local order = c.game.inventory.orders().ot_000001
     assert(order.status == 'open' and order.position.x == 50 and order.place:find('Propiedad 7', 1, true) and not order.note:find('[<>]') and order.note:find('entrada'))
@@ -1912,6 +1912,7 @@ test('Tablet home: the summary and the map show only what each profile can see, 
     local found = call(c, 1, tech, 'search', { query = placed.data.id }); assert(found.ok, found.error)
     assert(#found.data.items == 1 and found.data.items[1].kind == 'device' and found.data.items[1].position.x == 1)
     assert(call(c, 1, tech, 'search', { query = 'CAMARA' }).data.items[1].id == placed.data.id) -- por tipo, sin distinguir mayusculas
+    assert(call(c, 1, tech, 'search', { query = 'cámara' }).data.items[1].id == placed.data.id) -- con o sin tilde
     local byNote = call(c, 1, tech, 'search', { query = 'garaje' }); assert(byNote.ok and byNote.data.items[1].kind == 'call')
     assert(not call(c, 1, tech, 'search', { query = 'a' }).ok and not call(c, 1, tech, 'search', { query = ('x'):rep(41) }).ok)
     assert(not call(c, 1, tech, 'search', { query = 7 }).ok and not call(c, 1, tech, 'search', { query = 'ab', other = 1 }).ok)
@@ -1967,7 +1968,7 @@ test('Contracts: a client hires a plan for an owned property, is charged each pe
     assert(central.data.items[1].contract == true and central.data.items[1].place:find('Propiedad 7', 1, true))
     -- Descuento: orden de esa propiedad facturada a 1000 -> paga 750 (alarm: 25 %); el tecnico cobra su parte del precio.
     c.core.time = c.core.time + 20
-    assert(call(c, 2, client, 'request_create', { kind = 'repair', place = 'site:property:7', note = 'Camara' }).ok)
+    assert(call(c, 2, client, 'request_create', { kind = 'repair', place = 'site:property:7', note = 'Cámara' }).ok)
     local tech = open(c, 1, 'operations')
     assert(call(c, 1, tech, 'order_accept', { orderId = 'ot_000001' }).ok and call(c, 1, tech, 'order_bill', { orderId = 'ot_000001', price = 1000 }).ok)
     local mine = call(c, 2, client, 'requests').data.items[1]; assert(mine.due == 750 and mine.contract == 'ct_000001')
@@ -2036,7 +2037,7 @@ test('Cash transport: G6 Operations reads and drives os_gruppesechs missions thr
     c.transportData = { [1] = { employed = true, kinds = { { value = 'cash', label = 'Recogida de efectivo' } }, running = {} } }
     local tech = open(c, 1, 'operations')
     local view = call(c, 1, tech, 'transport'); assert(view.ok and view.data.employed and view.data.kinds[1].value == 'cash')
-    local started = call(c, 1, tech, 'transport_action', { action = 'start', kind = 'cash' }); assert(started.ok and started.data.message == 'Mision pedida.')
+    local started = call(c, 1, tech, 'transport_action', { action = 'start', kind = 'cash' }); assert(started.ok and started.data.message == 'Misión pedida.')
     assert(c.transportCalls[1][1] == 1 and c.transportCalls[1][2] == 'start' and c.transportCalls[1][3] == 'cash')
     assert(not call(c, 1, tech, 'transport_action', { action = 'pay_me' }).ok) -- accion no permitida
     assert(not call(c, 1, tech, 'transport_action', { action = 'start', kind = 'cash; drop' }).ok)
@@ -2058,7 +2059,7 @@ test('Patrols: a supervisor builds a route on site, a guard checks in at each po
     local tech, supervisor = open(c, 1, 'operations'), open(c, 3, 'operations')
     assert(not call(c, 1, tech, 'patrol_create', { name = 'Ronda' }).ok) -- el tecnico no crea rutas
     assert(not call(c, 3, supervisor, 'patrol_create', { name = '   ' }).ok)
-    local created = call(c, 3, supervisor, 'patrol_create', { name = 'Perimetro <b>norte</b>', contractId = 'ct_000001' }); assert(created.ok, created.error)
+    local created = call(c, 3, supervisor, 'patrol_create', { name = 'Perímetro <b>norte</b>', contractId = 'ct_000001' }); assert(created.ok, created.error)
     local id = created.data.id; assert(id == 'rd_000001')
     c.players[3].point = { x = 50, y = 60, z = 30 }; assert(call(c, 3, supervisor, 'patrol_point', { routeId = id }).ok)
     c.players[3].point = { x = 51, y = 60, z = 30 }; assert(not call(c, 3, supervisor, 'patrol_point', { routeId = id }).ok) -- demasiado cerca

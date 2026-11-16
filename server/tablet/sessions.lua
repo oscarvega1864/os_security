@@ -17,28 +17,28 @@ function OSSecurity.TabletSessions.new(options)
         return true
     end
     function controller.open(source, kind)
-        if not controller.rate(source, true) then return nil, 'Limite de apertura alcanzado.' end
+        if not controller.rate(source, true) then return nil, 'Límite de apertura alcanzado.' end
         if not options.alive(source) then return nil, 'Jugador no disponible.' end
         local actor, err = options.auth.profile(source, kind)
         if not actor then return nil, err end
         local token = options.token(source)
-        if not OSSecurity.Util.text(token, 128) then return nil, 'No se pudo crear la sesion.' end
+        if not OSSecurity.Util.text(token, 128) then return nil, 'No se pudo crear la sesión.' end
         local session = { token = token, source = source, actor = actor, sequence = 0, expires = options.now() + config.SessionSeconds }
         sessions[source] = session
         return session
     end
     function controller.check(source, token, sequence)
-        if not controller.rate(source, false) then return nil, 'Limite de solicitudes alcanzado.' end
+        if not controller.rate(source, false) then return nil, 'Límite de solicitudes alcanzado.' end
         local session = sessions[source]
         if not session or type(token) ~= 'string' or token ~= session.token
             or not OSSecurity.Util.integer(sequence, 1, 2147483647) or sequence ~= session.sequence + 1 then
-            return nil, 'Sesion o secuencia no valida.'
+            return nil, 'Sesión o secuencia no válida.'
         end
         local actor = options.auth.profile(source, session.actor.kind)
         if options.now() > session.expires or not options.alive(source) or not actor
             or actor.principal ~= session.actor.principal or actor.role ~= session.actor.role then
             sessions[source] = nil
-            return nil, 'La sesion ha caducado o su autorizacion ha cambiado.'
+            return nil, 'La sesión ha caducado o su autorización ha cambiado.'
         end
         session.sequence, session.expires = sequence, options.now() + config.SessionSeconds
         return session

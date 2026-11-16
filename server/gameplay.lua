@@ -46,7 +46,7 @@ function OSSecurity.Gameplay.new(options)
     end
     function holdings.refund(installation)
         if not installation.holder then return true end
-        if not items then return nil, 'Proveedor externo no configurado; devolucion pendiente.' end
+        if not items then return nil, 'Proveedor externo no configurado; devolución pendiente.' end
         return items.refund(installation.id, installation.holder, installation.materials)
     end
     function holdings.grant(holder, item, amount, operationId) return items.grant(holder, item, amount, operationId) end
@@ -234,7 +234,7 @@ function OSSecurity.Gameplay.new(options)
                 local info = options.info or options.log
                 if info then info(('Datos de %s... asignados al personaje %s.'):format(principal:sub(1, 14), only)) end
             elseif options.log then
-                options.log(('Cuenta %s... sin un personaje claro (%d); sus datos no se muestran a ningun personaje.'):format(principal:sub(1, 14), count))
+                options.log(('Cuenta %s... sin un personaje claro (%d); sus datos no se muestran a ningún personaje.'):format(principal:sub(1, 14), count))
             end
         end
         return true

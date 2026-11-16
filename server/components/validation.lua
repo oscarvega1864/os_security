@@ -32,34 +32,34 @@ end
 function validation.operation(device, op)
     if not util.object(op, { kind = true, at = true, slot = true, hours = true,
         kit = true, spec = true, gain = true, ceiling = true, allowFailed = true, health = true })
-        or not util.integer(op.at, device.createdAt, 253402300799) then return nil, 'Contrato de operacion invalido.' end
+        or not util.integer(op.at, device.createdAt, 253402300799) then return nil, 'Contrato de operación inválido.' end
     local fields = { kind = true, at = true }
     if op.kind == 'provision' then
         fields.kit = true
-        if not util.object(op.kit) then return nil, 'Kit invalido.' end
+        if not util.object(op.kit) then return nil, 'Kit inválido.' end
         local count = 0
         for slot, item in pairs(op.kit) do
             count = count + 1
-            if not slotId(slot) or not spec(device, slot, item) then return nil, 'Componente de kit incompatible o invalido.' end
+            if not slotId(slot) or not spec(device, slot, item) then return nil, 'Componente de kit incompatible o inválido.' end
         end
-        if count < 1 or count > 32 then return nil, 'Kit fuera de limites.' end
+        if count < 1 or count > 32 then return nil, 'Kit fuera de límites.' end
     elseif op.kind == 'simulate' then
         fields.hours = true
-        if not number(op.hours, 0.000001, 72) then return nil, 'Simulacion fuera de limites.' end
+        if not number(op.hours, 0.000001, 72) then return nil, 'Simulación fuera de límites.' end
     elseif op.kind == 'fault' then
         fields.slot, fields.health = true, true
-        if not slotId(op.slot) or not number(op.health, 0, 100) then return nil, 'Averia forzada invalida.' end
+        if not slotId(op.slot) or not number(op.health, 0, 100) then return nil, 'Avería forzada inválida.' end
     elseif op.kind == 'repair' then
         fields.slot, fields.gain, fields.ceiling, fields.allowFailed = true, true, true, true
         if not slotId(op.slot) or not number(op.gain, 0.000001, 100)
-            or not number(op.ceiling, 0, 100) or type(op.allowFailed) ~= 'boolean' then return nil, 'Politica de reparacion invalida.' end
+            or not number(op.ceiling, 0, 100) or type(op.allowFailed) ~= 'boolean' then return nil, 'Política de reparación inválida.' end
     elseif op.kind == 'replace' then
         fields.slot, fields.spec = true, true
-        if not slotId(op.slot) or not spec(device, op.slot, op.spec) then return nil, 'Sustitucion incompatible.' end
+        if not slotId(op.slot) or not spec(device, op.slot, op.spec) then return nil, 'Sustitución incompatible.' end
     elseif op.kind ~= 'inspect' then
-        return nil, 'Operacion de mantenimiento desconocida.'
+        return nil, 'Operación de mantenimiento desconocida.'
     end
-    if not util.object(op, fields) then return nil, 'Campos de operacion no admitidos.' end
+    if not util.object(op, fields) then return nil, 'Campos de operación no admitidos.' end
     return true
 end
 
@@ -82,13 +82,13 @@ function validation.device(device, limits, legacyCondition, legacyMaintenance)
         or not util.object(maintenance.legacy, { components = true, events = true })
         or not legacyCondition({ components = maintenance.legacy.components })
         or not legacyMaintenance({ events = maintenance.legacy.events }, device, limits) then
-        return nil, 'Contrato de componentes/mantenimiento invalido.'
+        return nil, 'Contrato de componentes/mantenimiento inválido.'
     end
     if maintenance.sequence == 0 then
-        if maintenance.lastOperation ~= nil or #maintenance.events ~= 0 then return nil, 'Secuencia inicial de servicio invalida.' end
+        if maintenance.lastOperation ~= nil or #maintenance.events ~= 0 then return nil, 'Secuencia inicial de servicio inválida.' end
     else
         local ok = validation.operation(device, maintenance.lastOperation)
-        if not ok or maintenance.lastOperation.at > device.updatedAt then return nil, 'Ultima operacion de servicio invalida.' end
+        if not ok or maintenance.lastOperation.at > device.updatedAt then return nil, 'Última operación de servicio inválida.' end
     end
     local sequence, timestamp = 0, device.createdAt
     local eventKinds = { provision = true, simulate = true, fault = true, repair = true, replace = true }
@@ -98,17 +98,17 @@ function validation.device(device, limits, legacyCondition, legacyMaintenance)
             or not util.integer(event.sequence, sequence + 1, maintenance.sequence)
             or not util.integer(event.at, timestamp, device.updatedAt)
             or not util.object(event.changes) or not validation.operation(device, event.operation)
-            or event.operation.kind ~= event.kind or event.operation.at ~= event.at then return nil, 'Intervencion invalida.' end
+            or event.operation.kind ~= event.kind or event.operation.at ~= event.at then return nil, 'Intervención inválida.' end
         local count = 0
         for slot, change in pairs(event.changes) do
             count = count + 1
             if not slotId(slot) or not util.object(change, { before = true, after = true })
                 or not summary(device, slot, change.after, event.at)
                 or (change.before ~= nil and not summary(device, slot, change.before, event.at)) then
-                return nil, 'Resultado de intervencion invalido.'
+                return nil, 'Resultado de intervención inválido.'
             end
         end
-        if count < 1 or count > 32 then return nil, 'Intervencion sin resultados o fuera de limite.' end
+        if count < 1 or count > 32 then return nil, 'Intervención sin resultados o fuera de límite.' end
         sequence, timestamp = event.sequence, event.at
     end
     local count = 0
@@ -128,20 +128,20 @@ function validation.device(device, limits, legacyCondition, legacyMaintenance)
             or not util.array(component.history, limits.MaxMaintenanceEvents)
             or not util.object(component.wear, { intensity = true, environment = true, installationQuality = true,
                 intervalSeconds = true, maxElapsedHours = true, lastEvaluatedAt = true,
-                operatingHours = true, discardedHours = true }) then return nil, 'Componente invalido: ' .. tostring(slot) end
+                operatingHours = true, discardedHours = true }) then return nil, 'Componente inválido: ' .. tostring(slot) end
         local params = component.wear
         if not number(params.intensity, 0, 5) or not number(params.environment, 0, 5)
             or not number(params.installationQuality, 0, 100) or not util.integer(params.intervalSeconds, 1, 3600)
             or not number(params.maxElapsedHours, 1, 168)
             or not util.integer(params.lastEvaluatedAt, component.installedAt, device.updatedAt)
             or not number(params.operatingHours, 0, 1000000000000)
-            or not number(params.discardedHours, 0, 1000000000000) then return nil, 'Parametros de desgaste invalidos.' end
+            or not number(params.discardedHours, 0, 1000000000000) then return nil, 'Parametros de desgaste inválidos.' end
         local previous = 0
         for _, index in ipairs(component.history) do
-            if not util.integer(index, previous + 1, #maintenance.events) then return nil, 'Referencia de historial invalida.' end
+            if not util.integer(index, previous + 1, #maintenance.events) then return nil, 'Referencia de historial inválida.' end
             local change = maintenance.events[index].changes[slot]
             if not change or (change.after.id ~= component.id and (not change.before or change.before.id ~= component.id)) then
-                return nil, 'Intervencion ajena al componente.'
+                return nil, 'Intervención ajena al componente.'
             end
             previous = index
         end

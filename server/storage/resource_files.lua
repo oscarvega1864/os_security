@@ -12,7 +12,7 @@ function OSSecurity.ResourceFiles.new(options)
     function files.read(path)
         local ok, content = pcall(options.load, options.resource, path)
         if not ok then
-            return nil, 'Excepcion en LoadResourceFile.', {
+            return nil, 'Excepción en LoadResourceFile.', {
                 stage = permissionError(content) and 'permission' or 'read', operation = 'load'
             }
         end

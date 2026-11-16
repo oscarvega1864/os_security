@@ -24,7 +24,7 @@ local function tickFailed(name, err)
     local now = os.time()
     if tickLogged[name] and now - tickLogged[name] < 60 then return end
     tickLogged[name] = now
-    storageLog(('Fallo en la tarea %s (%s); se reintentara.'):format(name, codeAt(err)))
+    storageLog(('Fallo en la tarea %s (%s); se reintentará.'):format(name, codeAt(err)))
 end
 local function tick(name, callback)
     local ok, err = pcall(callback)
@@ -477,7 +477,7 @@ RegisterNetEvent('os_security:g6:request', function(request)
         -- Sin payload ni texto de la excepcion: solo la accion y el punto del codigo, para poder localizar el fallo.
         local action = type(request.action) == 'string' and request.action:match('^[%a_]+$') and request.action:sub(1, 32) or '?'
         local where = codeAt(response)
-        storageLog(('Fallo de solicitud G6 (accion %s, %s); no se registra el payload ni la excepcion.'):format(action, where))
+        storageLog(('Fallo de solicitud G6 (acción %s, %s); no se registra el payload ni la excepción.'):format(action, where))
         response = { ok = false, error = OSSecurity.Brand.Text.failed, close = true }
     end
     TriggerClientEvent('os_security:g6:response', player, requestId, response)
@@ -519,7 +519,7 @@ local function alarmAllowed(player)
 end
 local function alarmCall(player, callback)
     local ok, result, err = pcall(callback)
-    if not ok then storageLog(('Fallo en la alarma (%s); no se registra la excepcion.'):format(codeAt(result))); return nil, OSSecurity.Brand.Text.failed end
+    if not ok then storageLog(('Fallo en la alarma (%s); no se registra la excepción.'):format(codeAt(result))); return nil, OSSecurity.Brand.Text.failed end
     return result, err
 end
 RegisterNetEvent('os_security:alarm:panel', function(deviceId)
@@ -562,7 +562,7 @@ local function lockAllowed(player, limit)
 end
 local function lockCall(callback)
     local ok, result, err, extra = pcall(callback)
-    if not ok then storageLog(('Fallo en las cerraduras (%s); no se registra la excepcion.'):format(codeAt(result))); return nil, OSSecurity.Brand.Text.failed end
+    if not ok then storageLog(('Fallo en las cerraduras (%s); no se registra la excepción.'):format(codeAt(result))); return nil, OSSecurity.Brand.Text.failed end
     return result, err, extra
 end
 RegisterNetEvent('os_security:locks:sync', function()
@@ -803,7 +803,7 @@ CreateThread(function()
                     if want then carState(entity, want) end
                 end
             end)
-            if not ok then storageLog('Fallo en la sincronizacion de vehiculos; se reintentara.') end
+            if not ok then storageLog('Fallo en la sincronización de vehículos; se reintentará.') end
         end
     end
 end)
@@ -900,9 +900,9 @@ local function createWebBridge()
     local url, secret = GetConvar('ossecurity_web_url', ''), GetConvar('ossecurity_web_secret', '')
     local client, version = GetConvar('ossecurity_web_client', 'fivem-prod'), tonumber(GetConvar('ossecurity_web_key_version', '1'))
     if url == '' and secret == '' then return nil, 'deshabilitado (sin ossecurity_web_url ni ossecurity_web_secret)' end
-    if not OSSecurity.WebBridge.validUrl(url) then return nil, 'ossecurity_web_url no valida (se exige https)' end
-    if not OSSecurity.WebBridge.validSecret(secret) then return nil, 'ossecurity_web_secret no valido (64-128 caracteres hexadecimales)' end
-    if not OSSecurity.WebBridge.validClient(client) or not math.tointeger(version) or version < 1 then return nil, 'cliente o version de clave no validos' end
+    if not OSSecurity.WebBridge.validUrl(url) then return nil, 'ossecurity_web_url no válida (se exige https)' end
+    if not OSSecurity.WebBridge.validSecret(secret) then return nil, 'ossecurity_web_secret no válido (64-128 caracteres hexadecimales)' end
+    if not OSSecurity.WebBridge.validClient(client) or not math.tointeger(version) or version < 1 then return nil, 'cliente o versión de clave no válidos' end
     return OSSecurity.WebBridge.new({
         url = url, secret = secret, client = client, version = math.tointeger(version), resourceVersion = config.Version,
         -- Semilla de nonces: bcrypt con sal aleatoria del servidor, una sola vez por arranque.
@@ -962,12 +962,12 @@ RegisterCommand('g6bridge', function(source)
     if not OSSecurity.Web then print(('%s Puente web: deshabilitado.'):format(constants.LOG_PREFIX)); return end
     local s = OSSecurity.Web.status()
     print(('%s Puente web: %s | cursor %d | eventos en cola %d | confirmaciones %d | fallos %d%s'):format(constants.LOG_PREFIX,
-        s.connected and 'conectado' or 'sin conexion', s.cursor, s.queued, s.acks, s.failures, s.lastError and (' | ' .. s.lastError) or ''))
+        s.connected and 'conectado' or 'sin conexión', s.cursor, s.queued, s.acks, s.failures, s.lastError and (' | ' .. s.lastError) or ''))
 end, true)
 
 RegisterCommand('osstatus', function(source)
     local ready = registry.status()
-    local message = ('Estado: %s | Version: %s | Device Core: %s'):format(
+    local message = ('Estado: %s | Versión: %s | Device Core: %s'):format(
         GetResourceState(resourceName),
         config.Version,
         ready and 'disponible' or 'bloqueado (revisar consola)'
@@ -988,7 +988,7 @@ AddEventHandler('onResourceStart', function(startedResource)
         return
     end
 
-    print(('%s Recurso iniciado. Version: %s'):format(constants.LOG_PREFIX, config.Version))
+    print(('%s Recurso iniciado. Versión: %s'):format(constants.LOG_PREFIX, config.Version))
 
     local loaded, err = registry.load()
     if loaded then
@@ -1026,5 +1026,5 @@ AddEventHandler('onResourceStop', function(stoppedResource)
     if OSSecurity.Web then OSSecurity.Web.stop(); OSSecurity.Web = nil end
     OSSecurity.WebLinks.active = nil
 
-    print(('%s Recurso detenido. Version: %s'):format(constants.LOG_PREFIX, config.Version))
+    print(('%s Recurso detenido. Versión: %s'):format(constants.LOG_PREFIX, config.Version))
 end)

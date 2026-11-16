@@ -125,7 +125,7 @@ function OSSecurity.OrderService.new(options)
         local position, place, site
         if args.place == 'here' then
             local here = options.world(actor.source)
-            if not here then return nil, 'Posicion no disponible.' end
+            if not here then return nil, 'Posición no disponible.' end
             position, place = here, OSSecurity.Brand.Text.orders.clientPlace
         else
             for _, owned in ipairs(ownedSites(actor.source)) do
@@ -158,7 +158,7 @@ function OSSecurity.OrderService.new(options)
         return order
     end
     function service.cancel(actor, args)
-        if not util.object(args, { orderId = true }) then return nil, 'Solicitud no valida.' end
+        if not util.object(args, { orderId = true }) then return nil, 'Solicitud no válida.' end
         local order, err = ownOrder(actor, args.orderId)
         if not order then return nil, err end
         if order.status ~= 'open' and order.status ~= 'accepted' then return nil, 'Esta solicitud ya no se puede cancelar.' end
@@ -170,7 +170,7 @@ function OSSecurity.OrderService.new(options)
         return { message = OSSecurity.Brand.Text.orders.cancelled }
     end
     function service.pay(actor, args)
-        if not util.object(args, { orderId = true }) then return nil, 'Solicitud no valida.' end
+        if not util.object(args, { orderId = true }) then return nil, 'Solicitud no válida.' end
         local order, err = ownOrder(actor, args.orderId)
         if not order then return nil, err end
         if order.status ~= 'billed' then return nil, 'No hay nada que pagar en esta solicitud.' end
@@ -207,10 +207,10 @@ function OSSecurity.OrderService.new(options)
         return { items = items, canWork = canWork(actor) == true, share = config.TechShare, maxPrice = config.MaxPrice }
     end
     local function workable(actor, args, extra)
-        if not canWork(actor) then return nil, 'Tu perfil no puede atender ordenes de trabajo.' end
+        if not canWork(actor) then return nil, 'Tu perfil no puede atender órdenes de trabajo.' end
         local fields = { orderId = true }
         for key in pairs(extra or {}) do fields[key] = true end
-        if not util.object(args, fields) then return nil, 'Orden no valida.' end
+        if not util.object(args, fields) then return nil, 'Orden no válida.' end
         local order = getOrder(args.orderId)
         if not order then return nil, 'Orden no encontrada.' end
         return order
@@ -218,7 +218,7 @@ function OSSecurity.OrderService.new(options)
     function service.accept(actor, args)
         local order, err = workable(actor, args)
         if not order then return nil, err end
-        if order.status ~= 'open' then return nil, 'Otro tecnico ya ha aceptado esta orden.' end
+        if order.status ~= 'open' then return nil, 'Otro técnico ya ha aceptado esta orden.' end
         if order.client == actor.principal then return nil, 'No puedes atender tu propia solicitud.' end
         order.status, order.technician, order.techName = 'accepted', actor.principal, name(actor.source)
         local saved, saveError = save(order)

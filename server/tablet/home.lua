@@ -109,16 +109,23 @@ function OSSecurity.TabletHome.new(options)
         return { counts = counts, attention = attention, points = points }
     end
 
+    -- Busqueda sin distinguir mayusculas ni tildes: "camara" encuentra "Cámara".
+    local FOLD = { ['á'] = 'a', ['é'] = 'e', ['í'] = 'i', ['ó'] = 'o', ['ú'] = 'u', ['ü'] = 'u', ['ñ'] = 'n',
+        ['Á'] = 'a', ['É'] = 'e', ['Í'] = 'i', ['Ó'] = 'o', ['Ú'] = 'u', ['Ü'] = 'u', ['Ñ'] = 'n' }
+    local function fold(text)
+        for accented, plain in pairs(FOLD) do text = text:gsub(accented, plain) end
+        return text:lower()
+    end
     local function matches(query, ...)
         for index = 1, select('#', ...) do
             local value = select(index, ...)
-            if type(value) == 'string' and value:lower():find(query, 1, true) then return true end
+            if type(value) == 'string' and fold(value):find(query, 1, true) then return true end
         end
         return false
     end
     function home.search(actor, args)
-        if not util.object(args, { query = true }) or type(args.query) ~= 'string' then return nil, 'Busqueda no valida.' end
-        local query = args.query:lower():gsub('^%s+', ''):gsub('%s+$', '')
+        if not util.object(args, { query = true }) or type(args.query) ~= 'string' then return nil, 'Búsqueda no válida.' end
+        local query = fold(args.query):gsub('^%s+', ''):gsub('%s+$', '')
         if #query < 2 or #query > 40 then return nil, 'Escribe entre 2 y 40 caracteres.' end
         local list, err = devices(actor)
         if not list then return nil, err end

@@ -18,7 +18,7 @@ function OSSecurity.InstallationService.new(options)
     local function world(source)
         local point, bucket = options.world(source)
         if not OSSecurity.InventoryState.vector(point, 1000000) or not util.integer(bucket, 0, 2147483647) then
-            return nil, 'Posicion de servidor no disponible; comprobar OneSync.'
+            return nil, 'Posición de servidor no disponible; comprobar OneSync.'
         end
         return point, bucket
     end
@@ -63,11 +63,11 @@ function OSSecurity.InstallationService.new(options)
         definition = definition or product()
         for item, amount in pairs(definition.materials) do
             if not options.holdings.has(actor, item, amount) then
-                return OSSecurity.ItemCatalog[item].category == 'kit' and ('No posee: ' .. OSSecurity.ItemCatalog[item].name .. '.') or 'Faltan materiales de instalacion.'
+                return OSSecurity.ItemCatalog[item].category == 'kit' and ('No posee: ' .. OSSecurity.ItemCatalog[item].name .. '.') or 'Faltan materiales de instalación.'
             end
         end
         for _, item in ipairs(config.Tools) do
-            if not options.holdings.has(actor, item, 1) then return 'Faltan herramientas de instalacion.' end
+            if not options.holdings.has(actor, item, 1) then return 'Faltan herramientas de instalación.' end
         end
         return nil
     end
@@ -84,7 +84,7 @@ function OSSecurity.InstallationService.new(options)
         local found
         for _, device in ipairs(list) do
             if device.metadata.installationId == installationId then
-                if found then return nil, 'Vinculo de instalacion duplicado; requiere revision.' end
+                if found then return nil, 'Vinculo de instalación duplicado; requiere revisión.' end
                 found = device
             end
         end
@@ -94,7 +94,7 @@ function OSSecurity.InstallationService.new(options)
     function service.begin(source, session, kit, anchorId)
         local definition = product(kit)
         if not definition then return nil, 'Producto no instalable.' end
-        if session.actor.kind ~= 'operations' or not config.Profiles[session.actor.role].install then return nil, 'Perfil sin permiso de instalacion.' end
+        if session.actor.kind ~= 'operations' or not config.Profiles[session.actor.role].install then return nil, 'Perfil sin permiso de instalación.' end
         local point, bucket = world(source)
         if not point then return nil, bucket end
         local snapshot, err = options.inventory.snapshot()
@@ -116,7 +116,7 @@ function OSSecurity.InstallationService.new(options)
         if #mounts == 0 then
             local wanted = anchorId and snapshot.anchors[anchorId]
             if wanted and wanted.installer == session.actor.principal and (wanted.bucket ~= bucket or distance(point, wanted.position) > config.PlacementDistance) then
-                return nil, ('Acercate a la zona %s (a menos de %d m) para instalar.'):format(anchorId, math.floor(config.PlacementDistance))
+                return nil, ('Acércate a la zona %s (a menos de %d m) para instalar.'):format(anchorId, math.floor(config.PlacementDistance))
             end
             if anchorId then return nil, 'Zona ocupada o no asignada a ti.' end
             return nil, 'No hay un montaje libre asignado y cercano.'
@@ -129,7 +129,7 @@ function OSSecurity.InstallationService.new(options)
         local definition = productOfModel(installation.model)
         if not definition or device.type ~= definition.deviceType or device.model ~= installation.model or options.ownerOf(device) ~= installation.owner
             or not util.equal(device.position, installation.position) or not util.equal(device.rotation, installation.rotation) then
-            return nil, 'El dispositivo no coincide con la reserva; requiere revision.'
+            return nil, 'El dispositivo no coincide con la reserva; requiere revisión.'
         end
         if device.state == 'retired' then return cancel(installation, 'retired') end
         local nextState = { registered = 'installing', installing = 'installed', installed = 'active' }
@@ -138,7 +138,7 @@ function OSSecurity.InstallationService.new(options)
             if not updated then return nil, err end
             device = updated
         end
-        if device.state ~= 'active' then return nil, 'Instalacion pendiente: estado administrativo incompatible.' end
+        if device.state ~= 'active' then return nil, 'Instalación pendiente: estado administrativo incompatible.' end
         return options.inventory.apply({ kind = 'finish', installationId = installation.id, deviceId = device.id })
     end
     function service.confirm(source, session, proposal)
@@ -146,10 +146,10 @@ function OSSecurity.InstallationService.new(options)
         contexts[source] = nil -- Confirmacion de un solo uso, tambien si se rechaza.
         if not context or context.token ~= session.token or options.now() > context.expires
             or session.actor.kind ~= 'operations' or not config.Profiles[session.actor.role].install
-            or not util.object(proposal, { anchorId = true, position = true, rotation = true, pivot = true }) then return nil, 'Colocacion no valida o caducada.' end
+            or not util.object(proposal, { anchorId = true, position = true, rotation = true, pivot = true }) then return nil, 'Colocación no válida o caducada.' end
         local point, bucket = world(source)
         if not point then return nil, bucket end
-        if bucket ~= context.bucket or distance(point, context.origin) > config.MaxPlacementMove then return nil, 'Se ha alejado de la colocacion.' end
+        if bucket ~= context.bucket or distance(point, context.origin) > config.MaxPlacementMove then return nil, 'Se ha alejado de la colocación.' end
         local snapshot, err = options.inventory.snapshot()
         if not snapshot then return nil, err end
         local anchor = type(proposal.anchorId) == 'string' and snapshot.anchors[proposal.anchorId]
@@ -172,7 +172,7 @@ function OSSecurity.InstallationService.new(options)
         -- Profundidad elegida en el editor (Q/Z): el origen del modelo puede quedar algo dentro o separado
         -- de la superficie, dentro de MinDepth..MaxDepth. Se guarda tal cual, sin proyectar.
         if planeDistance < config.MinDepth or planeDistance > config.MaxDepth then
-            return nil, 'La posicion no pertenece al plano de montaje autorizado.'
+            return nil, 'La posición no pertenece al plano de montaje autorizado.'
         end
         local position = canonical(proposal.position)
         local holder
@@ -196,8 +196,8 @@ function OSSecurity.InstallationService.new(options)
         -- Proveedor externo: la reserva ya esta registrada; ahora se cobran los materiales.
         local taken, takeError = options.holdings.take(installation)
         if not taken then
-            if not cancel(installation, 'creation_rejected') then return nil, 'Cobro fallido y devolucion pendiente; revisar servidor.' end
-            return nil, takeError or 'Faltan materiales de instalacion.'
+            if not cancel(installation, 'creation_rejected') then return nil, 'Cobro fallido y devolución pendiente; revisar servidor.' end
+            return nil, takeError or 'Faltan materiales de instalación.'
         end
         local device, createError = options.registry.create(0, { type = definition.deviceType, model = installation.model,
             owner = installation.owner, position = position, rotation = installation.rotation, metadata = { installationId = installation.id } })
@@ -206,17 +206,17 @@ function OSSecurity.InstallationService.new(options)
                 local existing, lookupError = service.find(installation.id)
                 if not existing and not lookupError then
                     local refunded = cancel(installation, 'creation_rejected')
-                    if not refunded then return nil, 'Fallo de creacion y compensacion pendiente; revisar servidor.' end
+                    if not refunded then return nil, 'Fallo de creación y compensación pendiente; revisar servidor.' end
                 end
             end
-            return nil, createError or 'Creacion pendiente de recuperacion.'
+            return nil, createError or 'Creación pendiente de recuperación.'
         end
         local saved, finishError = finalize(installation, device)
-        if not saved then return nil, finishError or 'Instalacion pendiente de recuperacion.' end
+        if not saved then return nil, finishError or 'Instalación pendiente de recuperación.' end
         -- Montaje creado para una propiedad o negocio: el dispositivo queda vinculado sin otro paso.
         if anchor.site then
             local linked, linkError = options.inventory.apply({ kind = 'site', deviceId = device.id, site = util.copy(anchor.site) })
-            if not linked and options.log then options.log(('Instalacion %s: vinculo con la propiedad pendiente (%s).'):format(installation.id, tostring(linkError))) end
+            if not linked and options.log then options.log(('Instalación %s: vinculo con la propiedad pendiente (%s).'):format(installation.id, tostring(linkError))) end
         end
         options.audit('installation_committed', source, device.id)
         return { id = device.id, installationId = installation.id, status = 'committed' }
@@ -230,7 +230,7 @@ function OSSecurity.InstallationService.new(options)
                 if findError then return nil, findError end
                 if not device and installation.holder and not options.holdings.available() then
                     -- Sin proveedor no se puede liquidar el cobro: se deja pendiente, sin bloquear el resto.
-                    if options.log then options.log(('Instalacion %s pendiente: proveedor de objetos no disponible.'):format(installation.id)) end
+                    if options.log then options.log(('Instalación %s pendiente: proveedor de objetos no disponible.'):format(installation.id)) end
                 else
                     local result, reason
                     if device then result, reason = finalize(installation, device)
@@ -266,12 +266,12 @@ function OSSecurity.InstallationService.new(options)
     -- vuelve al inventario de quien desmonta. La bateria se da por gastada.
     local removals = {}
     local function installed(deviceId)
-        if not OSSecurity.DeviceValidation.id(deviceId) then return nil, 'Dispositivo no valido.' end
+        if not OSSecurity.DeviceValidation.id(deviceId) then return nil, 'Dispositivo no válido.' end
         local device = options.registry.get(0, deviceId)
         local snapshot = options.inventory.snapshot()
         local installation = device and snapshot and device.metadata and device.metadata.installationId and snapshot.installations[device.metadata.installationId]
         if not device or not installation or installation.status ~= 'committed' or installation.deviceId ~= device.id then
-            return nil, 'El dispositivo no esta montado fisicamente.'
+            return nil, 'El dispositivo no esta montado físicamente.'
         end
         if device.state == 'retired' then return nil, 'El dispositivo ya esta retirado.' end
         return device, installation
@@ -283,7 +283,7 @@ function OSSecurity.InstallationService.new(options)
         local point, bucket = world(source)
         if not point then return nil, bucket end
         if bucket ~= installation.bucket or distance(point, installation.position) > config.PlacementDistance then
-            return nil, 'Acercate al dispositivo para desmontarlo.'
+            return nil, 'Acércate al dispositivo para desmontarlo.'
         end
         for _, item in ipairs(config.Tools) do
             if not options.holdings.has(session.actor, item, 1) then return nil, 'Faltan herramientas para desmontar.' end
@@ -306,7 +306,7 @@ function OSSecurity.InstallationService.new(options)
         local context = removals[source]
         removals[source] = nil
         if not context or context.token ~= session.token or context.deviceId ~= deviceId or options.now() > context.expires then
-            return nil, 'Desmontaje no valido o caducado.'
+            return nil, 'Desmontaje no válido o caducado.'
         end
         local device, installation = removable(source, session, deviceId)
         if not device then return nil, installation end

@@ -69,7 +69,7 @@ end)
 
 test('Native adapter sends UTF-8 byte length, never character count or an inferred length', function()
     local c = nativeFixture()
-    local payload = '{"text":"camara \195\161 \240\159\148\146"}'
+    local payload = '{"text":"cámara \195\161 \240\159\148\146"}'
     local ok = c.adapter.write('data/devices.a.json', payload)
     assert(ok and c.lastBytes == #payload and #payload > utf8.len(payload))
     assert(c.adapter.read('data/devices.a.json') == payload)

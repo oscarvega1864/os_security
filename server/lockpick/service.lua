@@ -16,20 +16,20 @@ function OSSecurity.LockpickService.new(options)
     -- Paso 1: elegir objetivo (vehiculo indicado por el cliente si esta cerrado; si no, la puerta mas
     -- cercana) y devolver el reto.
     function service.begin(source, vehicle)
-        if not options.holdings.external() then return nil, 'La ganzua requiere el inventario de personajes (os_inventory).' end
+        if not options.holdings.external() then return nil, 'La ganzúa requiere el inventario de personajes (os_inventory).' end
         local holder = options.holdings.holder(source)
         if not holder then return nil, 'Personaje activo no disponible.' end
-        if not options.holdings.has({ holder = holder }, config.Item, 1) then return nil, 'No tienes ganzua.' end
+        if not options.holdings.has({ holder = holder }, config.Item, 1) then return nil, 'No tienes ganzúa.' end
         local point = options.world(source)
-        if not point then return nil, 'Posicion de servidor no disponible.' end
+        if not point then return nil, 'Posición de servidor no disponible.' end
         local target
         if type(vehicle) == 'table' and vehicle.position and distance(point, vehicle.position) <= config.VehicleReach then
             local car = options.cars.pickTarget(vehicle)
-            if car then target = { kind = 'vehicle', id = car.id, tier = car.tier, owner = car.owner, label = 'el vehiculo ' .. car.plate, vehicle = vehicle } end
+            if car then target = { kind = 'vehicle', id = car.id, tier = car.tier, owner = car.owner, label = 'el vehículo ' .. car.plate, vehicle = vehicle } end
         end
         if not target then
             local door, err = options.locks.pickTarget(source, config.Reach)
-            if not door then return nil, err == 'No hay ninguna puerta con cerradura a tu alcance.' and 'No hay ninguna puerta o vehiculo cerrado a tu alcance.' or err end
+            if not door then return nil, err == 'No hay ninguna puerta con cerradura a tu alcance.' and 'No hay ninguna puerta o vehículo cerrado a tu alcance.' or err end
             target = { kind = 'door', id = door.id, tier = door.tier, owner = door.owner, label = door.label, position = door.position }
         end
         local level = config.Levels[target.tier] or config.Levels[#config.Levels]
@@ -56,9 +56,9 @@ function OSSecurity.LockpickService.new(options)
             if options.random(100) <= config.BreakChance then
                 local operation = { id = ('g6pick:%s:%d:%d'):format(attempt.holder, attempt.n, now), holder = attempt.holder, materials = { [config.Item] = 1 } }
                 options.holdings.take(operation)
-                return { ok = false, broken = true, message = 'La ganzua se ha roto.' }
+                return { ok = false, broken = true, message = 'La ganzúa se ha roto.' }
             end
-            return { ok = false, message = 'No lo consigues; la ganzua aguanta.' }
+            return { ok = false, message = 'No lo consigues; la ganzúa aguanta.' }
         end
         local opened, err
         if attempt.kind == 'vehicle' then opened, err = options.cars.forceOpen(source, attempt.vehicle)
@@ -69,7 +69,7 @@ function OSSecurity.LockpickService.new(options)
                 attempt.position)
         end
         options.audit('lockpick_' .. attempt.kind, source, tostring(attempt.id))
-        return { ok = true, message = attempt.kind == 'vehicle' and 'Vehiculo abierto.' or 'Puerta abierta.' }
+        return { ok = true, message = attempt.kind == 'vehicle' and 'Vehículo abierto.' or 'Puerta abierta.' }
     end
     function service.drop(source) attempts[source] = nil end
     function service.clear() attempts = {} end

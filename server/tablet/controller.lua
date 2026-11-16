@@ -14,10 +14,10 @@ function OSSecurity.TabletController.new(options)
     function controller.handle(source, request)
         if not util.object(request, { id = true, action = true, token = true, sequence = true, args = true })
             or not util.integer(request.id, 1, 2147483647) or not util.text(request.action, 32)
-            or not util.object(request.args) then return failure('Solicitud no valida.') end
+            or not util.object(request.args) then return failure('Solicitud no válida.') end
         if request.action == 'open' then
             if not options.sessions.rate(source, false) or not util.object(request.args, { kind = true })
-                or not ({ inventory = true, client = true, operations = true })[request.args.kind] then return failure('Apertura no valida.') end
+                or not ({ inventory = true, client = true, operations = true })[request.args.kind] then return failure('Apertura no válida.') end
             options.placement.cancel(source)
             local session, err = options.sessions.open(source, request.args.kind)
             if not session then return failure(err, true) end
@@ -53,7 +53,7 @@ function OSSecurity.TabletController.new(options)
                 local placement, placementError = options.placement.begin(source, opened, request.args.item)
                 if not placement then options.sessions.close(source); return failure(placementError, true) end
                 return { ok = true, session = options.service.session(opened), placement = placement }
-            else return failure('Este articulo no tiene una funcion implementada.') end
+            else return failure('Este artículo no tiene una función implementada.') end
         elseif actor.kind ~= 'inventory' and request.action == 'home' and next(request.args) == nil and options.home then
             result, reason = options.home.summary(actor)
         elseif actor.kind ~= 'inventory' and request.action == 'search' and options.home then
@@ -163,7 +163,7 @@ function OSSecurity.TabletController.new(options)
             result, reason = options.zones.delete(source, session, request.args.anchorId)
         elseif actor.kind == 'operations' and request.action == 'zone_install' and util.object(request.args, { anchorId = true, kit = true }) then
             local kit = request.args.kit
-            if type(kit) ~= 'string' or not OSSecurity.GameplayConfig.Products[kit] or type(request.args.anchorId) ~= 'string' then return failure('Kit o zona no validos.') end
+            if type(kit) ~= 'string' or not OSSecurity.GameplayConfig.Products[kit] or type(request.args.anchorId) ~= 'string' then return failure('Kit o zona no válidos.') end
             if not options.holdings.has(actor, kit, 1) then return failure('No tienes ese kit.') end
             result, reason = options.placement.begin(source, session, kit, request.args.anchorId)
             if result then return { ok = true, placement = result } end
@@ -178,7 +178,7 @@ function OSSecurity.TabletController.new(options)
             options.placement.removeCancel(source); result = { cancelled = true }
         elseif request.action == 'place_cancel' and next(request.args) == nil then
             options.placement.cancel(source); result = { cancelled = true }
-        else return failure('Accion no disponible para esta sesion.') end
+        else return failure('Acción no disponible para esta sesión.') end
         -- Las consultas de solo lectura no se registran si salen bien (inicio, buscador, listas): taparian lo importante.
         if not result or not READ_ONLY[request.action] then options.audit(result and 'access_allowed' or 'access_denied', source, request.args.deviceId) end
         if not result then return failure(reason) end

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.25.0 — Textos con tildes y eñes
+
+- Todos los textos visibles (tablets, vista de cámaras, avisos, minijuegos, tienda, objetos, armas, mensajes del
+  servidor y sección de administración) se escriben ya con tildes y eñes: «Cámara», «Sin señal: óptica averiada»,
+  «Configuración», «Batería», «Ganzúa»... Los identificadores, claves, cabeceras y comentarios no cambian.
+- El buscador de la tablet no distingue tildes: «camara» encuentra «Cámara».
+
 ## 0.24.2 — Nombres legibles
 
 - La central, los contratos, las rondas y las bodycams muestran el personaje como nombre («Oscar Vega · jugador»)

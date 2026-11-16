@@ -89,11 +89,11 @@ local function transition(context, id, state)
     return device
 end
 
-test('Manifest paths, loading order, version and Lua 5.4 syntax', function()
+test('Manifest paths, loading order, versión and Lua 5.4 syntax', function()
     equal(declarations, { fx_version = 'cerulean', game = 'gta5' })
     for _, file in ipairs(__luaFiles) do assert(loadfile(root .. file)) end
     for _, file in ipairs(clientScripts) do assert(loadfile(root .. file)) end
-    assert(OSSecurity.Config.Version == '0.24.2')
+    assert(OSSecurity.Config.Version == '0.25.0')
     assert(nuiPage == 'web/index.html' and strictMode == 'true')
     for _, file in ipairs(nuiFiles) do if not file:find('*', 1, true) then local handle = assert(io.open(root .. file, 'rb')); handle:close() end end
     assert(#scripts > 0 and scripts[#scripts] == 'server/main.lua')
@@ -466,7 +466,7 @@ test('Administrative command parsing, explicit ACE and bounded output', function
     })
     handler(9, { 'create', 'bodycam' }); assert(c.writes == 0 and replies[#replies][1] == 9)
     handler(0, { 'create', 'bodycam' }); assert(c.writes == 1)
-    handler(0, { 'list', 'bad' }); assert(replies[#replies][2]:find('numeros enteros', 1, true))
+    handler(0, { 'list', 'bad' }); assert(replies[#replies][2]:find('números enteros', 1, true))
     handler(0, { 'list', '0', '1' })
     handler(0, { 'info', 'osd_0000000001' })
     handler(0, { 'state', 'osd_0000000001', 'installing' }); assert(c.writes == 2)

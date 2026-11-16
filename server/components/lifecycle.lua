@@ -31,7 +31,7 @@ function lifecycle.operation(device, kind, args, at)
         repair = { slot = true }, replace = { slot = true, model = true }
     }
     if type(kind) ~= 'string' or not allowed[kind] or not util.object(args, allowed[kind]) then
-        return nil, 'Operacion o argumentos de mantenimiento invalidos.'
+        return nil, 'Operación o argumentos de mantenimiento inválidos.'
     end
     local op = { kind = kind, at = at }
     if kind == 'provision' then
@@ -41,19 +41,19 @@ function lifecycle.operation(device, kind, args, at)
         op.kit = kit
     elseif kind == 'simulate' then
         if not util.finite(config.MaxSimulationHours) or config.MaxSimulationHours <= 0 then
-            return nil, 'Limite de simulacion configurado invalido.'
+            return nil, 'Límite de simulación configurado inválido.'
         end
         if not util.finite(args.hours) or args.hours <= 0 or args.hours > math.min(72, config.MaxSimulationHours) then
-            return nil, 'Horas fuera del limite de simulacion configurado.'
+            return nil, 'Horas fuera del límite de simulación configurado.'
         end
         op.hours = wear.number(args.hours)
     elseif kind == 'fault' then
         -- Averia controlada para pruebas y demostraciones: solo baja la salud de una pieza, queda en el historial.
-        if not util.text(args.slot, 40) then return nil, 'Slot de componente invalido.' end
+        if not util.text(args.slot, 40) then return nil, 'Slot de componente inválido.' end
         if not util.finite(args.health) or args.health < 0 or args.health > 100 then return nil, 'Salud fuera de 0-100.' end
         op.slot, op.health = args.slot, wear.number(args.health)
     elseif kind == 'repair' or kind == 'replace' then
-        if not util.text(args.slot, 40) then return nil, 'Slot de componente invalido.' end
+        if not util.text(args.slot, 40) then return nil, 'Slot de componente inválido.' end
         op.slot = args.slot
         if kind == 'repair' then
             op.gain, op.ceiling, op.allowFailed = wear.number(config.RepairGain), wear.number(config.RepairCeiling), config.AllowFailedRepair
@@ -85,7 +85,7 @@ function lifecycle.apply(device, op, limits)
     if (op.kind == 'repair' or op.kind == 'replace') and device.state ~= 'maintenance' then
         return nil, 'Reparar o sustituir requiere el estado administrativo maintenance.'
     end
-    if op.kind == 'simulate' and device.state ~= 'active' then return nil, 'La simulacion requiere un dispositivo active.' end
+    if op.kind == 'simulate' and device.state ~= 'active' then return nil, 'La simulación requiere un dispositivo active.' end
 
     local updated = util.copy(device)
     if op.kind == 'provision' then
@@ -104,14 +104,14 @@ function lifecycle.apply(device, op, limits)
     elseif op.kind == 'fault' then
         local component = components[op.slot]
         if not component then return nil, 'Componente no encontrado.' end
-        if op.health >= component.health then return nil, 'La averia debe dejar la pieza con menos salud que la actual.' end
+        if op.health >= component.health then return nil, 'La avería debe dejar la pieza con menos salud que la actual.' end
         component.health, component.state = op.health, wear.state(op.health)
     elseif op.kind == 'repair' then
         local component = components[op.slot]
         if not component then return nil, 'Componente no encontrado.' end
-        if component.health == 0 and not op.allowFailed then return nil, 'Pieza failed: requiere sustitucion.' end
+        if component.health == 0 and not op.allowFailed then return nil, 'Pieza failed: requiere sustitución.' end
         local health = wear.number(math.min(op.ceiling, component.health + op.gain))
-        if health <= component.health then return nil, 'La reparacion no mejoraria la salud dentro del limite.' end
+        if health <= component.health then return nil, 'La reparación no mejoraría la salud dentro del límite.' end
         component.health, component.state = health, wear.state(health)
         component.lastMaintenanceAt = op.at
     elseif op.kind == 'replace' then
@@ -122,7 +122,7 @@ function lifecycle.apply(device, op, limits)
     end
     if op.kind == 'inspect' and util.equal(device, updated) then return updated end
     if op.kind ~= 'inspect' then
-        if #updated.maintenance.events >= limits.MaxMaintenanceEvents then return nil, 'Historial de intervenciones completo; no se truncara.' end
+        if #updated.maintenance.events >= limits.MaxMaintenanceEvents then return nil, 'Historial de intervenciones completo; no se truncará.' end
         local index = #updated.maintenance.events + 1
         for slot, component in pairs(components) do
             if op.slot == nil or op.slot == slot then

@@ -17,7 +17,7 @@ function OSSecurity.StandaloneInventory.new(options)
     end
     function inventory.get(principal)
         if not inventory.status() then return nil, 'Inventario no disponible.' end
-        if not OSSecurity.Identity.valid(principal) then return nil, 'Identidad invalida.' end
+        if not OSSecurity.Identity.valid(principal) then return nil, 'Identidad inválida.' end
         return OSSecurity.Util.copy(data.accounts[principal] or { items = {}, grants = {} })
     end
     function inventory.site(deviceId)

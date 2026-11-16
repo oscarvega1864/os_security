@@ -24,7 +24,7 @@ function OSSecurity.DeviceRegistry.new(options)
     end
 
     local function find(id)
-        if not validation.id(id) then return nil, 'ID invalido; formato osd_0000000001.' end
+        if not validation.id(id) then return nil, 'ID inválido; formato osd_0000000001.' end
         if not data.devices[id] then return nil, 'Dispositivo no encontrado.' end
         return data.devices[id]
     end
@@ -44,7 +44,7 @@ function OSSecurity.DeviceRegistry.new(options)
         if not normalized then return nil, reason end
         local count = 0
         for _ in pairs(data.devices) do count = count + 1 end
-        if count >= options.limits.MaxDevices then return nil, 'Limite total de dispositivos alcanzado (incluye retirados).' end
+        if count >= options.limits.MaxDevices then return nil, 'Límite total de dispositivos alcanzado (incluye retirados).' end
         if data.nextId > validation.MaxSequence then return nil, 'Secuencia de IDs agotada.' end
         local now = options.now()
         local id = ('osd_%010d'):format(data.nextId)
@@ -75,7 +75,7 @@ function OSSecurity.DeviceRegistry.new(options)
         if limit == nil then limit = options.limits.DefaultPageSize end
         if not util.integer(offset, 0, options.limits.MaxDevices)
             or not util.integer(limit, 1, options.limits.MaxPageSize) then
-            return nil, 'Paginacion invalida o fuera de limites.'
+            return nil, 'Paginación inválida o fuera de límites.'
         end
         local ids = {}
         for id in pairs(data.devices) do ids[#ids + 1] = id end
@@ -94,11 +94,11 @@ function OSSecurity.DeviceRegistry.new(options)
         local device, reason = find(id)
         if not device then return nil, reason end
         if not OSSecurity.DeviceStates.canTransition(device.state, target) then
-            return nil, 'Transicion no permitida desde ' .. device.state .. '.'
+            return nil, 'Transición no permitida desde ' .. device.state .. '.'
         end
         -- Reservar un evento para retirar sin truncar el historial.
         local maximum = options.limits.MaxHistory - (target == 'retired' and 0 or 1)
-        if #device.history >= maximum then return nil, 'Limite de historial alcanzado; retirar el dispositivo.' end
+        if #device.history >= maximum then return nil, 'Límite de historial alcanzado; retirar el dispositivo.' end
         local candidate = util.copy(data)
         local now = math.max(options.now(), device.updatedAt)
         local updated = OSSecurity.ComponentLifecycle.onStateChange(device, now)
@@ -134,7 +134,7 @@ function OSSecurity.DeviceRegistry.new(options)
         if offset == nil then offset = 0 end
         if limit == nil then limit = options.limits.DefaultPageSize end
         if not util.integer(offset, 0, 2 * options.limits.MaxMaintenanceEvents)
-            or not util.integer(limit, 1, options.limits.MaxPageSize) then return nil, 'Paginacion de historial invalida.' end
+            or not util.integer(limit, 1, options.limits.MaxPageSize) then return nil, 'Paginación de historial inválida.' end
         local events = {}
         local legacy = device.schemaVersion == 2 and device.maintenance.legacy.events or device.maintenance.events
         for _, event in ipairs(legacy) do

@@ -82,7 +82,7 @@ function OSSecurity.LockService.new(options)
     -- Puerta activa mas cercana al jugador, en su bucket y a la distancia indicada.
     local function nearest(source, reach)
         local point, bucket = options.world(source)
-        if not point then return nil, 'Posicion de servidor no disponible.' end
+        if not point then return nil, 'Posición de servidor no disponible.' end
         local best, bestDistance
         for _, door in pairs(active()) do
             local d = distance(point, door.position)
@@ -105,8 +105,8 @@ function OSSecurity.LockService.new(options)
         end
         local perSite = 0
         for _ in pairs(used) do perSite = perSite + 1 end
-        if total >= config.MaxDoors then return nil, 'Limite de puertas registradas alcanzado.' end
-        if perSite >= config.MaxDoorsPerSite then return nil, 'Esa propiedad ya tiene el maximo de puertas.' end
+        if total >= config.MaxDoors then return nil, 'Límite de puertas registradas alcanzado.' end
+        if perSite >= config.MaxDoorsPerSite then return nil, 'Esa propiedad ya tiene el máximo de puertas.' end
         local id, index = nil, 1
         repeat id = ('%s%d_%d'):format(site.kind == 'property' and 'p' or 'n', site.id, index); index = index + 1 until not used[id]
         local door = { id = id, site = { kind = site.kind, id = site.id }, model = model, position = position, bucket = bucket, tier = 1,
@@ -158,14 +158,14 @@ function OSSecurity.LockService.new(options)
         end
         local kind = ({ propiedad = 'property', property = 'property', negocio = 'business', business = 'business' })[payload.kind]
         local site = { kind = kind, id = payload.id }
-        if not kind or not state.site(site) then return nil, 'Tipo o ID de propiedad no validos.' end
+        if not kind or not state.site(site) then return nil, 'Tipo o ID de propiedad no válidos.' end
         if not util.integer(payload.model, -2147483648, 4294967295) or not state.vector(payload.position, 1000000) then
-            return nil, 'No se ha detectado una puerta valida.'
+            return nil, 'No se ha detectado una puerta válida.'
         end
         if not options.sites or not options.sites.available() then return nil, 'Proveedor de propiedades no disponible.' end
         if not options.sites.get(site) then return nil, ('%s %d inexistente.'):format(OSSecurity.Sites.Labels[kind], site.id) end
         local point, bucket = options.world(source)
-        if not point then return nil, 'Posicion de servidor no disponible.' end
+        if not point then return nil, 'Posición de servidor no disponible.' end
         local position = round(payload.position)
         if distance(point, position) > gameplayConfig.AnchorAimDistance then return nil, 'La puerta apuntada esta demasiado lejos.' end
         local door, err, existing = add(site, payload.model, position, bucket, doors())
@@ -198,7 +198,7 @@ function OSSecurity.LockService.new(options)
         for player, context in pairs(changes) do if context.doorId == door.id then changes[player] = nil end end
         notify()
         options.audit('door_removed', source, door.id)
-        return ('Puerta %s dada de baja: queda libre y no se volvera a detectar.'):format(door.id)
+        return ('Puerta %s dada de baja: queda libre y no se volverá a detectar.'):format(door.id)
     end
     -- Resumen administrativo, una linea por puerta (incluidas las de sitios sin titular).
     function locks.describe()
@@ -220,12 +220,12 @@ function OSSecurity.LockService.new(options)
     function locks.toggle(source, doorId)
         local door, err = nearest(source, config.InteractDistance + 0.5)
         if not door then return nil, err end
-        if doorId ~= nil and door.id ~= doorId then return nil, 'Acercate a la puerta.' end
+        if doorId ~= nil and door.id ~= doorId then return nil, 'Acércate a la puerta.' end
         if not owner(source, door) then return nil, 'No tienes la llave de esta puerta.' end
         local leaves = group(door, active())
         for _, context in pairs(changes) do
             for _, leaf in ipairs(leaves) do
-                if context.doorId == leaf.id then return nil, 'Estan cambiando el bombin de esta puerta.' end
+                if context.doorId == leaf.id then return nil, 'Están cambiando el bombín de esta puerta.' end
             end
         end
         local locked = not door.locked
@@ -243,7 +243,7 @@ function OSSecurity.LockService.new(options)
         local door, err = nearest(source, reach)
         if not door then return nil, err end
         if not door.locked then return nil, 'Esa puerta ya esta abierta.' end
-        for _, context in pairs(changes) do if context.doorId == door.id then return nil, 'Estan cambiando el bombin de esta puerta.' end end
+        for _, context in pairs(changes) do if context.doorId == door.id then return nil, 'Están cambiando el bombín de esta puerta.' end end
         local site = ownedSites()[key(door.site)]
         return { id = door.id, tier = door.tier, position = util.copy(door.position), owner = site and site.owner or nil,
             label = options.sites and options.sites.label(door.site) or key(door.site) }
@@ -263,23 +263,23 @@ function OSSecurity.LockService.new(options)
     -- Cambio de bombin, paso 1: comprobar todo y reservar el cambio mientras dura el minijuego.
     function locks.changeBegin(source, item)
         local tier = config.Cylinders[item]
-        if not tier then return nil, 'Ese objeto no es un bombin.' end
-        if not options.holdings.external() then return nil, 'El cambio de bombin requiere el inventario de personajes (os_inventory).' end
+        if not tier then return nil, 'Ese objeto no es un bombín.' end
+        if not options.holdings.external() then return nil, 'El cambio de bombín requiere el inventario de personajes (os_inventory).' end
         local holder = options.holdings.holder(source)
         if not holder then return nil, 'Personaje activo no disponible.' end
         local door, point = nearest(source, config.InteractDistance)
         if not door then return nil, point end
         local staff = options.employment and options.employment(source, holder) == 'technician'
-        if not owner(source, door) and not staff and not options.isAdmin(source) then return nil, 'Solo el titular o un tecnico G6 de servicio puede cambiar el bombin.' end
-        if door.locked then return nil, 'Abre la puerta antes de cambiar el bombin.' end
+        if not owner(source, door) and not staff and not options.isAdmin(source) then return nil, 'Solo el titular o un técnico G6 de servicio puede cambiar el bombín.' end
+        if door.locked then return nil, 'Abre la puerta antes de cambiar el bombín.' end
         if door.cylinder == item then return nil, ('Esta puerta ya tiene un %s.'):format(tierLabel(tier):lower()) end
         local actor = { holder = holder }
-        if not options.holdings.has(actor, item, 1) then return nil, 'No tienes ese bombin.' end
+        if not options.holdings.has(actor, item, 1) then return nil, 'No tienes ese bombín.' end
         for _, tool in ipairs(config.Tools) do
             if not options.holdings.has(actor, tool, 1) then return nil, 'Necesitas un destornillador.' end
         end
         for player, context in pairs(changes) do
-            if player ~= source and context.doorId == door.id then return nil, 'Otra persona esta cambiando este bombin.' end
+            if player ~= source and context.doorId == door.id then return nil, 'Otra persona esta cambiando este bombín.' end
         end
         changes[source] = { doorId = door.id, item = item, holder = holder, changes = door.changes, expires = options.now() + config.ChangeSeconds }
         return { doorId = door.id, from = tierLabel(door.tier), to = tierLabel(tier), tier = tier }
@@ -288,9 +288,9 @@ function OSSecurity.LockService.new(options)
     function locks.changeFinish(source, success)
         local context = changes[source]
         changes[source] = nil
-        if not context then return nil, 'No hay ningun cambio de bombin en curso.' end
-        if success ~= true then return nil, 'Cambio de bombin cancelado: no se ha gastado nada.' end
-        if options.now() > context.expires then return nil, 'El cambio de bombin ha caducado.' end
+        if not context then return nil, 'No hay ningún cambio de bombín en curso.' end
+        if success ~= true then return nil, 'Cambio de bombín cancelado: no se ha gastado nada.' end
+        if options.now() > context.expires then return nil, 'El cambio de bombín ha caducado.' end
         local door = active()[context.doorId]
         local point, bucket = options.world(source)
         if not door or door.changes ~= context.changes or door.locked or not point or bucket ~= door.bucket
@@ -303,7 +303,7 @@ function OSSecurity.LockService.new(options)
         local taken, takeError = options.holdings.take(operation)
         if not taken then
             options.holdings.refund(operation)
-            return nil, takeError or 'No tienes ese bombin.'
+            return nil, takeError or 'No tienes ese bombín.'
         end
         local previous = door.cylinder
         door.cylinder, door.tier, door.changes = context.item, config.Cylinders[context.item], door.changes + 1
@@ -315,11 +315,11 @@ function OSSecurity.LockService.new(options)
         notify()
         if previous then
             local granted = options.holdings.grant(holder, previous, 1, operation.id .. ':old')
-            if not granted and options.log then options.log(('Puerta %s: bombin retirado no devuelto; revisar inventario.'):format(door.id)) end
+            if not granted and options.log then options.log(('Puerta %s: bombín retirado no devuelto; revisar inventario.'):format(door.id)) end
         end
         options.audit('door_cylinder', source, door.id)
         return { id = door.id, tier = door.tier,
-            message = ('Bombin cambiado: %s instalado.%s'):format(tierLabel(door.tier):lower(), previous and ' El anterior vuelve a tu inventario.' or '') }
+            message = ('Bombín cambiado: %s instalado.%s'):format(tierLabel(door.tier):lower(), previous and ' El anterior vuelve a tu inventario.' or '') }
     end
     -- Nivel de seguridad (1-3) de una puerta activa, para futuros robos y ganzuas.
     function locks.security(doorId)

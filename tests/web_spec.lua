@@ -98,13 +98,13 @@ test('Web bridge: commands are applied once in order, acknowledged, and not reap
     local applied = {}
     local bridge = c.bridge()
     bridge.on('request.create', function(data)
-        if data.ref == 'bad' then return 'rejected', 'Referencia no valida' end
+        if data.ref == 'bad' then return 'rejected', 'Referencia no válida' end
         applied[#applied + 1] = data.ref
     end)
     assert(bridge.start()); c.run()
     assert(#applied == 1 and applied[1] == 'GS-2030-0001' and bridge.status().cursor == 3 and bridge.status().connected)
     assert(#c.web.acks == 3 and c.web.acks[1].result == 'applied' and c.web.acks[2].result == 'ignored' and c.web.acks[2].detail == 'unsupported')
-    assert(c.web.acks[3].result == 'rejected' and c.web.acks[3].detail == 'Referencia no valida')
+    assert(c.web.acks[3].result == 'rejected' and c.web.acks[3].detail == 'Referencia no válida')
     bridge.stop()
     local again = c.bridge(); again.on('request.create', function(data) applied[#applied + 1] = data.ref end)
     assert(again.start()); c.run()

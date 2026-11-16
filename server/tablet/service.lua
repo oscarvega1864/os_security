@@ -8,23 +8,23 @@ function OSSecurity.TabletService.new(options)
     -- optica funcionando. Una optica gastada da imagen con ruido (0 limpia .. 0.75 casi perdida).
     local LIVE_STATES = { active = true, installed = true }
     local function signal(device, snapshot)
-        if device.type ~= 'cctv_camera' then return nil, 'No es una camara.' end
+        if device.type ~= 'cctv_camera' then return nil, 'No es una cámara.' end
         local installationId = device.metadata and device.metadata.installationId
         local installation = installationId and snapshot and snapshot.installations[installationId]
         if not installation or installation.status ~= 'committed' or installation.deviceId ~= device.id then
-            return nil, 'Sin senal: la camara no esta instalada fisicamente.'
+            return nil, 'Sin señal: la cámara no esta instalada físicamente.'
         end
         if not LIVE_STATES[device.state] then
             local label = OSSecurity.Brand.Text.states and OSSecurity.Brand.Text.states[device.state] or device.state
-            return nil, ('Sin senal: camara en estado %s.'):format(label)
+            return nil, ('Sin señal: cámara en estado %s.'):format(label)
         end
         local noise = 0
         if device.schemaVersion == 2 then
             local parts = device.condition.components
-            if parts.power and parts.power.health <= 0 then return nil, 'Sin senal: fallo de alimentacion.' end
+            if parts.power and parts.power.health <= 0 then return nil, 'Sin señal: fallo de alimentación.' end
             local optics = parts.optics
             if optics then
-                if optics.health <= 0 then return nil, 'Sin senal: optica averiada.' end
+                if optics.health <= 0 then return nil, 'Sin señal: óptica averiada.' end
                 noise = optics.health >= 80 and 0 or optics.health >= 60 and 0.2 or optics.health >= 30 and 0.45 or 0.75
             end
         end
@@ -139,14 +139,14 @@ function OSSecurity.TabletService.new(options)
     function service.list(actor, args)
         if not util.object(args, { offset = true, module = true })
             or (args.offset ~= nil and not util.integer(args.offset, 0, OSSecurity.ServerConfig.MaxDevices)) then
-            return nil, 'Paginacion no valida.'
+            return nil, 'Paginación no válida.'
         end
         local module = args.module or 'overview'
         local enabled = false
         for _, definition in ipairs(OSSecurity.Brand.Modules[actor.kind] or {}) do
             if definition.id == module and definition.implemented then enabled = true end
         end
-        if not enabled or OWN_ACTION[module] then return nil, 'Modulo no disponible.' end
+        if not enabled or OWN_ACTION[module] then return nil, 'Módulo no disponible.' end
         local accessible, err = accessibleDevices(actor, function(device)
             return (module ~= 'cctv' or device.type == 'cctv_camera') and (module ~= 'alarms' or device.type == 'alarm_panel')
         end)
@@ -167,7 +167,7 @@ function OSSecurity.TabletService.new(options)
         return type(installation) == 'table' and installation.status == 'committed' and installation.deviceId == device.id
     end
     function service.live(actor, args)
-        if not util.object(args, { deviceId = true, browse = true }) or (args.browse ~= nil and type(args.browse) ~= 'boolean') then return nil, 'Consulta no valida.' end
+        if not util.object(args, { deviceId = true, browse = true }) or (args.browse ~= nil and type(args.browse) ~= 'boolean') then return nil, 'Consulta no válida.' end
         local device, err = service.device(actor, args.deviceId)
         if not device then return nil, err end
         local snapshot = options.inventory.snapshot()
@@ -225,14 +225,14 @@ function OSSecurity.TabletService.new(options)
         return device
     end
     function service.get(actor, args)
-        if not util.object(args, { deviceId = true }) then return nil, 'Consulta no valida.' end
+        if not util.object(args, { deviceId = true }) then return nil, 'Consulta no válida.' end
         local device, err = service.device(actor, args.deviceId)
         if not device then return nil, err end
         return summary(actor, device)
     end
     -- Alarma desde la tablet: armar, armar parcial, desarmar, codigo, chapa y revocar chapas.
     function service.alarm(actor, args)
-        if not util.object(args, { deviceId = true, action = true, pin = true }) or not options.alarms then return nil, 'Operacion no valida.' end
+        if not util.object(args, { deviceId = true, action = true, pin = true }) or not options.alarms then return nil, 'Operación no válida.' end
         local device, err = service.device(actor, args.deviceId)
         if not device then return nil, err end
         local result, reason
@@ -246,7 +246,7 @@ function OSSecurity.TabletService.new(options)
         return updated
     end
     function service.maintain(actor, args)
-        if not util.object(args, { deviceId = true, action = true, slot = true }) then return nil, 'Operacion no valida.' end
+        if not util.object(args, { deviceId = true, action = true, slot = true }) then return nil, 'Operación no válida.' end
         local device, err = service.device(actor, args.deviceId)
         if not device then return nil, err end
         local action = args.action

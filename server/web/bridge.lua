@@ -104,13 +104,13 @@ function OSSecurity.WebBridge.new(options)
                 if type(name) == 'string' then lower[name:lower()] = value end
             end
             local signature, stamp = lower['x-g6-signature'], integer(tonumber(lower['x-g6-timestamp']))
-            if status == 0 then return done(false, 'sin conexion') end
+            if status == 0 then return done(false, 'sin conexión') end
             if type(signature) ~= 'string' or not stamp or type(responseBody) ~= 'string' then
                 return done(false, ('respuesta %d sin firmar'):format(status), status)
             end
             local expected = W.signature(options.secret, W.canonical(options.client, options.version, stamp, requestNonce, 'RESPONSE ' .. status, key, responseBody))
             if not crypto.equal(expected, signature) or math.abs(options.now() - stamp) > 300 then
-                return done(false, 'firma de respuesta no valida', status)
+                return done(false, 'firma de respuesta no válida', status)
             end
             local ok, decoded = pcall(options.decode, responseBody)
             if not ok or type(decoded) ~= 'table' then return done(false, 'respuesta ilegible', status) end
@@ -240,7 +240,7 @@ function OSSecurity.WebBridge.new(options)
             type = eventType, at = options.now(), data = data or {} }
         while #state.events > maxEvents do
             table.remove(state.events, 1)
-            log('Puente web: cola llena, se descarta el evento mas antiguo.')
+            log('Puente web: cola llena, se descarta el evento más antiguo.')
         end
         save()
         if not busy and not stopped then schedule() end

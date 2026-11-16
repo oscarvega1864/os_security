@@ -44,7 +44,7 @@ test('Shared client controller uses distinct tablet sessions without exposing to
     c.client.use('g6_operations_tablet', function(response) result = response end)
     assert(c.packets[#c.packets].token == 'server-inventory' and c.packets[#c.packets].args.item == 'g6_operations_tablet')
     c.respond({ ok = true, session = { kind = 'operations', token = 'server-operations', sequence = 0, expires = 9999999999,
-        brand = OSSecurity.Brand, profile = 'Tecnico' } })
+        brand = OSSecurity.Brand, profile = 'Técnico' } })
     assert(result.ok and result.session == nil and c.shown[#c.shown].kind == 'operations')
     c.client.request('inventory', {}, function() end)
     assert(c.packets[#c.packets].token == 'server-operations' and c.packets[#c.packets].sequence == 1)
@@ -83,7 +83,7 @@ test('Placement uses the same authorized controller and cancellation does not in
     c.confirm(nil)
     assert(c.packets[#c.packets].action == 'place_cancel')
     c.respond({ ok = true, data = { cancelled = true } })
-    assert(not c.client.placing and c.notifications[#c.notifications] == 'Colocacion cancelada.')
+    assert(not c.client.placing and c.notifications[#c.notifications] == 'Colocación cancelada.')
 end)
 
 test('Using the CCTV kit from an external inventory opens a hidden session, then starts placement only if authorized', function()
@@ -95,16 +95,16 @@ test('Using the CCTV kit from an external inventory opens a hidden session, then
     assert(#c.shown == 0 and c.packets[#c.packets].action == 'use' and c.packets[#c.packets].token == 'server-inventory')
     assert(c.packets[#c.packets].args.item == 'os_cctv_kit')
     c.respond({ ok = true, session = { kind = 'operations', token = 'server-operations', sequence = 0, expires = 9999999999,
-        brand = OSSecurity.Brand, profile = 'Tecnico' }, placement = { model = 'prop_cctv_cam_01a', mounts = {} } })
+        brand = OSSecurity.Brand, profile = 'Técnico' }, placement = { model = 'prop_cctv_cam_01a', mounts = {} } })
     assert(c.client.placing and not c.client.visible and c.confirm and #c.shown == 0)
 
     local denied = fixture()
     denied.client.useItem('os_cctv_kit')
     denied.respond({ ok = true, session = { kind = 'inventory', token = 'server-inventory', sequence = 0, expires = 9999999999,
         brand = OSSecurity.Brand, profile = 'inventory' } })
-    denied.respond({ ok = false, error = 'Faltan herramientas de instalacion.', close = true })
+    denied.respond({ ok = false, error = 'Faltan herramientas de instalación.', close = true })
     assert(not denied.client.placing and not denied.client.visible and #denied.shown == 0)
-    assert(denied.notifications[#denied.notifications] == 'Faltan herramientas de instalacion.')
+    assert(denied.notifications[#denied.notifications] == 'Faltan herramientas de instalación.')
 end)
 
 test('Player messages use os_notify with their kind when started and fall back to the standard chat', function()
@@ -117,7 +117,7 @@ test('Player messages use os_notify with their kind when started and fall back t
         TriggerEvent = function(name, payload) assert(name == 'chat:addMessage'); chats[#chats + 1] = payload.args end
         assert(OSSecurity.Notify('CCTV registrado: osd_0000000001', 'success') == 'os_notify')
         assert(toasts[1][1] == 'CCTV registrado: osd_0000000001' and toasts[1][2] == 'success')
-        OSSecurity.Notify('Sin tipo valido', 'html'); assert(toasts[2][2] == 'info')
+        OSSecurity.Notify('Sin tipo válido', 'html'); assert(toasts[2][2] == 'info')
         state = 'stopped'
         assert(OSSecurity.Notify('Faltan materiales.', 'error') == 'chat')
         assert(chats[1][1] == OSSecurity.Brand.Name and chats[1][2] == 'Faltan materiales.')
@@ -185,7 +185,7 @@ test('Placement asks for the installation minigame and only confirms when it is 
     assert(failed.notes[#failed.notes][1] == OSSecurity.Brand.Text.installFailed and failed.notes[#failed.notes][2] == 'error')
     local left = setup({ false, 'cancelled' }); assert(left.packets[#left.packets].action == 'place_cancel')
     left.client.response(left.packets[#left.packets].id, { ok = true, data = { cancelled = true } })
-    assert(left.notes[#left.notes][1] == 'Colocacion cancelada.')
+    assert(left.notes[#left.notes][1] == 'Colocación cancelada.')
 end)
 
 test('Minigame controller owns NUI focus only while running and reports a single result', function()

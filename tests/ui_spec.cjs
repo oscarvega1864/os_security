@@ -63,18 +63,18 @@ async function main() {
             zones:[{id:'zona_2',place:'Low Power St, Pillbox Hill',client:'segundo · amigo',createdAt:1762700000,surface:'wall',size:1.5,site:'Propiedad 200',distance:2.5,mine:true,status:'free',deletable:true},
               {id:'zona_1',place:'Vespucci Blvd',client:'oscar',createdAt:1762600000,surface:'ceiling',size:1,distance:40,mine:true,status:'installed',deviceId:'osd_0000000001',deletable:false},
               {id:'zona_f2529d2',surface:'wall',size:4,distance:66.5,mine:true,status:'free',deletable:true}]};
-          else if(body.action==='requests') result.data={kinds:[{value:'cctv',label:'Instalar camaras'},{value:'repair',label:'Reparar un dispositivo'}],places:[{value:'here',label:'Donde estoy ahora'},{value:'site:property:200',label:'Propiedad 200'}],noteLength:140,maxOpen:3,
-            items:[{id:'ot_000002',kind:'repair',status:'billed',note:'Camara sin imagen',place:'Propiedad 200',techName:'oscar_vega',price:1250,createdAt:1762700000},{id:'ot_000001',kind:'cctv',status:'open',note:'Dos camaras',place:'Propiedad 200',createdAt:1762600000}]};
+          else if(body.action==='requests') result.data={kinds:[{value:'cctv',label:'Instalar cámaras'},{value:'repair',label:'Reparar un dispositivo'}],places:[{value:'here',label:'Donde estoy ahora'},{value:'site:property:200',label:'Propiedad 200'}],noteLength:140,maxOpen:3,
+            items:[{id:'ot_000002',kind:'repair',status:'billed',note:'Cámara sin imagen',place:'Propiedad 200',techName:'oscar_vega',price:1250,createdAt:1762700000},{id:'ot_000001',kind:'cctv',status:'open',note:'Dos cámaras',place:'Propiedad 200',createdAt:1762600000}]};
           else if(body.action==='orders') result.data={canWork:true,share:0.6,maxPrice:25000,items:[{id:'ot_000003',kind:'alarm',status:'open',note:'Alarma en el local',place:'Negocio 4',clientName:'segundo · amigo',distance:120,position:{x:1,y:2,z:3},createdAt:1762700000},
-            {id:'ot_000002',kind:'repair',status:'accepted',mine:true,note:'Camara sin imagen',place:'Propiedad 200',clientName:'oscar',distance:3,position:{x:4,y:5,z:6},createdAt:1762600000}]};
+            {id:'ot_000002',kind:'repair',status:'accepted',mine:true,note:'Cámara sin imagen',place:'Propiedad 200',clientName:'oscar',distance:3,position:{x:4,y:5,z:6},createdAt:1762600000}]};
           else if(body.action==='emergencies') result.data={places:[{value:'here',label:'Donde estoy ahora'},{value:'site:property:200',label:'Propiedad 200'}],noteLength:140,cooldown:0,active:false,
             items:[{id:'av_000002',kind:'panic',status:'assigned',note:'Ruido en el garaje',place:'Propiedad 200',techName:'oscar_vega',count:1,createdAt:1762700000,updatedAt:1762700100},
               {id:'av_000001',kind:'alarm',status:'resolved',place:'Propiedad 200',resolution:'Falsa alarma: el gato',count:2,createdAt:1762600000,updatedAt:1762600100}]};
           else if(body.action==='dispatch') result.data={canTake:window.__mode==='operations'&&window.__role!=='supervisor',canAssign:window.__role==='supervisor',noteLength:140,
             crew:window.__role==='supervisor'?[{id:1,name:'oscar_vega'},{id:3,name:'jefa',self:true}]:[],
-            items:[{id:'av_000003',kind:'panic',status:'open',priority:1,contract:true,note:'Me siguen',place:'Ubicacion del cliente',clientName:'segundo · amigo',distance:340,count:1,position:{x:7,y:8,z:9},createdAt:1762700000,updatedAt:1762700000},
+            items:[{id:'av_000003',kind:'panic',status:'open',priority:1,contract:true,note:'Me siguen',place:'Ubicación del cliente',clientName:'segundo · amigo',distance:340,count:1,position:{x:7,y:8,z:9},createdAt:1762700000,updatedAt:1762700000},
               {id:'av_000001',kind:'alarm',status:'assigned',priority:2,mine:window.__role!=='supervisor',place:'Propiedad 200',clientName:'oscar',techName:'oscar_vega',distance:12,count:3,position:{x:1,y:2,z:3},createdAt:1762600000,updatedAt:1762600000}]};
-          else if(body.action==='doors') result.data={items:[{id:'p200_1',site:'Propiedad 200',tier:'Bombin de serie',level:1,locked:true}]};
+          else if(body.action==='doors') result.data={items:[{id:'p200_1',site:'Propiedad 200',tier:'Bombín de serie',level:1,locked:true}]};
           else if(body.action==='trackers') result.data={items:[{plate:'OS000012',lock:true,alarm:true,locked:true,sounding:false,position:{x:10.4,y:-20.2,z:30}}]};
           else if(body.action==='home') result.data={counts:{devices:3,ok:2,attention:1,live:1,armed:1,triggered:1,orders:2,ordersOpen:1,ordersMine:1,calls:1,callsMine:0,cars:1,carsAlarm:0},
             attention:[{kind:'device',id:'osd_0000000001',title:'G6-D · osd_0000000001',subtitle:'<img src=x onerror="window.__xss=true">',reason:'triggered'},{kind:'call',id:'av_000003',title:'av_000003',subtitle:'Vinewood',reason:'panic'}],
@@ -83,12 +83,12 @@ async function main() {
           else if(body.action==='patrols') result.data={canManage:window.__role==='supervisor',maxPoints:12,nameLength:40,sites:[{value:'ct_000001',label:'Propiedad 7'}],
             items:[{id:'rd_000001',name:'<b>Perimetro</b>',place:'Propiedad 7',points:3,rounds:2,last:{guardName:'ana',finishedAt:1762700000,minutes:6}}]};
           else if(body.action==='transport') result.data={employed:true,kinds:[{value:'cash',label:'Recogida de efectivo'}],invite:{from:'Ana',title:'Cajeros',pay:900},
-            mission:{title:'Recogida de efectivo',percent:40,label:'Ve a <b>Fleeca</b>',index:2,total:5,leader:true,pay:1500,vehicle:'furgon blindado',crew:[{name:'oscar',role:'driver'}],point:{x:5,y:6,z:7}},
+            mission:{title:'Recogida de efectivo',percent:40,label:'Ve a <b>Fleeca</b>',index:2,total:5,leader:true,pay:1500,vehicle:'furgón blindado',crew:[{name:'oscar',role:'driver'}],point:{x:5,y:6,z:7}},
             running:[{leader:'Ana',title:'Cajeros',percent:0,crew:1,lobby:true}]};
           else if(body.action==='bodycams') result.data={canWatch:true,items:[{id:7,name:'<i>vigilante</i>',since:1762700000,distance:85}]};
           else if(body.action==='contracts') result.data=window.__mode==='operations'
             ? {period:86400,summary:{active:1,suspended:0,income:1500},items:[{id:'ct_000001',plan:'alarm',planName:'Alarma conectada',fee:1500,status:'active',place:'Propiedad 7',clientName:'ana',nextCharge:1762800000,paidTotal:3000,failures:0,priority:true,discount:0.25}]}
-            : {period:86400,places:[{value:'site:property:7',label:'Propiedad 7'}],plans:[{value:'basic',name:'Basico',fee:500,discount:0.1},{value:'alarm',name:'Alarma conectada',fee:1500,priority:true,discount:0.25}],
+            : {period:86400,places:[{value:'site:property:7',label:'Propiedad 7'}],plans:[{value:'basic',name:'Básico',fee:500,discount:0.1},{value:'alarm',name:'Alarma conectada',fee:1500,priority:true,discount:0.25}],
               items:[{id:'ct_000002',plan:'premium',planName:'<b>Vigilancia</b>',fee:3500,status:'suspended',place:'Negocio 4',nextCharge:1762800000,paidTotal:3500,failures:1,priority:true,discount:1}]};
           else if(body.action==='incidents') result.data={items:[{at:1762700000,kind:'triggered',device:'G6-D · osd_0000000009',deviceId:'osd_0000000009',site:'Propiedad 200'}]};
         }
@@ -96,7 +96,7 @@ async function main() {
       };
       window.__open = (kind, role, module = 'overview') => { window.__mode=kind; window.__role=role||(kind==='operations'?'technician':'client'); window.__device.actions=kind==='operations'?{inspect:true,repair:true,replace:true}:{};
         const supervisor=role==='supervisor';
-        window.postMessage({type:'open',session:{kind,role:kind==='operations'?(role||'technician'):'client',profile:kind==='operations'?(supervisor?'Supervisor':'Tecnico'):'Cliente',
+        window.postMessage({type:'open',session:{kind,role:kind==='operations'?(role||'technician'):'client',profile:kind==='operations'?(supervisor?'Supervisor':'Técnico'):'Cliente',
           abilities:kind==='operations'?(supervisor?['view','inspect','beginMaintenance']:['view','inspect','repair','replace','provision','install']):[],
           employeeId:kind==='operations'?'G6-E-TEST':null,module:module||undefined,canInstall:kind==='operations'&&!supervisor,expires:Math.floor(Date.now()/1000)+90,brand:window.__brand}},'*'); };
     ` });
@@ -144,7 +144,7 @@ async function main() {
     console.log('PASS map: GTA map image inside the tablet with calibrated pins, player marker and GPS; list fallback without image');
     await evaluate(`document.getElementById('home-button').click()`); await until(`!document.getElementById('home').hidden && document.getElementById('window').hidden`);
     console.log('PASS the Inicio button in an app returns to the home screen');
-    await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Configuracion').click()`);
+    await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Configuración').click()`);
     await until(`document.querySelectorAll('.set-nav').length===5 && document.querySelector('.set-account').textContent.includes('Cliente')`);
     await evaluate(`Array.from(document.querySelectorAll('.set-nav')).find(b=>b.textContent==='Pantalla y brillo').click()`);
     await until(`document.querySelector('.segmented')`);
@@ -177,7 +177,7 @@ async function main() {
     assert(await evaluate(`!Array.from(document.querySelectorAll('nav button')).some(b=>b.disabled || b.textContent.includes('Bodycams')) && Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent==='Contratos') && Array.from(document.querySelectorAll('nav button')).some(b=>b.textContent.includes('Cerraduras'))`));
     assert(await evaluate(`document.getElementById('app').textContent.indexOf('Reparar')===-1 && document.querySelector('video')===null`));
     fs.writeFileSync(path.join(output, 'client.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
-    console.log('PASS Client identity, unimplemented modules hidden and absence of repair/video controls');
+    console.log('PASS Client identity, unimplemented modules hidden and absence of repair/vídeo controls');
     for (const [nav, selector, expected] of [['Cerraduras', '.row', 'Propiedad 200'], ['Localizadores', '.tracker', 'OS000012'], ['Historial', '.incident', 'Salto de alarma']]) {
       await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent.includes(${JSON.stringify(nav)})).click()`);
       await until(`document.querySelector(${JSON.stringify(selector)}) && document.getElementById('content').textContent.includes(${JSON.stringify(expected)})`);
@@ -233,10 +233,10 @@ async function main() {
     await evaluate(`Array.from(document.querySelectorAll('#content button')).find(b=>b.textContent===window.__brand.Text.live.watch).click()`);
     await until(`window.__calls.some(x=>x.body.action==='live' && x.body.args.deviceId==='osd_0000000001')`);
     await evaluate(`window.postMessage({type:'live',action:'show',text:window.__brand.Text.live,data:{displayId:'G6-D · osd_0000000001',site:'Propiedad 200',noise:0.45,index:2,total:3}},'*')`);
-    await until(`!document.getElementById('live').hidden && document.querySelector('.live-name').textContent==='CAMARA 2 - PROPIEDAD 200' && document.querySelector('.live-id').textContent.includes('2/3') && document.querySelector('.live-logo') && document.querySelector('.live-rec') && document.querySelector('.live-warn') && document.querySelector('.live-static').style.opacity!=='0'`);
+    await until(`!document.getElementById('live').hidden && document.querySelector('.live-name').textContent==='CÁMARA 2 - PROPIEDAD 200' && document.querySelector('.live-id').textContent.includes('2/3') && document.querySelector('.live-logo') && document.querySelector('.live-rec') && document.querySelector('.live-warn') && document.querySelector('.live-static').style.opacity!=='0'`);
     fs.writeFileSync(path.join(output, 'live-signal.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
-    await evaluate(`window.postMessage({type:'live',action:'show',text:window.__brand.Text.live,data:{displayId:'G6-D · osd_0000000002',site:'<b>Tienda</b>',noSignal:'Sin senal: optica averiada.',index:3,total:3}},'*')`);
-    await until(`document.getElementById('live').classList.contains('no-video') && document.querySelector('.live-novideo-img') && !document.querySelector('.live-rec') && document.querySelector('.live-reason').textContent.includes('optica') && document.querySelector('.live-name').textContent==='CAMARA 3 - <B>TIENDA</B>' && !document.querySelector('#live b')`);
+    await evaluate(`window.postMessage({type:'live',action:'show',text:window.__brand.Text.live,data:{displayId:'G6-D · osd_0000000002',site:'<b>Tienda</b>',noSignal:'Sin señal: óptica averiada.',index:3,total:3}},'*')`);
+    await until(`document.getElementById('live').classList.contains('no-video') && document.querySelector('.live-novideo-img') && !document.querySelector('.live-rec') && document.querySelector('.live-reason').textContent.includes('óptica') && document.querySelector('.live-name').textContent==='CÁMARA 3 - <B>TIENDA</B>' && !document.querySelector('#live b')`);
     fs.writeFileSync(path.join(output, 'live.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
     await evaluate(`window.postMessage({type:'live',action:'hide'},'*')`); await until(`document.getElementById('live').hidden`);
     await evaluate(`window.__device.live=false`);
@@ -263,7 +263,7 @@ async function main() {
     await evaluate(`window.postMessage({type:'viewfinder',action:'shot'},'*')`);
     await until(`document.getElementById('viewfinder').hidden`);
     console.log('PASS Installations: zone photo cards, install from a card, viewfinder marking flow');
-    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Ordenes de trabajo').click()`);
+    await evaluate(`Array.from(document.querySelectorAll('nav button')).find(b=>b.textContent==='Órdenes de trabajo').click()`);
     await until(`document.querySelectorAll('.order-card').length===2`);
     assert(await evaluate(`document.querySelectorAll('.order-card')[1].querySelector('.badge.here') && document.querySelector('.order-amount')`));
     await evaluate(`window.__calls.length=0; document.querySelector('.order-amount').value='1500'; Array.from(document.querySelectorAll('.order-card')[1].querySelectorAll('button')).find(b=>b.textContent==='Facturar').click()`);
@@ -317,7 +317,7 @@ async function main() {
     assert(await evaluate(`!document.querySelector('.patrol-card b') && document.querySelector('.patrol-card').textContent.includes('2 rondas')`));
     await evaluate(`window.__calls.length=0; document.querySelector('.route-name').value='Norte'; document.querySelector('.zone-new select').value='ct_000001'; Array.from(document.querySelectorAll('.zone-new button')).find(b=>b.textContent==='Crear').click()`);
     await until(`window.__calls.some(x=>x.body.action==='patrol_create' && x.body.args.name==='Norte' && x.body.args.contractId==='ct_000001')`);
-    await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('.patrol-card button')).find(b=>b.textContent==='Anadir punto aqui').click()`);
+    await evaluate(`window.__calls.length=0; Array.from(document.querySelectorAll('.patrol-card button')).find(b=>b.textContent==='Añadir punto aquí').click()`);
     await until(`window.__calls.some(x=>x.body.action==='patrol_point' && x.body.args.routeId==='rd_000001')`);
     console.log('PASS Patrols (supervisor): routes with rounds, create for a contracted property and add points on site');
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);
@@ -414,7 +414,7 @@ async function main() {
       for (let i = 1; i <= 10; i++) { await mouse('mouseMoved', body.x + dx * s * i / 10, body.y, 1); await pause(30); }
       await mouse('mouseReleased', body.x + dx * s, body.y); await pause(500);
     };
-    await evaluate(`window.__calls.length = 0; window.postMessage({type:'cylinder',text:window.__brand.Text.locks.minigame,data:{from:'Bombin de serie',to:'Bombin de seguridad',tier:2}},'*')`);
+    await evaluate(`window.__calls.length = 0; window.postMessage({type:'cylinder',text:window.__brand.Text.locks.minigame,data:{from:'Bombín de serie',to:'Bombín de seguridad',tier:2}},'*')`);
     await until(`!document.getElementById('cylinder').hidden && document.querySelector('.cy-screw')`);
     fs.writeFileSync(path.join(output, 'cylinder-unscrew.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
     await turn((await centers('.cy-screw .mg-screw-head'))[0], 15 * await cylinderScale(), 0, -760);
@@ -472,7 +472,7 @@ async function main() {
     await until(`document.querySelector('.cw-button')`);
     await evaluate(`document.querySelector('.cw-button').dispatchEvent(new MouseEvent('click', { bubbles: true }))`);
     await until(`document.getElementById('carwire').hidden && window.__calls.some(x => x.endpoint === 'carwire' && x.body.ok === true)`);
-    console.log('PASS vehicle install: trim clips with the right tension, probe and splice the module, test the key fob');
+    console.log('PASS vehicle install: trim clips with the right tensión, probe and splice the module, test the key fob');
     // Ganzua: fijar cada pin con Espacio cuando pasa por la zona verde; fallar suma un fallo.
     await evaluate(`window.__calls.length = 0; window.postMessage({type:'lockpick',text:window.__brand.Text.lockpick,data:{kind:'door',tier:2,pins:3,zone:0.3,speed:0.5,seconds:60}},'*')`);
     await until(`!document.getElementById('lockpick').hidden && document.querySelectorAll('.lp-column').length === 3`);
@@ -529,8 +529,8 @@ async function main() {
     fs.writeFileSync(path.join(output, 'pinpad.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
     await evaluate(`document.querySelector('.pp-mode.disarm').click()`);
     await until(`window.__calls.some(x => x.endpoint === 'pinpad' && x.body.action === 'disarm' && x.body.pin === '1234')`);
-    await evaluate(`window.postMessage({ type: 'pinpadResult', ok: false, text: 'Codigo incorrecto (1/3).', data: null }, '*')`);
-    await until(`document.querySelector('.pp-message.error')?.textContent === 'Codigo incorrecto (1/3).'`);
+    await evaluate(`window.postMessage({ type: 'pinpadResult', ok: false, text: 'Código incorrecto (1/3).', data: null }, '*')`);
+    await until(`document.querySelector('.pp-message.error')?.textContent === 'Código incorrecto (1/3).'`);
     await evaluate(`document.querySelector('.pp-tag').click()`);
     await until(`window.__calls.some(x => x.endpoint === 'pinpad' && x.body.action === 'tag')`);
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
@@ -559,7 +559,7 @@ async function main() {
     await evaluate(`window.postMessage({ type: 'friskOpen', text: window.__cpText, data: { target: 'Jugador5', order: ['chest','back','waist','leftArm','rightArm','leftLeg','rightLeg','ankles'],
       zones: { chest: [], back: [], leftArm: [], rightArm: [], leftLeg: [], ankles: [],
         waist: [{ kind: 'weapon', name: 'weapon_pistol', label: 'Pistola', count: 1, retainable: true, metal: true }, { kind: 'item', name: 'herramienta', label: 'Herramienta', count: 2, retainable: true, metal: true }],
-        rightLeg: [{ kind: 'item', name: 'telefono', label: 'Telefono', count: 1, retainable: false, metal: true }] } } }, '*')`);
+        rightLeg: [{ kind: 'item', name: 'telefono', label: 'Teléfono', count: 1, retainable: false, metal: true }] } } }, '*')`);
     await until(`document.querySelectorAll('.cp-zone').length === 8 && document.querySelector('.cp-frisk .cp-yes').disabled`);
     assert(await evaluate(`document.querySelector('.zone-waist .cp-found').children.length === 0`), 'Zones stay hidden until patted');
     await evaluate(`document.querySelector('.zone-waist').dispatchEvent(new MouseEvent('mouseenter'))`);
@@ -605,11 +605,11 @@ async function main() {
     console.log('PASS removable devices offer an uninstall button that requests the removal');
     // Tienda G6: catalogo por categorias, cantidades, total, saldo, pago y resultado.
     await evaluate(`window.__calls.length=0; window.postMessage({type:'shop',text:window.__brand.Text.shop,data:{location:'Gruppe Sechs · Union Depository',staff:false,maxQuantity:10,accounts:['bank','cash'],balance:{bank:3000,cash:50},
-      products:[{item:'g6_client_tablet',name:'G6 Client',category:'tablet',price:1500,staff:false,allowed:true},{item:'os_lock_kit',name:'Gruppe Sechs · Bombin de seguridad',category:'kit',price:850,staff:false,allowed:true},
+      products:[{item:'g6_client_tablet',name:'G6 Client',category:'tablet',price:1500,staff:false,allowed:true},{item:'os_lock_kit',name:'Gruppe Sechs · Bombín de seguridad',category:'kit',price:850,staff:false,allowed:true},
       {item:'os_cctv_kit',name:'Gruppe Sechs · Kit CCTV (exterior)',category:'kit',price:950,staff:true,allowed:false},{item:'os_screwdriver',name:'Gruppe Sechs · Destornillador',category:'tool',price:60,staff:false,allowed:true}]}},'*')`);
     await until(`!document.getElementById('shop').hidden && document.querySelectorAll('.shop-card').length===4 && document.querySelector('.shop-card.locked')`);
     const plus = name => evaluate(`Array.from(document.querySelectorAll('.shop-card')).find(c=>c.textContent.includes(${JSON.stringify(name)})).querySelectorAll('.shop-stepper button')[1].click()`);
-    await plus('Bombin'); await plus('Bombin'); await plus('Destornillador');
+    await plus('Bombín'); await plus('Bombín'); await plus('Destornillador');
     await until(`document.querySelector('.shop-total strong').textContent.includes('1760') || document.querySelector('.shop-total strong').textContent.includes('1.760')`);
     assert(await evaluate(`document.querySelector('.shop-card.locked .shop-stepper button:last-child').disabled && !document.querySelector('.shop-buy').disabled`));
     await evaluate(`Array.from(document.querySelectorAll('.shop-account')).find(b=>b.textContent.includes('Efectivo')).click()`);

@@ -79,7 +79,7 @@ function OSSecurity.WebLinks.new(options)
             expires_at = options.now() + L.CodeSeconds }, function(ok, result)
             if not ok then
                 offered[character.id] = nil
-                if options.log then options.log('Codigo /g6web no aceptado: ' .. tostring(result)) end
+                if options.log then options.log('Código /g6web no aceptado: ' .. tostring(result)) end
                 return options.tell(source, 'No se ha podido conectar con gruppe6.es. Inténtalo más tarde.')
             end
             -- Solo para este jugador; nunca en logs ni en el chat global.

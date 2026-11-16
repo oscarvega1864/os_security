@@ -80,7 +80,7 @@ function OSSecurity.ZoneService.new(options)
     -- Seccion Instalaciones: zonas del tecnico (todas para un administrador), clientes cercanos y kits.
     function zones.list(source, session)
         local actor = session.actor
-        if not canInstall(actor) then return nil, 'Perfil sin permiso de instalacion.' end
+        if not canInstall(actor) then return nil, 'Perfil sin permiso de instalación.' end
         local snapshot, err = options.inventory.snapshot()
         if not snapshot then return nil, err end
         local here = options.world(source)
@@ -115,7 +115,7 @@ function OSSecurity.ZoneService.new(options)
     -- Paso 1: elegir cliente. Reserva el marcado (unos minutos) y devuelve el id de la zona.
     function zones.begin(source, session, client)
         local actor = session.actor
-        if not canInstall(actor) then return nil, 'Perfil sin permiso de instalacion.' end
+        if not canInstall(actor) then return nil, 'Perfil sin permiso de instalación.' end
         if not util.integer(client, 1, 2147483647) then return nil, 'Elige un cliente.' end
         local allowed
         for _, entry in ipairs(clients(source)) do if entry.id == client then allowed = entry end end
@@ -126,7 +126,7 @@ function OSSecurity.ZoneService.new(options)
         if not snapshot then return nil, err end
         local count = 0
         for _ in pairs(snapshot.anchors) do count = count + 1 end
-        if count >= config.MaxAnchors then return nil, 'Limite de zonas alcanzado: borra zonas sin usar.' end
+        if count >= config.MaxAnchors then return nil, 'Límite de zonas alcanzado: borra zonas sin usar.' end
         -- Propiedad o negocio del cliente cerca del tecnico: la zona se vincula a ese sitio.
         local site, siteLabel
         local here = options.world(source)
@@ -153,14 +153,14 @@ function OSSecurity.ZoneService.new(options)
         pending[source] = nil
         if not mark or options.now() > mark.expires then return nil, 'Marcado caducado: vuelve a empezar desde la tablet.' end
         local actor = options.profile(source)
-        if not canInstall(actor) or actor.principal ~= mark.installer then return nil, 'Perfil sin permiso de instalacion.' end
+        if not canInstall(actor) or actor.principal ~= mark.installer then return nil, 'Perfil sin permiso de instalación.' end
         if not util.object(payload, { radius = true, position = true, normal = true, place = true })
             or not util.finite(payload.radius) or payload.radius < 0.25 or payload.radius > 2
             or not OSSecurity.InventoryState.vector(payload.position, 1000000) or not OSSecurity.InventoryState.vector(payload.normal, 1000) then
-            return nil, 'Zona no valida.'
+            return nil, 'Zona no válida.'
         end
         local here, bucket = options.world(source)
-        if not here then return nil, 'Posicion no disponible.' end
+        if not here then return nil, 'Posición no disponible.' end
         if distance(here, payload.position) > config.AnchorAimDistance then return nil, 'La zona esta demasiado lejos.' end
         local position, normal = OSSecurity.ZoneService.normalize(payload.position, payload.normal)
         if not position then return nil, normal end
@@ -174,7 +174,7 @@ function OSSecurity.ZoneService.new(options)
 
     function zones.delete(source, session, anchorId)
         local actor = session.actor
-        if not canInstall(actor) then return nil, 'Perfil sin permiso de instalacion.' end
+        if not canInstall(actor) then return nil, 'Perfil sin permiso de instalación.' end
         local snapshot, err = options.inventory.snapshot()
         if not snapshot then return nil, err end
         local anchor = type(anchorId) == 'string' and snapshot.anchors[anchorId]

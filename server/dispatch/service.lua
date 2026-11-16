@@ -156,7 +156,7 @@ function OSSecurity.DispatchService.new(options)
         local position, place, site
         if args.place == 'here' then
             position = options.world(actor.source)
-            if not position then return nil, 'Posicion no disponible.' end
+            if not position then return nil, 'Posición no disponible.' end
             place = T.clientPlace
         else
             for _, owned in ipairs(ownedSites(actor.source)) do
@@ -175,7 +175,7 @@ function OSSecurity.DispatchService.new(options)
         return { message = alerted > 0 and T.panicSent:format(alerted) or T.panicNobody, id = call.id }
     end
     function service.cancel(actor, args)
-        if not util.object(args, { callId = true }) then return nil, 'Aviso no valido.' end
+        if not util.object(args, { callId = true }) then return nil, 'Aviso no válido.' end
         local call = getCall(args.callId)
         if not call or call.client ~= actor.principal or call.kind ~= 'panic' then return nil, 'Aviso no encontrado.' end
         if not ACTIVE[call.status] then return nil, 'Este aviso ya esta cerrado.' end
@@ -207,7 +207,7 @@ function OSSecurity.DispatchService.new(options)
     local function active(args, extra)
         local fields = { callId = true }
         for key in pairs(extra or {}) do fields[key] = true end
-        if not util.object(args, fields) then return nil, 'Aviso no valido.' end
+        if not util.object(args, fields) then return nil, 'Aviso no válido.' end
         local call = getCall(args.callId)
         if not call then return nil, 'Aviso no encontrado.' end
         if not ACTIVE[call.status] then return nil, 'Este aviso ya esta cerrado.' end
@@ -224,7 +224,7 @@ function OSSecurity.DispatchService.new(options)
         if not canTake(actor) then return nil, 'Tu perfil no atiende avisos en la calle.' end
         local call, err = active(args)
         if not call then return nil, err end
-        if call.status == 'assigned' and call.technician ~= actor.principal then return nil, 'Ese aviso ya lo atiende ' .. (call.techName or 'otro tecnico') .. '.' end
+        if call.status == 'assigned' and call.technician ~= actor.principal then return nil, 'Ese aviso ya lo atiende ' .. (call.techName or 'otro técnico') .. '.' end
         if call.client == actor.principal then return nil, 'No puedes atender tu propio aviso.' end
         local ok, saveError = give(call, actor.principal, name(actor.source))
         if not ok then return nil, saveError end
@@ -236,9 +236,9 @@ function OSSecurity.DispatchService.new(options)
         local call, err = active(args, { target = true })
         if not call then return nil, err end
         local target = args.target
-        if not util.integer(target, 1, 2147483647) or not options.isStaff(target) then return nil, 'Ese companero no esta de servicio.' end
+        if not util.integer(target, 1, 2147483647) or not options.isStaff(target) then return nil, 'Ese compañero no esta de servicio.' end
         local principal = options.identity.resolve(target)
-        if not principal then return nil, 'Ese companero no esta disponible.' end
+        if not principal then return nil, 'Ese compañero no esta disponible.' end
         if call.client == principal then return nil, 'No se puede asignar el aviso a su propio cliente.' end
         local techName = name(target)
         local ok, saveError = give(call, principal, techName)
@@ -259,7 +259,7 @@ function OSSecurity.DispatchService.new(options)
     function service.resolve(actor, args)
         local call, err = active(args, { note = true })
         if not call then return nil, err end
-        if call.technician ~= actor.principal and not canAssign(actor) then return nil, 'Asignate el aviso antes de cerrarlo.' end
+        if call.technician ~= actor.principal and not canAssign(actor) then return nil, 'Asígnate el aviso antes de cerrarlo.' end
         local note = clean(args.note, config.NoteLength)
         if not note then return nil, 'Escribe que ha pasado para cerrar el aviso.' end
         call.status, call.resolution = 'resolved', note

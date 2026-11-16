@@ -35,7 +35,7 @@ function OSSecurity.ClientCars.new(options)
     end
     function cars.key()
         local vehicle = cars.target(15.0, 3.5)
-        if not vehicle then options.notify('No hay ningun vehiculo tuyo a mano (acercate a la puerta).', 'info'); return end
+        if not vehicle then options.notify('No hay ningún vehículo tuyo a mano (acércate a la puerta).', 'info'); return end
         -- Vehiculo moderno de os_devtools: pasar la llave-tarjeta por el lector. Los clasicos llevan llave fisica.
         if cardKey(vehicle) and OSSecurity.CardSwipe and not OSSecurity.CardSwipe('Cars', 'vehicle', 'Llave-tarjeta', GetVehicleNumberPlateText(vehicle)) then return end
         local ped = PlayerPedId()
@@ -85,7 +85,7 @@ function OSSecurity.ClientCars.new(options)
     function cars.engine()
         local ped = PlayerPedId()
         local vehicle = GetVehiclePedIsIn(ped, false)
-        if vehicle == 0 or GetPedInVehicleSeat(vehicle, -1) ~= ped then options.notify('Sientate al volante.', 'info'); return end
+        if vehicle == 0 or GetPedInVehicleSeat(vehicle, -1) ~= ped then options.notify('Siéntate al volante.', 'info'); return end
         if GetGameTimer() < hotwireUntil then hotwireUntil = 0; TriggerServerEvent('os_security:car:hotwire'); return end
         -- Arrancar (no apagar) un vehiculo de os_devtools: pasar la llave-tarjeta.
         if not GetIsVehicleEngineRunning(vehicle) and cardKey(vehicle) and OSSecurity.CardSwipe
@@ -95,7 +95,7 @@ function OSSecurity.ClientCars.new(options)
     function cars.engineResult(ok, message, canHotwire)
         if not ok then
             hotwireUntil = canHotwire and GetGameTimer() + 5000 or 0
-            options.notify(message or 'No tienes la llave de este vehiculo.', canHotwire and 'warning' or 'error')
+            options.notify(message or 'No tienes la llave de este vehículo.', canHotwire and 'warning' or 'error')
             return
         end
         local ped = PlayerPedId()

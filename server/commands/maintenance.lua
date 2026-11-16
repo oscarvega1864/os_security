@@ -9,7 +9,7 @@ function OSSecurity.MaintenanceCommands.register(options)
             return
         end
         local diagnosis = OSSecurity.ComponentLifecycle.diagnose(device)
-        options.reply(source, ('%s | administrativo=%s | salud=%.3f | condicion=%s'):format(
+        options.reply(source, ('%s | administrativo=%s | salud=%.3f | condición=%s'):format(
             device.id, device.state, diagnosis.health, diagnosis.state))
         local slots = {}
         for slot in pairs(device.condition.components) do slots[#slots + 1] = slot end
@@ -47,7 +47,7 @@ function OSSecurity.MaintenanceCommands.register(options)
             local offset = args[3] and tonumber(args[3]) or 0
             local limit = args[4] and tonumber(args[4]) or options.defaultPageSize
             if (args[3] and not tonumber(args[3])) or (args[4] and not tonumber(args[4])) then
-                options.reply(source, 'Offset y limite deben ser numeros enteros.')
+                options.reply(source, 'Offset y límite deben ser números enteros.')
                 return
             end
             result, err = registry.serviceHistory(source, id, offset, limit)

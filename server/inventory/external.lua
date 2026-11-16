@@ -46,7 +46,7 @@ function OSSecurity.ExternalItems.new(api)
         return result
     end
     function items.grant(holder, item, amount, operationId)
-        if not OSSecurity.InventoryState.holder(holder) or not OSSecurity.ItemCatalog[item] then return nil, 'Destino u objeto no valido.' end
+        if not OSSecurity.InventoryState.holder(holder) or not OSSecurity.ItemCatalog[item] then return nil, 'Destino u objeto no válido.' end
         local ok, err = safe(api.add, holder, item, amount, operationId)
         if ok ~= true then return nil, err or 'Entrega rechazada por el inventario.' end
         return true
@@ -64,12 +64,12 @@ function OSSecurity.ExternalItems.new(api)
     -- hizo no repite el efecto; si nunca se hizo se aplica ahora y se devuelve, saldo cero.
     -- Un cobro imposible (sin materiales) no genera devolucion.
     function items.refund(installationId, holder, materials)
-        if not items.available() then return nil, 'Inventario de personajes no disponible; devolucion pendiente.' end
+        if not items.available() then return nil, 'Inventario de personajes no disponible; devolución pendiente.' end
         for _, item in ipairs(sorted(materials)) do
             local amount = materials[item]
             if safe(api.remove, holder, item, amount, operation(installationId, 'take', item)) == true then
                 local ok, err = safe(api.add, holder, item, amount, operation(installationId, 'refund', item))
-                if ok ~= true then return nil, err or 'Devolucion pendiente.' end
+                if ok ~= true then return nil, err or 'Devolución pendiente.' end
             end
         end
         return true
@@ -95,13 +95,13 @@ function OSSecurity.ExternalItems.new(api)
     end
     -- Retener y devolver objetos de cualquier tipo (custodia). Mismo identificador = mismo efecto una sola vez.
     function items.takeAny(holder, item, amount, operationId)
-        if not OSSecurity.InventoryState.holder(holder) or type(item) ~= 'string' or not item:match('^[%w_]+$') then return nil, 'Objeto no valido.' end
+        if not OSSecurity.InventoryState.holder(holder) or type(item) ~= 'string' or not item:match('^[%w_]+$') then return nil, 'Objeto no válido.' end
         local ok, err = safe(api.remove, holder, item, amount, operationId)
         if ok ~= true then return nil, err or 'No se pudo retener.' end
         return true
     end
     function items.giveAny(holder, item, amount, operationId)
-        if not OSSecurity.InventoryState.holder(holder) or type(item) ~= 'string' or not item:match('^[%w_]+$') then return nil, 'Objeto no valido.' end
+        if not OSSecurity.InventoryState.holder(holder) or type(item) ~= 'string' or not item:match('^[%w_]+$') then return nil, 'Objeto no válido.' end
         local ok, err = safe(api.add, holder, item, amount, operationId)
         if ok ~= true then return nil, err or 'No se pudo devolver.' end
         return true

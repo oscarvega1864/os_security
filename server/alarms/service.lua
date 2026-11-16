@@ -26,11 +26,11 @@ function OSSecurity.AlarmService.new(options)
         return options.inventory.apply({ kind = 'alarm', deviceId = deviceId, alarm = alarm })
     end
     local function panelDevice(deviceId)
-        if not OSSecurity.DeviceValidation.id(deviceId) then return nil, 'Central no valida.' end
+        if not OSSecurity.DeviceValidation.id(deviceId) then return nil, 'Central no válida.' end
         local device = options.registry.get(0, deviceId)
         if not device or device.type ~= 'alarm_panel' or device.state == 'retired' then return nil, 'Central no disponible.' end
         if device.state ~= 'active' then return nil, 'Central fuera de servicio (' .. device.state .. ').' end
-        if not device.position then return nil, 'Central sin instalacion fisica.' end
+        if not device.position then return nil, 'Central sin instalación física.' end
         return device
     end
     local function near(source, device)
@@ -73,7 +73,7 @@ function OSSecurity.AlarmService.new(options)
     function alarms.panel(source, deviceId)
         local device, err = panelDevice(deviceId)
         if not device then return nil, err end
-        if not near(source, device) then return nil, 'Acercate al teclado.' end
+        if not near(source, device) then return nil, 'Acércate al teclado.' end
         local alarm = record(device.id)
         local lock = attempts[device.id .. ':' .. source]
         local state = runtime[device.id]
@@ -87,16 +87,16 @@ function OSSecurity.AlarmService.new(options)
     function alarms.keypad(source, deviceId, action, pin)
         local device, err = panelDevice(deviceId)
         if not device then return nil, err end
-        if not near(source, device) then return nil, 'Acercate al teclado.' end
+        if not near(source, device) then return nil, 'Acércate al teclado.' end
         local mode = ACTIONS[action]
-        if not mode then return nil, 'Accion no valida.' end
+        if not mode then return nil, 'Acción no válida.' end
         local key = device.id .. ':' .. source
         local lock = attempts[key]
         if lock and lock.lockedUntil and options.now() < lock.lockedUntil then
             return nil, ('Teclado bloqueado %d s por intentos fallidos.'):format(lock.lockedUntil - options.now())
         end
         local alarm = record(device.id)
-        if not alarm.pin then return nil, 'Codigo no configurado: el titular debe crearlo desde la tablet.' end
+        if not alarm.pin then return nil, 'Código no configurado: el titular debe crearlo desde la tablet.' end
         if type(pin) ~= 'string' or not pin:match('^%d+$') or #pin < config.PinMin or #pin > config.PinMax or not options.verify(pin, alarm.pin) then
             lock = lock or { count = 0 }
             lock.count = lock.count + 1
@@ -104,11 +104,11 @@ function OSSecurity.AlarmService.new(options)
             if lock.count >= config.MaxPinAttempts then
                 lock.count, lock.lockedUntil = 0, options.now() + config.LockoutSeconds
                 save(device.id, alarm, 'lockout', options.who(source))
-                options.alert(device, ('Manipulacion del teclado en %s: bloqueado por intentos fallidos.'):format(label(device)), 'warning', 'tamper')
-                return nil, ('Codigo incorrecto. Teclado bloqueado %d s.'):format(config.LockoutSeconds)
+                options.alert(device, ('Manipulación del teclado en %s: bloqueado por intentos fallidos.'):format(label(device)), 'warning', 'tamper')
+                return nil, ('Código incorrecto. Teclado bloqueado %d s.'):format(config.LockoutSeconds)
             end
             save(device.id, alarm, 'wrong_pin', options.who(source))
-            return nil, ('Codigo incorrecto (%d/%d).'):format(lock.count, config.MaxPinAttempts)
+            return nil, ('Código incorrecto (%d/%d).'):format(lock.count, config.MaxPinAttempts)
         end
         attempts[key] = nil
         local ok, result = setMode(device, mode, options.who(source))
@@ -120,7 +120,7 @@ function OSSecurity.AlarmService.new(options)
     function alarms.tag(source, deviceId)
         local device, err = panelDevice(deviceId)
         if not device then return nil, err end
-        if not near(source, device) then return nil, 'Acercate al lector.' end
+        if not near(source, device) then return nil, 'Acércate al lector.' end
         local alarm = record(device.id)
         local serials = options.heldTags(source, device.id)
         local valid = false
@@ -158,7 +158,7 @@ function OSSecurity.AlarmService.new(options)
         if not options.authorized(actor, device) then return nil, 'Sin acceso a esta alarma.' end
         if device.state ~= 'active' then return nil, 'Central fuera de servicio.' end
         local mode = ACTIONS[action]
-        if not mode then return nil, 'Accion no valida.' end
+        if not mode then return nil, 'Acción no válida.' end
         local ok, result = setMode(device, mode, actor.principal and options.whoPrincipal(actor.principal) or 'tablet')
         if not ok then return nil, result end
         return { mode = mode, message = MESSAGES[mode]:format(config.ExitDelay) }
@@ -166,20 +166,20 @@ function OSSecurity.AlarmService.new(options)
     function alarms.setPin(actor, device, pin)
         if device.type ~= 'alarm_panel' or not options.authorized(actor, device) then return nil, 'Sin acceso a esta alarma.' end
         if type(pin) ~= 'string' or not pin:match('^%d+$') or #pin < config.PinMin or #pin > config.PinMax then
-            return nil, ('El codigo debe tener entre %d y %d cifras.'):format(config.PinMin, config.PinMax)
+            return nil, ('El código debe tener entre %d y %d cifras.'):format(config.PinMin, config.PinMax)
         end
         local alarm = record(device.id)
         alarm.pin = options.hash(pin)
         local saved, err = save(device.id, alarm, 'pin_set', options.whoPrincipal(actor.principal))
         if not saved then return nil, err end
-        return { message = 'Codigo de la alarma actualizado.' }
+        return { message = 'Código de la alarma actualizado.' }
     end
     function alarms.programTag(actor, device)
         if device.type ~= 'alarm_panel' or not options.authorized(actor, device) then return nil, 'Sin acceso a esta alarma.' end
         if not options.tagsSupported() then return nil, 'Las chapas requieren el inventario de personajes.' end
         local alarm = record(device.id)
         local count = 0; for _ in pairs(alarm.tags or {}) do count = count + 1 end
-        if count >= config.MaxTags then return nil, 'Limite de chapas alcanzado; revoca las anteriores.' end
+        if count >= config.MaxTags then return nil, 'Límite de chapas alcanzado; revoca las anteriores.' end
         local serial = options.serial()
         local ok, err = options.makeTag(actor, device, serial)
         if not ok then return nil, err end
