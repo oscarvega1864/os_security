@@ -362,3 +362,21 @@ test('Live CCTV view frames the camera out of its mount and returns to the table
     assert(not client.watching and client.visible and c.shown[#c.shown].module == 'cctv')
 end)
 
+
+test('Each net event is registered once per side (two handlers with one name both run)', function()
+    for _, side in ipairs({ 'server/', 'client/' }) do
+        local seen = {}
+        for _, file in ipairs(__luaFiles) do
+            if file:sub(1, #side) == side then
+                local source = io.open('/repo/' .. file, 'rb'):read('a')
+                for name in source:gmatch("RegisterNetEvent%('([^']+)'") do
+                    assert(not seen[name], ('%s registrado dos veces (%s y %s)'):format(name, seen[name] or '?', file))
+                    seen[name] = file
+                end
+            end
+        end
+    end
+    -- El pase de chapa sin teclado va por su propio evento.
+    local boot = io.open('/repo/client/boot.lua', 'rb'):read('a')
+    assert(boot:find("TriggerServerEvent('os_security:alarm:tagNearest')", 1, true))
+end)

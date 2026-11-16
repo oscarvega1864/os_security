@@ -85,7 +85,7 @@ function OSSecurity.CardSwipe(kind, card, title, detail, releaseFocus)
 end
 RegisterNetEvent('os_security:alarm:tagSwipe', function()
     if source ~= 65535 then return end
-    if OSSecurity.CardSwipe('AlarmTag', 'tag', 'Chapa de alarma', 'Acerca la chapa al lector del teclado') then TriggerServerEvent('os_security:alarm:tag') end
+    if OSSecurity.CardSwipe('AlarmTag', 'tag', 'Chapa de alarma', 'Acerca la chapa al lector del teclado') then TriggerServerEvent('os_security:alarm:tagNearest') end
 end)
 RegisterNetEvent('os_security:g6:useItem', function(item)
     local definition = OSSecurity.ItemCatalog[item]

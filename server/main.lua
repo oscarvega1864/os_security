@@ -14,6 +14,22 @@ local isAceAllowed = OSSecurity.AdminAccess.new({
 local function storageLog(message)
     print(('%s [ERROR] %s'):format(constants.LOG_PREFIX, message))
 end
+-- Punto del codigo de una excepcion (archivo:linea), sin su texto: localiza el fallo sin registrar datos.
+local function codeAt(err)
+    return type(err) == 'string' and err:match('([%w_/%.]+%.lua:%d+)') or '?'
+end
+-- Fallos de tareas periodicas: como mucho un aviso por tarea y minuto (si no, uno por segundo).
+local tickLogged = {}
+local function tickFailed(name, err)
+    local now = os.time()
+    if tickLogged[name] and now - tickLogged[name] < 60 then return end
+    tickLogged[name] = now
+    storageLog(('Fallo en la tarea %s (%s); se reintentara.'):format(name, codeAt(err)))
+end
+local function tick(name, callback)
+    local ok, err = pcall(callback)
+    if not ok then tickFailed(name, err) end
+end
 
 local resourceFiles = OSSecurity.ResourceFiles.new({
     resource = resourceName,
@@ -456,7 +472,7 @@ RegisterNetEvent('os_security:g6:request', function(request)
     if not ok then
         -- Sin payload ni texto de la excepcion: solo la accion y el punto del codigo, para poder localizar el fallo.
         local action = type(request.action) == 'string' and request.action:match('^[%a_]+$') and request.action:sub(1, 32) or '?'
-        local where = type(response) == 'string' and response:match('([%w_/%.]+%.lua:%d+)') or '?'
+        local where = codeAt(response)
         storageLog(('Fallo de solicitud G6 (accion %s, %s); no se registra el payload ni la excepcion.'):format(action, where))
         response = { ok = false, error = OSSecurity.Brand.Text.failed, close = true }
     end
@@ -499,7 +515,7 @@ local function alarmAllowed(player)
 end
 local function alarmCall(player, callback)
     local ok, result, err = pcall(callback)
-    if not ok then storageLog('Fallo en la alarma; no se registra la excepcion.'); return nil, OSSecurity.Brand.Text.failed end
+    if not ok then storageLog(('Fallo en la alarma (%s); no se registra la excepcion.'):format(codeAt(result))); return nil, OSSecurity.Brand.Text.failed end
     return result, err
 end
 RegisterNetEvent('os_security:alarm:panel', function(deviceId)
@@ -526,8 +542,7 @@ CreateThread(function()
     while true do
         Wait(1000)
         if gameplay.status() then
-            local ok = pcall(gameplay.alarms.tick)
-            if not ok then storageLog('Fallo en la vigilancia de alarmas; se reintentara.') end
+            tick('alarmas', gameplay.alarms.tick)
         end
     end
 end)
@@ -543,7 +558,7 @@ local function lockAllowed(player, limit)
 end
 local function lockCall(callback)
     local ok, result, err, extra = pcall(callback)
-    if not ok then storageLog('Fallo en las cerraduras; no se registra la excepcion.'); return nil, OSSecurity.Brand.Text.failed end
+    if not ok then storageLog(('Fallo en las cerraduras (%s); no se registra la excepcion.'):format(codeAt(result))); return nil, OSSecurity.Brand.Text.failed end
     return result, err, extra
 end
 RegisterNetEvent('os_security:locks:sync', function()
@@ -613,7 +628,9 @@ RegisterNetEvent('os_security:shop:roadPoint', function(point)
     local message, err = lockCall(function() return gameplay.shop.move(player, 'road', point) end)
     TriggerClientEvent('os_security:shop:moved', player, message ~= nil, message or err)
 end)
-RegisterNetEvent('os_security:alarm:tag', function()
+-- Chapa pasada por el lector del objeto (sin teclado abierto): la central mas cercana. Evento propio: con el
+-- mismo nombre que el del teclado se ejecutaban los dos y la chapa actuaba dos veces.
+RegisterNetEvent('os_security:alarm:tagNearest', function()
     local player = source
     if not lockAllowed(player) then return end
     local result, err = gameplay.alarms.tagNearest(player)
@@ -762,11 +779,11 @@ CreateThread(function()
     local contractTick = 0
     while true do
         Wait(1000)
-        if gameplay.status() then pcall(gameplay.checkpoint.tick) end
+        if gameplay.status() then tick('arcos', gameplay.checkpoint.tick) end
         -- Cobro de contratos: una pasada por minuto basta (los periodos son de horas).
         contractTick = contractTick + 1
-        if contractTick >= 60 and gameplay.status() then contractTick = 0; pcall(gameplay.contracts.tick) end
-        if contractTick % OSSecurity.GameplayConfig.Bodycams.TickSeconds == 0 and gameplay.status() then pcall(gameplay.bodycams.tick) end
+        if contractTick >= 60 and gameplay.status() then contractTick = 0; tick('contratos', gameplay.contracts.tick) end
+        if contractTick % OSSecurity.GameplayConfig.Bodycams.TickSeconds == 0 and gameplay.status() then tick('bodycams', gameplay.bodycams.tick) end
     end
 end)
 

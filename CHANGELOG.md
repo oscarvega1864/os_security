@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.23.2 — Chapa de alarma
+
+- **Arreglado**: la chapa de alarma actuaba dos veces. El pase de chapa del teclado y el del objeto (sin teclado
+  abierto) usaban el mismo evento, así que el servidor ejecutaba los dos: en el teclado la alarma se armaba y se
+  volvía a desarmar en el mismo gesto, y con el objeto salía un error además del resultado. El pase sin teclado usa
+  ahora su propio evento (`os_security:alarm:tagNearest`).
+- Prueba que impide registrar dos veces el mismo evento de red en el servidor o en el cliente.
+- Los fallos de alarmas y cerraduras indican el punto del código. Las tareas periódicas (alarmas, arcos, contratos y
+  bodycams) ya no ocultan sus fallos: avisan como mucho una vez por minuto con el punto del código.
+
 ## 0.23.1 — Vista en directo de las cámaras
 
 - **Arreglado**: «Ver en directo» no hacía nada en la tablet cuando, entre los dispositivos que ve el perfil, había
