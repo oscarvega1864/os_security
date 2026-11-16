@@ -38,7 +38,10 @@ OSSecurity.GameplayConfig = {
         MaxRoundSeconds = 3600 },
     -- Bodycams: el vigilante de servicio con el objeto la enciende; supervisores y administradores la ven en directo.
     -- CullingRadius: radio de visibilidad de entidades de quien mira mientras mira (para que exista el vigilante).
-    Bodycams = { CullingRadius = 6000.0, TickSeconds = 5 },
+    -- Wear: camarita sujeta al pecho mientras la bodycam esta encendida (objeto del juego, hueso SKEL_Spine3).
+    -- Para ajustar la posicion en el juego: /bodycamajuste x y z rx ry rz (solo en tu pantalla) y copiar aqui.
+    Bodycams = { CullingRadius = 6000.0, TickSeconds = 5,
+        Wear = { Model = 'prop_npc_phone_02', Bone = 24818, Offset = { 0.16, 0.12, 0.13 }, Rotation = { 0.0, 90.0, 180.0 } } },
     -- Contratos de seguridad por propiedad o negocio del cliente. La cuota se cobra al contratar y despues cada
     -- PeriodSeconds (tiempo real) del banco del cliente cuando esta conectado. Si no se puede cobrar, el contrato
     -- queda suspendido (sin ventajas) y se reintenta cada RetrySeconds; a los MaxFailures fallos se cancela.

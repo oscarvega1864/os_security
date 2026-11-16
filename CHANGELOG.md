@@ -9,6 +9,8 @@
   vista; muestra la pantalla **NO VIDEO** de la plantilla con el motivo y vuelve sola a la imagen si se repara
   (comprueba cada 5 s). La lista de cámaras incluye las instaladas sin señal (`live = false`).
 - Las bodycams usan el mismo HUD con su propio título.
+- Bodycam puesta: mientras está encendida se ve una camarita en el pecho del vigilante (objeto del juego, configurable
+  en `Bodycams.Wear`; `/bodycamajuste` para ajustar la posición en el juego). Se quita al apagarla o al morir.
 
 ## 0.22.3
 

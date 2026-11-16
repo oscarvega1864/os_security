@@ -31,6 +31,7 @@ client_scripts {
     'client/shop.lua',
     'client/live.lua',
     'client/bodycam.lua',
+    'client/bodycam_wear.lua',
     'client/patrol.lua',
     'client/checkpoint.lua',
     'client/boot.lua'
