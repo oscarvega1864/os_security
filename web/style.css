@@ -247,3 +247,6 @@ select{font:inherit;font-size:11px;color:var(--ink);background:var(--surface);bo
 .sw-notch{fill:#e0c049}.sw-notch-slot{fill:#e0c049;opacity:.8}.sw-rotate circle{fill:#1a2420;stroke:#a9c66f;cursor:pointer}.sw-rotate text{fill:#a9c66f;font:700 16px Arial,sans-serif;pointer-events:none}
 .sw-test{stroke:#0b1210;stroke-width:3;opacity:.35;cursor:pointer;transition:opacity .08s}.sw-test.lit{opacity:1;filter:drop-shadow(0 0 8px currentColor)}
 .sw-test.red{fill:#d65a4a;color:#d65a4a}.sw-test.green{fill:#64b06b;color:#64b06b}.sw-test.blue{fill:#4f8fd6;color:#4f8fd6}.sw-test.yellow{fill:#e0c049;color:#e0c049}
+
+.sw-test-number{fill:#0b1210;font:700 20px Arial,sans-serif;pointer-events:none}.sw-test-name{fill:#cfd8d2;font:700 12px Arial,sans-serif;pointer-events:none}
+.sw-test.lit{animation:sw-blink 1s ease-in-out infinite}@keyframes sw-blink{50%{opacity:.6}}

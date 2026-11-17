@@ -430,13 +430,18 @@ async function main() {
     }
     await dragNew();
     await until(`document.querySelectorAll('.sw-test').length === 4`);
-    await evaluate(`window.__seq = []; document.querySelectorAll('.sw-test').forEach((led, i) => new MutationObserver(() => { if (led.classList.contains('lit')) window.__seq.push(i); }).observe(led, { attributes: true }))`);
-    await until(`document.querySelector('.mg-status').textContent === window.__brand.Text.minigame.swap.yourTurn`);
+    await until(`document.querySelector('.sw-test.lit')`);
     fs.writeFileSync(path.join(output, 'minigame-swap-test.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
-    const seq = await evaluate(`window.__seq.slice()`); const ledCenters = await centers('.sw-test');
-    for (const index of seq) { await mouse('mouseMoved', ledCenters[index].x, ledCenters[index].y); await mouse('mousePressed', ledCenters[index].x, ledCenters[index].y, 1); await mouse('mouseReleased', ledCenters[index].x, ledCenters[index].y); await pause(120); }
+    const ledCenters = await centers('.sw-test');
+    const lit = () => evaluate(`Array.from(document.querySelectorAll('.sw-test')).findIndex(n => n.classList.contains('lit'))`);
+    const wrongLed = ((await lit()) + 1) % 4;
+    await mouse('mouseMoved', ledCenters[wrongLed].x, ledCenters[wrongLed].y); await mouse('mousePressed', ledCenters[wrongLed].x, ledCenters[wrongLed].y, 1); await mouse('mouseReleased', ledCenters[wrongLed].x, ledCenters[wrongLed].y);
+    assert(await evaluate(`document.querySelectorAll('.mg-strike.on').length === 0 && !document.getElementById('minigame').hidden`), 'Pressing another LED in the self-test is never a mistake');
+    for (let i = 0; i < 3; i++) {
+      const index = await lit(); await mouse('mouseMoved', ledCenters[index].x, ledCenters[index].y); await mouse('mousePressed', ledCenters[index].x, ledCenters[index].y, 1); await mouse('mouseReleased', ledCenters[index].x, ledCenters[index].y); await pause(150);
+    }
     await until(`document.getElementById('minigame').hidden && window.__calls.some(x => x.endpoint === 'minigame' && x.body.ok === true)`);
-    console.log('PASS swap minigame: diagnose with the probe, pull the module out slowly, insert with the notch aligned, repeat the self-test');
+    console.log('PASS swap minigame: diagnose with the probe, pull the module out slowly, insert with the notch aligned, follow the lit LED in the self-test');
     await evaluate(`window.__calls.length = 0; window.postMessage({type:'minigame',text:window.__brand.Text.minigame},'*')`);
     await until(`!document.getElementById('minigame').hidden`);
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);

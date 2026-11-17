@@ -470,41 +470,43 @@
     });
   }
 
-  // Fase 4: el equipo enciende una secuencia de pilotos y hay que repetirla en el mismo orden.
+  // Fase 4 (accesible): se enciende un piloto y se queda encendido hasta pulsarlo; despues el siguiente.
+  // Sin memoria, sin tiempo y sin errores: pulsar otro solo recuerda cual es. Cada piloto lleva numero y color.
   function selftest() {
     run.phase = 'selftest'; const t = swapText(); fx({ phase: 'cables' });
     const { board, meters, status } = swapShell(t.testTitle, t.testHelp, 4);
     const id = run.id;
-    board.append(svg('rect', { x: 50, y: 60, width: W - 100, height: 140, rx: 14, class: 'mg-plate' }));
+    board.append(svg('rect', { x: 40, y: 50, width: W - 80, height: 170, rx: 14, class: 'mg-plate' }));
     const colors = ['red', 'green', 'blue', 'yellow'];
+    const names = Array.isArray(t.colorNames) ? t.colorNames : ['Rojo', 'Verde', 'Azul', 'Amarillo'];
     const leds = colors.map((color, index) => {
-      const node = svg('circle', { cx: 105 + index * 63, cy: 130, r: 22, class: `sw-test ${color}` }); board.append(node); return node;
+      const cx = 100 + index * 67;
+      const node = svg('circle', { cx, cy: 120, r: 27, class: `sw-test ${color}` });
+      board.append(node, Object.assign(svg('text', { x: cx, y: 127, class: 'sw-test-number', 'text-anchor': 'middle' }), { textContent: String(index + 1) }),
+        Object.assign(svg('text', { x: cx, y: 175, class: 'sw-test-name', 'text-anchor': 'middle' }), { textContent: names[index] || '' }));
+      return node;
     });
-    const length = run.modules.filter(m => m.bad).length > 1 ? 5 : 4;
-    const sequence = Array.from({ length }, () => Math.floor(Math.random() * leds.length));
-    const showErrors = strikes(meters, t.mistakes);
-    let input = [], playing = false, errors = 0;
-    const flash = (index, ms) => { leds[index].classList.add('lit'); setTimeout(() => leds[index]?.classList.remove('lit'), ms); };
-    const play = () => {
-      playing = true; input = []; status.textContent = t.watch;
-      sequence.forEach((index, step) => setTimeout(() => { if (run && run.id === id) flash(index, 380); }, 600 + step * 560));
-      setTimeout(() => { if (run && run.id === id) { playing = false; status.textContent = t.yourTurn; } }, 600 + sequence.length * 560);
+    const total = run.modules.filter(m => m.bad).length > 1 ? 4 : 3;
+    const progress = meter(meters, t.progressTest || t.progress);
+    let step = 0, current = -1;
+    const next = () => {
+      leds.forEach(led => led.classList.remove('lit'));
+      let index; do { index = Math.floor(Math.random() * leds.length); } while (index === current);
+      current = index; leds[index].classList.add('lit');
+      status.textContent = `${t.pressLit} ${index + 1} (${names[index] || ''})`;
     };
     board.addEventListener('pointerdown', event => {
-      if (playing) return; const p = point(board, event);
-      const index = leds.findIndex((_, i) => Math.hypot(105 + i * 63 - p.x, 130 - p.y) <= 24);
+      if (current < 0) return; const p = point(board, event);
+      const index = leds.findIndex((_, i) => Math.hypot(100 + i * 67 - p.x, 120 - p.y) <= 32);
       if (index < 0) return;
-      flash(index, 220); input.push(index);
-      if (sequence[input.length - 1] !== index) {
-        errors++; showErrors(errors); fx({ cue: 'wrong' }); status.textContent = t.wrongLed;
-        if (errors >= 3) { finish(false, 'selftest'); return; }
-        setTimeout(() => { if (run && run.id === id) play(); }, 700);
-        return;
-      }
-      fx({ cue: 'connected' });
-      if (input.length === sequence.length) { status.textContent = t.passed; playing = true; setTimeout(() => { if (run && run.id === id) finish(true); }, 500); }
+      if (index !== current) { status.textContent = `${t.wrongLed} ${current + 1} (${names[current] || ''})`; return; }
+      step++; progress(step / total); fx({ cue: 'connected' });
+      if (step >= total) {
+        leds.forEach(led => led.classList.add('lit')); current = -1; status.textContent = t.passed;
+        setTimeout(() => { if (run && run.id === id) finish(true); }, 700);
+      } else next();
     });
-    play();
+    next();
   }
 
   window.addEventListener('keydown', event => { if (run && event.key === 'Escape') finish(false, 'cancelled'); });

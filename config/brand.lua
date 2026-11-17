@@ -114,8 +114,9 @@ OSSecurity.Brand = {
                 insertHelp = 'Gira el módulo con la rueda del ratón (o el botón ⟳) hasta que su muesca quede arriba, como la de la ranura, y arrástralo dentro.',
                 rotate = '⟳', notch = 'La muesca no coincide: así no entra', inserted = 'Módulo encajado',
                 testTitle = 'Autotest de arranque',
-                testHelp = 'El equipo enciende una secuencia de pilotos. Repítela pulsándolos en el mismo orden.',
-                watch = 'Mira la secuencia...', yourTurn = 'Tu turno: repite la secuencia', wrongLed = 'Secuencia incorrecta: se repite',
+                testHelp = 'Pulsa el piloto que esté encendido. Se van encendiendo de uno en uno y esperan a que lo pulses: sin prisa.',
+                pressLit = 'Pulsa el piloto encendido:', wrongLed = 'Ese no. Pulsa el piloto encendido:', progressTest = 'Autotest',
+                colorNames = { 'Rojo', 'Verde', 'Azul', 'Amarillo' },
                 passed = 'Autotest superado'
             }
         },

@@ -165,7 +165,8 @@ inventario, validados por `InventoryState.detector/custody`. Requiere el inventa
 - Minijuego propio (variante `swap` de `web/minigame.js`, distinto del de montaje): 1) diagnóstico con el polímetro
   (mantener en la toma de cada módulo y marcar los que están fuera de rango; marcar uno sano es un error), 2) abrir el
   pestillo y sacar el módulo despacio (tirar rápido dobla los pines), 3) encajar el nuevo girándolo hasta que la muesca
-  coincida y 4) repetir la secuencia de pilotos del autotest. Tres errores en una fase cancelan el cambio. Las piezas
+  coincida y 4) autotest accesible: pulsar el piloto encendido (con número y color), que espera sin tiempo; pulsar otro
+  no es error. Tres errores en las fases 1 a 3 cancelan el cambio. Las piezas
   y cuáles se cambian llegan en `swap_begin` (`modules`), solo como presentación.
 - En equipos propios o sin montaje, la sustitución sigue siendo inmediata (en mantenimiento).
 

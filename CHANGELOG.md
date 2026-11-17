@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.27.1 — Autotest accesible
+
+- La última fase del cambio en el sitio ya no pide memorizar una secuencia: se enciende un piloto, parpadea y espera
+  a que lo pulses; luego el siguiente (3, o 4 con el equipo completo). Sin tiempo y sin errores: pulsar otro solo
+  recuerda cuál toca. Cada piloto lleva su número y el nombre del color, para quien distinga mal los colores.
+
 ## 0.27.0 — Minijuego propio para la sustitución en el sitio
 
 - «Hacer el cambio» tiene su propio minijuego, distinto del de montar y del de calibrar, en cuatro fases:
