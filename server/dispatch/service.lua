@@ -160,6 +160,8 @@ function OSSecurity.DispatchService.new(options)
         local call, err = create(all(), { kind = 'panic', client = actor.principal, clientName = name(actor.source), place = clean(place, 80),
             note = clean(args.note, config.NoteLength), position = point(position), contract = covered and covered.priority or nil })
         if not call then return nil, err end
+        -- Las esperas caducadas se borran (la clave es el personaje: reconectar no salta la espera).
+        for principal, at in pairs(lastPanic) do if now - at >= config.PanicCooldown then lastPanic[principal] = nil end end
         lastPanic[actor.principal] = now
         local alerted = #staff(actor.source)
         broadcast(call, T.newPanic:format(call.clientName, call.place), 'error')

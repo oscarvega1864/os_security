@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.25.3 — Memoria del servidor
+
+- Las esperas entre botones de pánico y entre solicitudes de trabajo se guardaban por personaje y no se borraban
+  nunca; en un servidor encendido muchos días crecían sin límite. Ahora se borran al caducar (reconectar sigue sin
+  saltarse la espera).
+
 ## 0.25.2 — Textos con ñ y tildes sin cortes rotos
 
 - Las notas, nombres y textos que escribe un jugador (avisos, órdenes, contratos, rondas, zonas, bodycams, arco) se

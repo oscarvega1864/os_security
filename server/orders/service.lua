@@ -131,6 +131,7 @@ function OSSecurity.OrderService.new(options)
             site = site, createdAt = now, updatedAt = now }
         local saved, err = save(order)
         if not saved then return nil, err end
+        for principal, at in pairs(lastCreate) do if now - at >= 10 then lastCreate[principal] = nil end end -- esperas caducadas
         lastCreate[actor.principal] = now
         for _, player in ipairs(options.players and options.players() or {}) do
             if player ~= actor.source and options.isStaff(player) then
