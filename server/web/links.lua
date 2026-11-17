@@ -18,7 +18,7 @@ function OSSecurity.WebLinks.label(alias)
     if type(alias) ~= 'string' then return nil end
     local words = {}
     for word in alias:gmatch('[^_%s]+') do words[#words + 1] = word:sub(1, 1):upper() .. word:sub(2) end
-    return text(table.concat(words, ' '):sub(1, 80), 80)
+    return text(OSSecurity.Util.cut(table.concat(words, ' '), 80), 80)
 end
 
 function OSSecurity.WebLinks.new(options)

@@ -85,7 +85,7 @@ function OSSecurity.ExternalItems.new(api)
                 and util.integer(entry.count, 1, 100000) then
                 -- Nombre visible: el que da el inventario; si no lo da, el del catalogo de OS Security; si no, el identificador.
                 local catalog = OSSecurity.ItemCatalog[entry.name]
-                local label = type(entry.label) == 'string' and entry.label ~= '' and entry.label:sub(1, 64) or (catalog and catalog.name) or entry.name
+                local label = type(entry.label) == 'string' and entry.label ~= '' and util.cut(entry.label, 64) or (catalog and catalog.name) or entry.name
                 local current = result[entry.name] or { count = 0, label = label }
                 current.count = current.count + entry.count
                 result[entry.name] = current

@@ -23,17 +23,9 @@ function OSSecurity.DispatchService.new(options)
         call.updatedAt = options.now()
         return options.inventory.apply({ kind = 'call', callId = call.id, call = call })
     end
-    local function clean(text, size)
-        if type(text) ~= 'string' then return nil end
-        text = text:gsub('[%c<>]', ' '):gsub('%s+', ' '):gsub('^%s+', ''):gsub('%s+$', ''):sub(1, size)
-        return text ~= '' and text or nil
-    end
+    local clean = util.clean
     local function name(source) return clean(options.playerName and options.playerName(source), 64) or ('Jugador ' .. tostring(source)) end
-    local function nextId(list)
-        local highest = 0
-        for id in pairs(list) do highest = math.max(highest, tonumber(id:sub(4)) or 0) end
-        return ('av_%06d'):format(highest + 1)
-    end
+    local function nextId(list) return util.nextId(list, 'av') end
     local function point(position) return { x = util.round(position.x, 2), y = util.round(position.y, 2), z = util.round(position.z, 2) } end
     local function sourceOf(principal)
         if not principal then return nil end

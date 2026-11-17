@@ -28,13 +28,9 @@ function OSSecurity.CheckpointService.new(options)
 
     local function detectors() return options.inventory.detectors() or {} end
     local function custody() return options.inventory.custody() or {} end
-    local function name(source) local value = options.playerName and options.playerName(source); return type(value) == 'string' and value:sub(1, 64) or ('Jugador ' .. tostring(source)) end
+    local function name(source) local value = options.playerName and options.playerName(source); return type(value) == 'string' and util.cut(value, 64) or ('Jugador ' .. tostring(source)) end
     local function notify(source, text, kind, position) if source and options.notify then options.notify(source, text, kind or 'info', position) end end
-    local function nextId(list, prefix)
-        local highest = 0
-        for id in pairs(list) do highest = math.max(highest, tonumber(id:sub(4)) or 0) end
-        return ('%s_%06d'):format(prefix, highest + 1)
-    end
+    local function nextId(list, prefix) return util.nextId(list, prefix) end
     -- Identificador de operacion de inventario unico por arco o custodia: los numeros md_/cu_ se reutilizan al
     -- retirarlos, asi que se anade el momento de creacion. Sin esto, el inventario veria una operacion "ya hecha"
     -- y no quitaria ni devolveria nada la segunda vez.

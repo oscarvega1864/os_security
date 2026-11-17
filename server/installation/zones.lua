@@ -35,7 +35,7 @@ function OSSecurity.ZoneService.new(options)
     end
     local function clean(text)
         if type(text) ~= 'string' then return nil end
-        text = text:gsub('[%c<>]', ''):sub(1, 64)
+        text = util.cut((text:gsub('[%c<>]', '')), 64)
         return text ~= '' and text or nil
     end
     local function nextId(snapshot)

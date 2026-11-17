@@ -134,7 +134,7 @@ function OSSecurity.WebBridge.new(options)
                     elseif outcome == 'applied' or outcome == 'rejected' or outcome == 'ignored' then result, detail = outcome, why
                     else result, detail = 'applied', nil end
                 end
-                state.acks[#state.acks + 1] = { id = id, result = result, detail = type(detail) == 'string' and detail:sub(1, 200) or nil }
+                state.acks[#state.acks + 1] = { id = id, result = result, detail = type(detail) == 'string' and OSSecurity.Util.cut(detail, 200) or nil }
                 state.cursor, changed = id, true
             end
         end

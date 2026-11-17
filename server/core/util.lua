@@ -61,3 +61,26 @@ function util.array(value, maximum)
     end
     return count <= maximum and count == #value
 end
+
+-- Recorta a 'size' bytes sin partir una letra de varios bytes (ñ, tildes): sin esto quedaba UTF-8 invalido.
+function util.cut(text, size)
+    text = text:sub(1, size)
+    while #text > 0 and not utf8.len(text) do text = text:sub(1, -2) end
+    return text
+end
+
+-- Texto libre de un jugador: sin controles ni < >, espacios normalizados y como mucho 'size' bytes; nil si queda vacio.
+function util.clean(text, size)
+    if type(text) ~= 'string' then return nil end
+    text = text:gsub('[%c<>]', ' '):gsub('%s+', ' '):gsub('^%s+', ''):gsub('%s+$', '')
+    text = util.cut(text, size)
+    text = text:gsub('%s+$', '')
+    return text ~= '' and text or nil
+end
+
+-- Siguiente identificador 'prefijo_000001' de una lista indexada por esos identificadores.
+function util.nextId(list, prefix)
+    local highest = 0
+    for id in pairs(list) do highest = math.max(highest, tonumber(id:sub(#prefix + 2)) or 0) end
+    return ('%s_%06d'):format(prefix, highest + 1)
+end

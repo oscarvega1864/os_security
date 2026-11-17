@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.25.2 — Textos con ñ y tildes sin cortes rotos
+
+- Las notas, nombres y textos que escribe un jugador (avisos, órdenes, contratos, rondas, zonas, bodycams, arco) se
+  recortaban por bytes y podían partir una «ñ» o una letra con tilde por la mitad, dejando texto inválido. Ahora el
+  recorte nunca parte una letra. Lo mismo con las etiquetas de objetos y el detalle que llega de la web.
+- La limpieza de texto y los identificadores (`ct_`, `av_`, `ot_`, `rd_`, `md_`, `cu_`) se comparten en
+  `server/core/util.lua` (`util.clean`, `util.cut`, `util.nextId`) en lugar de estar copiados en cada servicio.
+
 ## 0.25.1 — Ayuda de los comandos
 
 - El chat sugiere con su descripción y parámetros `/g6client`, `/g6operations`, `/g6inventory`, `/bodycam`,

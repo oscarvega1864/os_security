@@ -93,10 +93,20 @@ test('Manifest paths, loading order, versión and Lua 5.4 syntax', function()
     equal(declarations, { fx_version = 'cerulean', game = 'gta5' })
     for _, file in ipairs(__luaFiles) do assert(loadfile(root .. file)) end
     for _, file in ipairs(clientScripts) do assert(loadfile(root .. file)) end
-    assert(OSSecurity.Config.Version == '0.25.1')
+    assert(OSSecurity.Config.Version == '0.25.2')
     assert(nuiPage == 'web/index.html' and strictMode == 'true')
     for _, file in ipairs(nuiFiles) do if not file:find('*', 1, true) then local handle = assert(io.open(root .. file, 'rb')); handle:close() end end
     assert(#scripts > 0 and scripts[#scripts] == 'server/main.lua')
+end)
+
+test('Text helpers cut by bytes without splitting letters and number ids per prefix', function()
+    local util = OSSecurity.Util
+    -- 'Señal' ocupa 6 bytes (la ñ son 2): cortar en 3 no puede dejar media ñ.
+    assert(util.cut('Señal', 3) == 'Se' and util.cut('Señal', 4) == 'Señ' and util.cut('abc', 10) == 'abc')
+    assert(utf8.len(util.cut(('ñ'):rep(40), 63)) == 31)
+    assert(util.clean('  hola <b>' .. string.char(10) .. ' mundo  ', 64) == 'hola b mundo' and util.clean('   ', 10) == nil and util.clean(5, 10) == nil)
+    assert(util.clean('ab ñ', 4) == 'ab') -- sin media ñ ni espacio final
+    assert(util.nextId({}, 'ct') == 'ct_000001' and util.nextId({ ct_000007 = true, ct_000002 = true }, 'ct') == 'ct_000008')
 end)
 
 test('Missing files initialize an empty registry without writing', function()

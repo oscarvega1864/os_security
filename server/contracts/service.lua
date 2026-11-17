@@ -17,17 +17,9 @@ function OSSecurity.ContractService.new(options)
         contract.updatedAt = options.now()
         return options.inventory.apply({ kind = 'contract', contractId = contract.id, contract = contract })
     end
-    local function clean(text, size)
-        if type(text) ~= 'string' then return nil end
-        text = text:gsub('[%c<>]', ' '):gsub('%s+', ' '):gsub('^%s+', ''):gsub('%s+$', ''):sub(1, size)
-        return text ~= '' and text or nil
-    end
+    local clean = util.clean
     local function name(source) return clean(options.playerName and options.playerName(source), 64) or ('Jugador ' .. tostring(source)) end
-    local function nextId(list)
-        local highest = 0
-        for id in pairs(list) do highest = math.max(highest, tonumber(id:sub(4)) or 0) end
-        return ('ct_%06d'):format(highest + 1)
-    end
+    local function nextId(list) return util.nextId(list, 'ct') end
     local function sourceOf(principal)
         for _, player in ipairs(options.players and options.players() or {}) do
             if options.identity.resolve(player) == principal then return player end

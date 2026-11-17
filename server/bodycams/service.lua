@@ -18,7 +18,7 @@ function OSSecurity.BodycamService.new(options)
 
     local function name(source)
         local value = options.playerName and options.playerName(source)
-        return type(value) == 'string' and value:gsub('[%c<>]', ''):sub(1, 64) or ('Jugador ' .. tostring(source))
+        return type(value) == 'string' and util.cut((value:gsub('[%c<>]', '')), 64) or ('Jugador ' .. tostring(source))
     end
     local function notify(source, text, kind) if source and options.notify then options.notify(source, text, kind or 'info') end end
     local function canWatch(actor) return actor.kind == 'operations' and (actor.role == 'supervisor' or actor.role == 'admin') end
