@@ -65,6 +65,13 @@ function OSSecurity.TabletService.new(options)
                 and (actor.kind == 'operations' and OSSecurity.GameplayConfig.Profiles[actor.role] and OSSecurity.GameplayConfig.Profiles[actor.role].install == true
                     and options.auth.access(actor, device, 'repair') == true or (actor.kind == 'client' and options.ownerOf(device) == actor.principal)),
             remoteVideo = false,
+            -- Equipo de un cliente montado en su sitio: Sustituir crea una visita y el cambio se hace alli.
+            clientOwned = installation ~= nil and installation.status == 'committed' and installation.deviceId == device.id
+                and options.ownerOf(device) ~= nil and options.ownerOf(device) ~= actor.principal or nil,
+            swap = actor.kind == 'operations' and options.orders and (function()
+                local order = options.orders.swapFor(device.id, actor.role ~= 'admin' and actor.principal or nil)
+                return order and { orderId = order.id, slot = order.slot } or nil
+            end)() or nil,
             live = device.type == 'cctv_camera' and signal(device, snapshot) ~= nil or nil,
             liveReason = device.type == 'cctv_camera' and select(2, signal(device, snapshot)) or nil }
     end
@@ -250,9 +257,31 @@ function OSSecurity.TabletService.new(options)
         local device, err = service.device(actor, args.deviceId)
         if not device then return nil, err end
         local action = args.action
-        if type(action) ~= 'string' or not ({ inspect = true, repair = true, replace = true, provision = true, beginMaintenance = true, endMaintenance = true })[action]
-            or not options.auth.access(actor, device, action) then return nil, 'Perfil o alcance insuficiente.' end
+        if type(action) ~= 'string' or not ({ inspect = true, repair = true, replace = true, replaceAll = true, provision = true, beginMaintenance = true, endMaintenance = true })[action]
+            or not options.auth.access(actor, device, action == 'replaceAll' and 'replace' or action) then return nil, 'Perfil o alcance insuficiente.' end
         local updated, reason
+        -- Sustituir en un equipo de un cliente: visita al sitio (orden de trabajo y aviso al cliente) en vez de cambio a distancia.
+        if (action == 'replace' or action == 'replaceAll') and options.orders then
+            local snapshot = options.inventory.snapshot()
+            local installationId = device.metadata and device.metadata.installationId
+            local installation = installationId and snapshot and snapshot.installations[installationId]
+            local owner = options.ownerOf(device)
+            if type(installation) == 'table' and installation.status == 'committed' and installation.deviceId == device.id and owner and owner ~= actor.principal then
+                if device.schemaVersion ~= 2 then return nil, 'Esquema antiguo: equipa el registro antes de sustituir piezas.' end
+                local slot = action == 'replaceAll' and 'all' or args.slot
+                if slot ~= 'all' and not (type(slot) == 'string' and device.condition.components[slot]) then return nil, 'Pieza no válida.' end
+                local site = options.inventory.site(device.id)
+                local siteLabel = site and (options.sites and options.sites.label(site) or OSSecurity.Sites.Labels[site.kind] .. ' ' .. site.id) or nil
+                local visit, visitError = options.orders.visit(actor, { deviceId = device.id, slot = slot, client = owner,
+                    clientName = options.ownerName and options.ownerName(owner) or nil, label = OSSecurity.Brand.deviceLabel(device.id),
+                    slotLabel = OSSecurity.Brand.Text.slotLabels and OSSecurity.Brand.Text.slotLabels[slot] or nil,
+                    place = siteLabel, site = site, position = installation.position })
+                if not visit then return nil, visitError end
+                local result = summary(actor, device)
+                result.notice, result.visit = visit.message, { id = visit.id, position = visit.position }
+                return result
+            end
+        end
         if action == 'beginMaintenance' then updated, reason = options.registry.setState(0, device.id, 'maintenance')
         elseif action == 'endMaintenance' then
             -- Volver a servicio: activo si esta montado fisicamente, instalado si es solo un registro. Con una pieza
@@ -271,7 +300,15 @@ function OSSecurity.TabletService.new(options)
         else
             local arguments = {}
             if action == 'repair' or action == 'replace' then arguments.slot = args.slot end
-            updated, reason = options.registry.service(0, device.id, action, arguments)
+            if action == 'replaceAll' then
+                -- Equipo propio o sin montaje: todas las piezas a la vez (en mantenimiento, como una a una).
+                for slot in pairs(device.schemaVersion == 2 and device.condition.components or {}) do
+                    updated, reason = options.registry.service(0, device.id, 'replace', { slot = slot })
+                    if not updated then break end
+                end
+            else
+                updated, reason = options.registry.service(0, device.id, action, arguments)
+            end
         end
         if not updated then return nil, reason end
         return summary(actor, updated)

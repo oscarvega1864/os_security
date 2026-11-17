@@ -107,7 +107,9 @@ function state.car(value)
 end
 
 -- Orden de trabajo: solicitud de un cliente que atiende un tecnico G6 (ver server/orders/service.lua).
-state.OrderKinds = { cctv = true, alarm = true, repair = true, lock = true, car = true, other = true }
+state.OrderKinds = { cctv = true, alarm = true, repair = true, lock = true, car = true, other = true, replace = true }
+-- 'replace' no lo pide el cliente: lo crea el tecnico al sustituir piezas de un equipo de un cliente (visita).
+state.ClientOrderKinds = { cctv = true, alarm = true, repair = true, lock = true, car = true, other = true }
 state.OrderStatus = { open = true, accepted = true, billed = true, paid = true, cancelled = true }
 function state.orderId(id)
     return type(id) == 'string' and id:match('^ot_%d%d%d%d%d%d$') ~= nil
@@ -116,7 +118,8 @@ local function shortText(value, size) return value == nil or (util.text(value, s
 function state.order(value)
     local limits = OSSecurity.GameplayConfig.Orders
     if not util.object(value, { id = true, kind = true, status = true, client = true, clientName = true, technician = true, techName = true,
-        note = true, place = true, position = true, site = true, price = true, payout = true, createdAt = true, updatedAt = true })
+        note = true, place = true, position = true, site = true, price = true, payout = true, createdAt = true, updatedAt = true,
+        device = true, slot = true, done = true })
         or not state.orderId(value.id) or not state.OrderKinds[value.kind] or not state.OrderStatus[value.status]
         or not identity.valid(value.client) or (value.technician ~= nil and not identity.valid(value.technician))
         or not shortText(value.clientName, 64) or not shortText(value.techName, 64) or not shortText(value.note, limits.NoteLength)
@@ -124,6 +127,10 @@ function state.order(value)
         or (value.price ~= nil and not util.integer(value.price, 1, limits.MaxPrice))
         or (value.payout ~= nil and value.payout ~= 'pending' and value.payout ~= 'done')
         or not util.integer(value.createdAt, 0, 253402300799) or not util.integer(value.updatedAt, 0, 253402300799) then return false end
+    -- Visita de sustitucion: dispositivo, pieza (o 'all' = equipo completo) y si el cambio ya esta hecho.
+    if (value.device ~= nil or value.slot ~= nil or value.done ~= nil) and value.kind ~= 'replace' then return false end
+    if value.kind == 'replace' and (not OSSecurity.DeviceValidation.id(value.device) or not util.text(value.slot, 32)
+        or (value.done ~= nil and value.done ~= true)) then return false end
     -- Coherencia del estado: aceptada o facturada exige tecnico; facturada o pagada exige precio.
     if (value.status == 'accepted' or value.status == 'billed') and not value.technician then return false end
     if (value.status == 'billed' or value.status == 'paid') and not value.price then return false end

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.26.0 — Sustitución en el sitio con visita al cliente
+
+- En G6 Operations, «Sustituir» una pieza (o el nuevo «Sustituir todo el equipo») de un equipo **de un cliente** ya
+  no la cambia a distancia: crea una **visita** (orden de trabajo «Sustitución en el sitio») a nombre del técnico y
+  avisa al cliente, con el punto en el mapa, de que irá a su propiedad. El cliente la ve en sus solicitudes.
+- En el sitio, **«Hacer el cambio»** (en la ficha del equipo o en la orden): junto al equipo y con taladro y
+  destornillador, minijuego de instalación y se cambia la pieza o el equipo completo. El equipo vuelve solo a
+  servicio, el cliente recibe el aviso y la orden queda lista para facturar (antes no se puede facturar).
+- En equipos propios o sin montaje físico, sustituir sigue siendo inmediato; «Sustituir todo el equipo» cambia todas
+  las piezas a la vez.
+
 ## 0.25.3 — Memoria del servidor
 
 - Las esperas entre botones de pánico y entre solicitudes de trabajo se guardaban por personaje y no se borraban

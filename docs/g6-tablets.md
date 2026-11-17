@@ -153,6 +153,17 @@ inventario, validados por `InventoryState.detector/custody`. Requiere el inventa
   pieza a salud 0 se niega: primero hay que sustituirla.
 - El buscador de la tablet no distingue mayúsculas ni tildes.
 
+## Sustitución en el sitio (0.26)
+
+- En un equipo **de un cliente** y montado físicamente, «Sustituir» (una pieza) o «Sustituir todo el equipo» no cambia
+  nada a distancia: crea una orden `replace` a nombre del técnico (`device`, `slot` o `all`) y avisa al cliente, con
+  el punto en el mapa, de que el técnico irá al sitio. El cliente la ve en sus solicitudes; no puede pedirla él.
+- En el sitio, «Hacer el cambio» (ficha del equipo u orden de trabajo): `swap_begin` exige la visita pendiente, estar a
+  `PlacementDistance` del equipo en el mismo bucket y llevar `Tools`; tras el minijuego de instalación, `swap_confirm`
+  pasa el equipo a mantenimiento, sustituye la pieza o todas, lo devuelve a `active`, marca la orden como hecha y avisa
+  al cliente. Solo entonces se puede facturar (`order_bill`). Un cambio a la vez por equipo.
+- En equipos propios o sin montaje, la sustitución sigue siendo inmediata (en mantenimiento).
+
 ## Inventario standalone y persistencia
 
 Ítems distintos de tablet: `g6_client_tablet`, `g6_operations_tablet`.

@@ -126,6 +126,24 @@ function OSSecurity.ClientTablet.new(options)
             if options.minigame then options.minigame(function(ok) finish(ok) end, 'remove', nil, { focus = response.removal.position, prop = response.removal.model }) else finish(true) end
         end)
     end
+    -- Sustitucion en el sitio (visita): el servidor valida orden, distancia y herramientas; el minijuego de
+    -- instalacion decide si se confirma el cambio de la pieza o del equipo completo.
+    function controller.swap(deviceId, callback)
+        controller.request('swap_begin', { deviceId = deviceId }, function(response)
+            callback({ ok = response.ok, error = response.error, close = response.close })
+            if not response.ok or type(response.swap) ~= 'table' then return end
+            hide(); controller.placing = true
+            local function finish(ok)
+                controller.request(ok and 'swap_confirm' or 'swap_cancel', ok and { deviceId = deviceId } or {}, function(result)
+                    controller.placing = false
+                    if not ok then options.notify(OSSecurity.Brand.Text.swapCancelled, 'info'); return end
+                    local message = result.ok and type(result.data) == 'table' and result.data.message or result.error
+                    options.notify(message or OSSecurity.Brand.Text.failed, result.ok and 'success' or 'error')
+                end)
+            end
+            if options.minigame then options.minigame(function(ok) finish(ok) end, 'install', nil, { focus = response.swap.position, prop = false }) else finish(true) end
+        end)
+    end
     -- Marcar zona desde la tablet: el servidor reserva el marcado y cierra la sesion; la tablet se oculta
     -- y empieza el visor ('start').
     function controller.markZone(args, callback, start)

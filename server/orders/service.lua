@@ -45,6 +45,7 @@ function OSSecurity.OrderService.new(options)
             note = order.note, place = order.place, price = order.price, createdAt = order.createdAt, updatedAt = order.updatedAt,
             position = util.copy(order.position), mine = viewer ~= nil and order.technician == viewer or nil,
             payout = order.technician == viewer and order.payout or nil,
+            device = order.device, slot = order.slot, done = order.done,
             share = order.price and math.floor(order.price * config.TechShare) or nil }
     end
     local function sorted(list, accept, viewer)
@@ -90,7 +91,7 @@ function OSSecurity.OrderService.new(options)
         local places = { { value = 'here', label = OSSecurity.Brand.Text.orders.here } }
         for _, site in ipairs(ownedSites(actor.source)) do places[#places + 1] = { value = site.value, label = site.label } end
         local kinds = {}
-        for kind in pairs(OSSecurity.InventoryState.OrderKinds) do kinds[#kinds + 1] = { value = kind, label = kindLabel(kind) } end
+        for kind in pairs(OSSecurity.InventoryState.ClientOrderKinds) do kinds[#kinds + 1] = { value = kind, label = kindLabel(kind) } end
         table.sort(kinds, function(a, b) return a.label < b.label end)
         local items = sorted(list, function(order) return order.client == actor.principal end)
         for _, item in ipairs(items) do
@@ -101,7 +102,7 @@ function OSSecurity.OrderService.new(options)
             maxOpen = config.MaxOpenPerClient, noteLength = config.NoteLength, account = config.PayAccount }
     end
     function service.create(actor, args)
-        if not util.object(args, { kind = true, note = true, place = true }) or not OSSecurity.InventoryState.OrderKinds[args.kind] then
+        if not util.object(args, { kind = true, note = true, place = true }) or not OSSecurity.InventoryState.ClientOrderKinds[args.kind] then
             return nil, 'Elige el tipo de trabajo.'
         end
         local now = options.now()
@@ -233,6 +234,7 @@ function OSSecurity.OrderService.new(options)
         local order, err = workable(actor, args, { price = true })
         if not order then return nil, err end
         if order.status ~= 'accepted' or order.technician ~= actor.principal then return nil, 'Esta orden no es tuya.' end
+        if order.kind == 'replace' and not order.done then return nil, 'Haz primero el cambio en el sitio («Hacer el cambio»).' end
         if not util.integer(args.price, 1, config.MaxPrice) then return nil, ('El precio debe estar entre 1 y %d.'):format(config.MaxPrice) end
         order.status, order.price = 'billed', args.price
         local saved, saveError = save(order)
@@ -240,6 +242,53 @@ function OSSecurity.OrderService.new(options)
         notify(sourceOf(order.client), OSSecurity.Brand.Text.orders.billedClient:format(order.id, order.price), 'info')
         options.audit('order_billed', actor.source)
         return { message = OSSecurity.Brand.Text.orders.billed:format(order.id, math.floor(order.price * config.TechShare)) }
+    end
+    -- Visitas de sustitucion -------------------------------------------------------------------------------
+    -- El tecnico pulsa Sustituir en un equipo de un cliente: en vez de cambiarlo a distancia se crea una orden
+    -- 'replace' a su nombre y se avisa al cliente de que ira al sitio. El cambio se hace alli con el minijuego.
+    local function pendingSwap(deviceId)
+        for _, order in pairs(all()) do
+            if order.kind == 'replace' and order.device == deviceId and not order.done
+                and (order.status == 'open' or order.status == 'accepted') then return order end
+        end
+    end
+    function service.visit(actor, visit)
+        local existing = pendingSwap(visit.deviceId)
+        if existing then
+            if existing.technician ~= actor.principal then return nil, ('Ya hay una visita de %s pendiente para este equipo.'):format(existing.techName or 'otro técnico') end
+            return { message = OSSecurity.Brand.Text.orders.visitPending:format(existing.id), id = existing.id, position = util.copy(existing.position) }
+        end
+        if visit.client == actor.principal then return nil, 'Este equipo es tuyo: no hace falta una visita.' end
+        local list = all()
+        prune(list)
+        local now = options.now()
+        local note = visit.slot == 'all' and OSSecurity.Brand.Text.orders.swapAll:format(visit.label)
+            or OSSecurity.Brand.Text.orders.swapPart:format(visit.slotLabel or visit.slot, visit.label)
+        local clientSource = sourceOf(visit.client)
+        local order = { id = nextId(list), kind = 'replace', status = 'accepted', client = visit.client,
+            clientName = clean(visit.clientName, 64) or (clientSource and name(clientSource)) or 'Cliente',
+            technician = actor.principal, techName = name(actor.source), note = clean(note, config.NoteLength), place = clean(visit.place or visit.label, 80),
+            position = { x = util.round(visit.position.x, 2), y = util.round(visit.position.y, 2), z = util.round(visit.position.z, 2) },
+            site = visit.site, device = visit.deviceId, slot = visit.slot, createdAt = now, updatedAt = now }
+        local saved, err = save(order)
+        if not saved then return nil, err end
+        notify(sourceOf(order.client), OSSecurity.Brand.Text.orders.visitClient:format(order.techName, order.place, order.note), 'info', order.position)
+        options.audit('order_visit', actor.source, visit.deviceId)
+        return { message = OSSecurity.Brand.Text.orders.visitCreated:format(order.id), id = order.id, position = util.copy(order.position) }
+    end
+    -- Visita pendiente de ese dispositivo (para mostrar "Hacer el cambio" y validarlo en el sitio).
+    function service.swapFor(deviceId, principal)
+        local order = pendingSwap(deviceId)
+        if order and (principal == nil or order.technician == principal) then return util.copy(order) end
+    end
+    -- Cambio hecho en el sitio: queda listo para facturar y se avisa al cliente.
+    function service.swapDone(orderId)
+        local order = getOrder(orderId)
+        if not order or order.kind ~= 'replace' then return false end
+        order.done = true
+        local saved = save(order)
+        if saved then notify(sourceOf(order.client), OSSecurity.Brand.Text.orders.swapDoneClient:format(order.place), 'success') end
+        return saved
     end
     function service.drop(source) end
     return service

@@ -56,9 +56,11 @@ function OSSecurity.Gameplay.new(options)
     local sessions = OSSecurity.TabletSessions.new({ auth = auth, alive = options.alive, now = options.now,
         token = function(source) tokenCounter = tokenCounter + 1; return options.token(source, tokenCounter) end })
     local alarmsRef -- se asigna al crear el servicio de alarmas (mas abajo)
+    local ordersRef -- idem para las ordenes de trabajo (visitas de sustitucion)
     local placement = OSSecurity.InstallationService.new({ inventory = inventory, holdings = holdings, registry = options.registry,
         now = options.now, world = options.world, audit = options.audit, schedule = options.schedule,
         alive = options.alive, invalidate = sessions.close, log = options.log, ownerOf = ownerOf,
+        orders = function() return ordersRef end,
         -- Desmontar: perfil con instalacion y acceso tecnico al dispositivo, o su propietario.
         canRemove = function(actor, device)
             if actor.kind == 'operations' then
@@ -167,6 +169,7 @@ function OSSecurity.Gameplay.new(options)
         money = options.money or { available = function() return false end, charge = noop, refund = noop }, isStaff = isStaff,
         notify = options.notifyPlayer,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
+    ordersRef = orders
     local dispatch = OSSecurity.DispatchService.new({ contracts = contracts, inventory = inventory, identity = identity, world = options.world, now = options.now,
         sites = options.sites, alias = (options.vehicles or {}).alias, playerName = options.playerName, players = options.players,
         isStaff = isStaff, notify = options.notifyPlayer or effects.notify,
@@ -179,7 +182,7 @@ function OSSecurity.Gameplay.new(options)
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local tabletMap = OSSecurity.TabletMap.new({ files = options.files, log = options.log,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
-    local service = OSSecurity.TabletService.new({ map = tabletMap, inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, ownerOf = ownerOf, employeeId = options.employeeId,
+    local service = OSSecurity.TabletService.new({ map = tabletMap, inventory = inventory, holdings = holdings, registry = options.registry, auth = auth, ownerOf = ownerOf, employeeId = options.employeeId, orders = orders,
         sites = options.sites, alarms = alarms, locks = locks, cars = cars,
         audit = function(action, source, id) if options.audit then options.audit(action, source, id) end end })
     local home = OSSecurity.TabletHome.new({ inventory = inventory, service = service, orders = orders, dispatch = dispatch, now = options.now })

@@ -331,7 +331,71 @@ function OSSecurity.InstallationService.new(options)
         return { id = device.id, removed = true, kit = kit }
     end
     function service.removeCancel(source) removals[source] = nil end
-    function service.cancel(source) contexts[source] = nil; removals[source] = nil end
-    function service.clear() contexts = {}; removals = {} end
+
+    -- Sustitucion en el sitio (visita de un tecnico a un equipo de un cliente): junto al equipo, con las
+    -- herramientas y con su orden 'replace' pendiente; tras el minijuego se cambian la pieza o todas, y el
+    -- equipo vuelve a servicio. La orden queda lista para facturar.
+    local swaps = {}
+    local function swappable(source, session, deviceId)
+        if session.actor.kind ~= 'operations' then return nil, 'Solo el personal de Gruppe Sechs hace cambios.' end
+        local device, installation = installed(deviceId)
+        if not device then return nil, installation end
+        local orders = options.orders and options.orders()
+        local order = orders and orders.swapFor(device.id, session.actor.role ~= 'admin' and session.actor.principal or nil)
+        if not order then return nil, 'No tienes una visita de sustitución para este equipo.' end
+        if device.schemaVersion ~= 2 then return nil, 'Esquema antiguo: equipa el registro antes de sustituir piezas.' end
+        local point, bucket = world(source)
+        if not point then return nil, bucket end
+        if bucket ~= installation.bucket or distance(point, installation.position) > config.PlacementDistance then
+            return nil, 'Acércate al equipo para hacer el cambio.'
+        end
+        for _, item in ipairs(config.Tools) do
+            if not options.holdings.has(session.actor, item, 1) then return nil, 'Faltan herramientas para hacer el cambio.' end
+        end
+        return device, installation, order
+    end
+    function service.swapBegin(source, session, deviceId)
+        local device, installation, order = swappable(source, session, deviceId)
+        if not device then return nil, installation end
+        for other, context in pairs(swaps) do
+            if other ~= source and context.deviceId == device.id and context.expires >= options.now() then
+                return nil, 'Otra persona ya está haciendo el cambio en este equipo.'
+            end
+        end
+        swaps[source] = { token = session.token, deviceId = device.id, orderId = order.id, expires = options.now() + config.PlacementSeconds }
+        return { deviceId = device.id, model = installation.model, seconds = config.PlacementSeconds, position = util.copy(installation.position), slot = order.slot }
+    end
+    function service.swapConfirm(source, session, deviceId)
+        local context = swaps[source]
+        swaps[source] = nil
+        if not context or context.token ~= session.token or context.deviceId ~= deviceId or options.now() > context.expires then
+            return nil, 'Cambio no válido o caducado.'
+        end
+        local device, installation, order = swappable(source, session, deviceId)
+        if not device then return nil, installation end
+        if order.id ~= context.orderId then return nil, 'La visita ha cambiado; vuelve a empezar.' end
+        local slots = {}
+        if order.slot == 'all' then for slot in pairs(device.condition.components) do slots[#slots + 1] = slot end
+        elseif device.condition.components[order.slot] then slots[1] = order.slot
+        else return nil, 'La pieza de la visita ya no existe en el equipo.' end
+        table.sort(slots)
+        if device.state ~= 'maintenance' then
+            local opened, openError = options.registry.setState(0, device.id, 'maintenance')
+            if not opened then return nil, openError end
+        end
+        for _, slot in ipairs(slots) do
+            local replaced, replaceError = options.registry.service(0, device.id, 'replace', { slot = slot })
+            if not replaced then return nil, replaceError end
+        end
+        local back, backError = options.registry.setState(0, device.id, 'active')
+        if not back then return nil, backError end
+        local orders = options.orders and options.orders()
+        if orders then orders.swapDone(order.id) end
+        options.audit('device_swapped', source, device.id)
+        return { id = device.id, orderId = order.id, slots = slots, message = OSSecurity.Brand.Text.orders.swapDone:format(order.id) }
+    end
+    function service.swapCancel(source) swaps[source] = nil end
+    function service.cancel(source) contexts[source] = nil; removals[source] = nil; swaps[source] = nil end
+    function service.clear() contexts = {}; removals = {}; swaps = {} end
     return service
 end

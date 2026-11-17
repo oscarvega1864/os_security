@@ -542,6 +542,46 @@ test('Uninstalling retires the device, frees the mount and returns the kit, only
     local restarted = fixture(c.core.files); assert(restarted.loaded, restarted.loadError)
 end)
 
+test('Replacing parts of a client device creates an on-site visit; the swap needs the technician there, a minigame confirmation and then billing', function()
+    local c = fixture(); kit(c); anchor(c); grant(c, 2, 'g6_client_tablet')
+    local session = open(c, 1, 'operations')
+    assert(call(c, 1, session, 'place_begin').ok)
+    local installed = call(c, 1, session, 'place_confirm', proposal()); assert(installed.ok, installed.error)
+    local id = installed.data.id
+    local detail = call(c, 1, session, 'device', { deviceId = id }); assert(detail.data.clientOwned == true and detail.data.swap == nil)
+    local before = c.core.registry.get(0, id).condition.components.optics.id
+    -- Sustituir la optica del equipo del cliente: no cambia nada a distancia, crea la visita.
+    local visit = call(c, 1, session, 'maintain', { deviceId = id, action = 'replace', slot = 'optics' }); assert(visit.ok, visit.error)
+    assert(visit.data.visit.id == 'ot_000001' and c.core.registry.get(0, id).condition.components.optics.id == before)
+    local order = c.game.inventory.snapshot().orders.ot_000001
+    assert(order.kind == 'replace' and order.status == 'accepted' and order.device == id and order.slot == 'optics' and order.client == c.players[2].principal)
+    assert(call(c, 1, session, 'maintain', { deviceId = id, action = 'replaceAll' }).data.visit.id == 'ot_000001') -- la misma visita
+    assert(call(c, 1, session, 'device', { deviceId = id }).data.swap.orderId == 'ot_000001')
+    -- El cliente la ve en sus solicitudes y no puede pedir sustituciones el mismo.
+    local client = open(c, 2, 'client')
+    local mine = call(c, 2, client, 'requests'); assert(mine.ok and mine.data.items[1].id == 'ot_000001')
+    for _, kind in ipairs(mine.data.kinds) do assert(kind.value ~= 'replace') end
+    assert(not call(c, 2, client, 'request_create', { kind = 'replace', place = 'here', note = 'Cambio' }).ok)
+    -- No se factura antes del cambio; lejos del equipo no se puede empezar.
+    assert(not call(c, 1, session, 'order_bill', { orderId = 'ot_000001', price = 500 }).ok)
+    c.players[1].point = { x = 50, y = 0, z = 1 }
+    assert(not call(c, 1, session, 'swap_begin', { deviceId = id }).ok)
+    c.players[1].point = { x = 0, y = 0, z = 1 }
+    local begun = call(c, 1, session, 'swap_begin', { deviceId = id }); assert(begun.ok and begun.swap.slot == 'optics', begun.error)
+    local done = call(c, 1, session, 'swap_confirm', { deviceId = id }); assert(done.ok, done.error)
+    local device = c.core.registry.get(0, id)
+    assert(device.condition.components.optics.id ~= before and device.state == 'active')
+    assert(c.game.inventory.snapshot().orders.ot_000001.done == true and call(c, 1, session, 'device', { deviceId = id }).data.swap == nil)
+    assert(not call(c, 1, session, 'swap_begin', { deviceId = id }).ok) -- ya hecho
+    assert(call(c, 1, session, 'order_bill', { orderId = 'ot_000001', price = 500 }).ok)
+    -- Sustituir todo el equipo: nueva visita y, en el sitio, todas las piezas nuevas.
+    local power = c.core.registry.get(0, id).condition.components.power.id
+    local all = call(c, 1, session, 'maintain', { deviceId = id, action = 'replaceAll' }); assert(all.ok and all.data.visit.id == 'ot_000002', all.error)
+    assert(call(c, 1, session, 'swap_begin', { deviceId = id }).ok and call(c, 1, session, 'swap_confirm', { deviceId = id }).ok)
+    device = c.core.registry.get(0, id)
+    assert(device.condition.components.power.id ~= power and device.state == 'active')
+end)
+
 test('Supervisors cannot uninstall; the device owner can from the Client tablet', function()
     local c = fixture(); kit(c); anchor(c)
     local tech = open(c, 1, 'operations'); assert(call(c, 1, tech, 'place_begin').ok)

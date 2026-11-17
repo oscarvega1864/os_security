@@ -174,6 +174,13 @@ function OSSecurity.TabletController.new(options)
             if result then return { ok = true, removal = result, expires = session.expires } end
         elseif actor.kind ~= 'inventory' and request.action == 'remove_confirm' and util.object(request.args, { deviceId = true }) then
             result, reason = options.placement.removeConfirm(source, session, request.args.deviceId)
+        elseif actor.kind == 'operations' and request.action == 'swap_begin' and util.object(request.args, { deviceId = true }) then
+            result, reason = options.placement.swapBegin(source, session, request.args.deviceId)
+            if result then return { ok = true, swap = result, expires = session.expires } end
+        elseif actor.kind == 'operations' and request.action == 'swap_confirm' and util.object(request.args, { deviceId = true }) then
+            result, reason = options.placement.swapConfirm(source, session, request.args.deviceId)
+        elseif request.action == 'swap_cancel' and next(request.args) == nil then
+            options.placement.swapCancel(source); result = { cancelled = true }
         elseif request.action == 'remove_cancel' and next(request.args) == nil then
             options.placement.removeCancel(source); result = { cancelled = true }
         elseif request.action == 'place_cancel' and next(request.args) == nil then

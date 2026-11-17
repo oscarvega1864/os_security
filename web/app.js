@@ -122,6 +122,14 @@
     if (device.actions?.provision && device.schemaVersion === 1) actions.append(button(text('provision'), () => act('provision'), !['registered', 'installed', 'maintenance'].includes(device.state)));
     if (device.actions?.beginMaintenance) actions.append(button(text('beginMaintenance'), () => act('beginMaintenance'), !['installed', 'active', 'fault'].includes(device.state)));
     if (device.actions?.endMaintenance && device.state === 'maintenance') actions.append(button(text('endMaintenance'), () => act('endMaintenance'), false, 'primary'));
+    // Equipo de un cliente: Sustituir crea una visita; el cambio se hace en el sitio con «Hacer el cambio».
+    const onSite = device.clientOwned === true;
+    if (device.actions?.replace && device.schemaVersion === 2) actions.append(button(text('replaceAll'), () => act('replaceAll'), !onSite && device.state !== 'maintenance'));
+    if (device.swap) {
+      const visit = el('div', null, 'actions');
+      visit.append(button(text('swap'), () => request('swap', { deviceId: id }), false, 'primary'), el('span', format(text('swapPending'), device.swap.orderId), 'subtle'));
+      content.append(visit);
+    }
     content.append(actions);
     for (const component of device.components || []) {
       const row = el('section', null, 'component'); const identity = el('div');
@@ -129,7 +137,7 @@
       const values = el('div', health(component.health), 'component-value'); values.append(el('div', labelState(component.state), 'subtle'));
       const buttons = el('div', null, 'actions');
       if (device.actions?.repair) buttons.append(button(text('repair'), () => act('repair', component.slot), device.state !== 'maintenance'));
-      if (device.actions?.replace) buttons.append(button(text('replace'), () => act('replace', component.slot), device.state !== 'maintenance'));
+      if (device.actions?.replace) buttons.append(button(text('replace'), () => act('replace', component.slot), !onSite && device.state !== 'maintenance'));
       identity.append(buttons); row.append(identity, values); content.append(row);
     }
     pagination();
@@ -489,7 +497,10 @@
       const actions = el('div', null, 'zone-actions');
       const gps = () => post('waypoint', { x: order.position.x, y: order.position.y }).catch(() => {});
       if (order.status === 'open' && data.canWork) actions.append(button(T.accept, async () => { const result = await request('order_accept', { orderId: order.id }); if (result) { gps(); await refresh(); message(result.message); } }, false, 'primary'));
-      if (order.mine && order.status === 'accepted') {
+      if (order.mine && order.status === 'accepted' && order.kind === 'replace' && !order.done) {
+        // Visita de sustitucion: primero el cambio en el sitio; despues se factura.
+        actions.append(button(T.gps, gps), button(text('swap'), () => request('swap', { deviceId: order.device }), false, 'primary'));
+      } else if (order.mine && order.status === 'accepted') {
         const amount = el('input'); amount.type = 'number'; amount.min = '1'; amount.max = String(data.maxPrice); amount.step = '1'; amount.placeholder = T.amount; amount.className = 'order-amount';
         actions.append(button(T.gps, gps), amount, button(T.bill, async () => {
           const price = Math.floor(Number(amount.value));

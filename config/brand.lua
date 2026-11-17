@@ -63,6 +63,9 @@ OSSecurity.Brand = {
         noInventory = 'No dispone de equipo.', use = 'Utilizar', items = 'Artículos', condition = 'Condición',
         details = 'Consultar', maintenance = 'Mantenimiento', inspect = 'Inspeccionar', repair = 'Reparar', replace = 'Sustituir',
         provision = 'Equipar registro antiguo', beginMaintenance = 'Pasar a mantenimiento', endMaintenance = 'Volver a servicio',
+        replaceAll = 'Sustituir todo el equipo', swap = 'Hacer el cambio', swapCancelled = 'Cambio cancelado.', swapPending = 'Visita %s pendiente: ve al equipo y haz el cambio.',
+        slotLabels = { power = 'la alimentación', optics = 'la óptica', controller = 'la placa', sensor = 'el sensor', actuator = 'el actuador',
+            radio = 'la radio', storage = 'el almacenamiento', display = 'la pantalla' },
         notInMaintenance = 'El dispositivo no esta en mantenimiento.', failedParts = 'Hay piezas averiadas: sustitúyelas antes de volver a servicio.',
         installed = 'Instalación vinculada',
         logical = 'Registro lógico', back = 'Volver', health = 'Salud', hours = 'Horas', history = 'Última intervención',
@@ -152,7 +155,7 @@ OSSecurity.Brand = {
         hello = 'Gruppe Sechs: servicio de seguridad disponible.',
         orders = {
             kinds = { cctv = 'Instalar cámaras', alarm = 'Instalar alarma', repair = 'Reparar un dispositivo', lock = 'Cambiar bombín',
-                car = 'Seguridad del vehículo', other = 'Otro trabajo' },
+                car = 'Seguridad del vehículo', other = 'Otro trabajo', replace = 'Sustitución en el sitio' },
             status = { open = 'Pendiente', accepted = 'En camino', billed = 'Por pagar', paid = 'Pagada', cancelled = 'Cancelada' },
             here = 'Donde estoy ahora', clientPlace = 'Ubicación del cliente',
             clientTitle = 'Pide a Gruppe Sechs lo que necesites.', clientHelp = 'Un técnico de servicio acepta tu solicitud, viene al sitio y, al terminar, te pasa la factura para pagar desde aquí.',
@@ -164,7 +167,11 @@ OSSecurity.Brand = {
             newOrder = 'G6 · Nueva orden de trabajo: %s en %s.', created = 'Solicitud %s enviada a Gruppe Sechs.', cancelled = 'Solicitud cancelada.',
             cancelledTech = 'El cliente ha cancelado la orden %s.', accepted = 'Orden %s aceptada: marcada en tu GPS.', released = 'Orden devuelta a la lista.',
             acceptedClient = 'G6 · Tu solicitud %s la atiende %s.', billed = 'Orden %s facturada. Tu parte: $%d al pagar el cliente.',
-            billedClient = 'G6 · Trabajo %s terminado: paga $%d desde tu tablet G6 Client.', paid = 'Pagado: $%d. Gracias por confiar en Gruppe Sechs.',
+            billedClient = 'G6 · Trabajo %s terminado: paga $%d desde tu tablet G6 Client.',
+            visitClient = 'G6 · %s va a ir a %s: %s. Recibe al técnico en el lugar.', visitCreated = 'Visita %s enviada al cliente. Ve al equipo y pulsa «Hacer el cambio».',
+            visitPending = 'Ya tienes la visita %s para este equipo: ve al sitio y pulsa «Hacer el cambio».',
+            swapPart = 'Sustituir %s de %s', swapAll = 'Sustituir el equipo completo %s', swapDoneClient = 'G6 · Equipo de %s sustituido. El técnico te enviará la factura.',
+            swapDone = 'Cambio hecho. Factura la orden %s desde Órdenes de trabajo.', paid = 'Pagado: $%d. Gracias por confiar en Gruppe Sechs.',
             paidTech = 'G6 · Has cobrado $%d por la orden %s.'
         },
         live = {
