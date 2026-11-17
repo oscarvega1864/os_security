@@ -35,13 +35,23 @@ function OSSecurity.CarService.new(options)
         id = options.vehicles.byPlate(clean)
         return math.tointeger(tonumber(id)) or nil
     end
-    -- Vehiculo de os_devtools por matricula, comprobado contra su registro.
-    local function asset(plate)
-        local id = idOf(plate)
+    -- Vehiculo de os_devtools: por su marca (state bag osdev con su ID, que solo pone el servidor) o, si no la
+    -- tiene, por matricula comprobada contra su registro. La marca hace falta para aviones, helicopteros y barcos,
+    -- que en GTA no tienen matricula. 'vehicle' = { plate, id? } (de driving / vehicleOf).
+    local function asset(vehicle)
+        if type(vehicle) ~= 'table' then return nil end
+        local marked = math.tointeger(tonumber(vehicle.id))
+        if marked then
+            local record = options.vehicles.asset(marked)
+            if type(record) == 'table' then
+                return { id = marked, plate = trim(record.plate), owner = type(record.owner) == 'string' and record.owner or nil }
+            end
+        end
+        local id = idOf(vehicle.plate)
         if not id then return nil end
         local record = options.vehicles.asset(id)
-        if type(record) ~= 'table' or trim(record.plate) ~= trim(plate) then return nil end
-        return { id = id, plate = trim(plate), owner = type(record.owner) == 'string' and record.owner or nil }
+        if type(record) ~= 'table' or trim(record.plate) ~= trim(vehicle.plate) then return nil end
+        return { id = id, plate = trim(vehicle.plate), owner = type(record.owner) == 'string' and record.owner or nil }
     end
     -- Hace falta la llave-tarjeta del vehiculo (os_devtools 0.1.8+, vehicles.access), tambien al dueno. Sin ese
     -- proveedor, la llave es del personaje dueno (tambien para administradores: no abren coches de otros).
@@ -66,7 +76,7 @@ function OSSecurity.CarService.new(options)
         local driving = options.vehicles.driving(source)
         if not driving then return nil, 'Siéntate al volante del vehículo para instalarlo.' end
         if driving.engine or driving.speed > 1.0 then return nil, 'Para el vehículo y apaga el motor.' end
-        local car = asset(driving.plate)
+        local car = asset(driving)
         if not car then return nil, 'Solo se instala en vehículos registrados (matrícula OS).' end
         local staff = options.employment and options.employment(source, holder) == 'technician'
         if not owns(source, car) and not staff and not options.isAdmin(source) then return nil, 'Solo el dueño o un técnico G6 de servicio puede instalarlo.' end
@@ -90,9 +100,10 @@ function OSSecurity.CarService.new(options)
         if success ~= true then return nil, 'Instalación cancelada: no se ha gastado nada.' end
         if options.now() > context.expires then return nil, 'La instalación ha caducado.' end
         local driving = options.vehicles.driving(source)
-        if not driving or trim(driving.plate) ~= context.plate then return nil, 'Has salido del vehículo; no se ha gastado nada.' end
+        local same = driving and asset(driving)
+        if not same or same.id ~= context.carId then return nil, 'Has salido del vehículo; no se ha gastado nada.' end
         if options.holdings.holder(source) ~= context.holder then return nil, 'El personaje activo cambio; no se ha gastado nada.' end
-        local car = asset(driving.plate)
+        local car = asset(driving)
         local record = car and (records()[tostring(car.id)] or blank(car))
         if not record or record.changes ~= context.changes or record[context.kind] then return nil, 'El vehículo ha cambiado; no se ha gastado nada.' end
         local operation = { id = ('g6car:%d:%d'):format(record.id, record.changes + 1), holder = context.holder, materials = { [context.item] = 1 } }
@@ -111,7 +122,7 @@ function OSSecurity.CarService.new(options)
     -- dentro); con cierre centralizado, con el mando a KeyDistance (destellos y pitido).
     function cars.toggle(source, vehicle)
         if type(vehicle) ~= 'table' then return nil, 'Vehículo no disponible.' end
-        local car = asset(vehicle.plate)
+        local car = asset(vehicle)
         if not car then return nil, 'Ese vehículo no tiene dueño registrado (matrícula OS).' end
         local record = records()[tostring(car.id)] or blank(car)
         local point, bucket = options.world(source)
@@ -135,7 +146,7 @@ function OSSecurity.CarService.new(options)
     -- Intento de entrar en un vehiculo cerrado (informado por el cliente de quien lo intenta).
     function cars.tamper(source, vehicle)
         if type(vehicle) ~= 'table' then return nil end
-        local car = asset(vehicle.plate)
+        local car = asset(vehicle)
         local record = car and records()[tostring(car.id)]
         if not record or not record.locked then return nil end
         local point, bucket = options.world(source)
@@ -154,13 +165,13 @@ function OSSecurity.CarService.new(options)
     -- Ganzua: vehiculo cerrado (cualquiera puede intentarlo) y apertura forzada.
     function cars.pickTarget(vehicle)
         if type(vehicle) ~= 'table' then return nil, 'Vehículo no disponible.' end
-        local car = asset(vehicle.plate)
+        local car = asset(vehicle)
         local record = car and records()[tostring(car.id)]
         if not record or not record.locked then return nil, 'Ese vehículo no esta cerrado.' end
         return { id = record.id, tier = record.lock and 2 or 1, owner = car.owner, plate = record.plate, alarm = record.alarm }
     end
     function cars.forceOpen(source, vehicle)
-        local car = vehicle and asset(vehicle.plate)
+        local car = vehicle and asset(vehicle)
         local record = car and records()[tostring(car.id)]
         if not record or not record.locked then return nil, 'El vehículo ya no esta cerrado.' end
         record.locked = false
@@ -180,7 +191,7 @@ function OSSecurity.CarService.new(options)
     function cars.engine(source)
         local driving = options.vehicles.driving(source)
         if not driving then return nil, 'Siéntate al volante.' end
-        local car = asset(driving.plate)
+        local car = asset(driving)
         if not car then return { free = true } end
         if owns(source, car) then return { owned = true } end
         if hotwired[car.id] == source then return { hotwired = true } end
@@ -193,7 +204,7 @@ function OSSecurity.CarService.new(options)
         local driving = options.vehicles.driving(source)
         if not driving then return nil, 'Siéntate al volante.' end
         if driving.engine then return nil, 'El motor ya esta en marcha.' end
-        local car = asset(driving.plate)
+        local car = asset(driving)
         if not car then return nil, 'Este vehículo no necesita llave.' end
         if owns(source, car) or hotwired[car.id] == source then return nil, 'Ya puedes arrancarlo con la llave.' end
         if not options.holdings.external() then return nil, 'El puente requiere el inventario de personajes (os_inventory).' end
@@ -225,9 +236,10 @@ function OSSecurity.CarService.new(options)
         local now = options.now()
         if now > attempt.expires or now - attempt.started < config.Hotwire.MinSeconds then return nil, 'El puente no ha salido.' end
         local driving = options.vehicles.driving(source)
-        if not driving or trim(driving.plate) ~= attempt.plate then return nil, 'Has salido del vehículo.' end
+        local same = driving and asset(driving)
+        if not same or same.id ~= attempt.carId then return nil, 'Has salido del vehículo.' end
         hotwired[attempt.carId] = source
-        local car = asset(driving.plate)
+        local car = asset(driving)
         if car and car.owner then options.effects.notifyOwner(car.owner, ('Han hecho un puente a tu vehículo %s.'):format(attempt.plate), nil) end
         options.audit('car_hotwired', source, tostring(attempt.carId))
         return { message = 'Puente hecho: el motor arranca. Y para arrancar o apagar.' }
@@ -246,7 +258,7 @@ function OSSecurity.CarService.new(options)
         if not alias then return result end
         for _, record in pairs(records()) do
             if record.lock or record.alarm then
-                local car = asset(record.plate)
+                local car = asset({ plate = record.plate, id = record.id })
                 if car and car.owner == alias then
                     result[#result + 1] = { plate = car.plate, lock = record.lock == true, alarm = record.alarm == true, locked = record.locked == true,
                         sounding = sounding[record.id] ~= nil, position = options.vehicles.locate and options.vehicles.locate(car.plate) or nil }

@@ -1308,6 +1308,11 @@ test('Without a kit the owner still locks with the key next to the car, and only
     v.driving[2] = { plate = 'OS000012', engine = false, speed = 0 }; assert(v.cars.engine(2).owned)
     v.driving[5] = { plate = 'VMENU01', engine = false, speed = 0 }; assert(v.cars.engine(5).free) -- vehiculos ajenos a os_devtools: libres
     v.driving[4] = { plate = 'OS000012', engine = true, speed = 0 }; assert(not v.cars.engine(4)) -- administrador con otro personaje: sin llave
+    -- Aviones y helicopteros no tienen matricula: se reconocen por la marca de os_devtools (state bag con su ID).
+    v.assets[13] = { id = 13, plate = '2DBE831', owner = 'ana' }
+    v.driving[2] = { plate = '', id = 13, engine = false, speed = 0 }; assert(v.cars.engine(2).owned)
+    v.driving[5] = { plate = '', id = 13, engine = false, speed = 0 }; _, why = v.cars.engine(5); assert(why and why:find('llave'), 'sin llave no arranca el avion')
+    v.driving[5] = { plate = '', id = 999, engine = false, speed = 0 }; assert(v.cars.engine(5).free) -- marca de un vehiculo que no existe: libre
 end)
 
 -- Ganzua ---------------------------------------------------------------------------------------

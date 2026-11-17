@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.27.2 — Aviones, helicópteros y barcos con llave
+
+- **Arreglado**: los aviones, helicópteros y barcos de os_devtools no tienen matrícula en GTA y el servidor no los
+  reconocía (los buscaba por matrícula): el motor quedaba bloqueado esperando la llave pero la llave no servía.
+  Ahora se reconocen por la marca de os_devtools (state bag `osdev` con su ID, que solo pone el servidor), así que
+  funcionan con su llave-tarjeta como los coches (Y para arrancar; sin ella, puente). Los coches se siguen
+  reconociendo también por matrícula.
+
 ## 0.27.1 — Autotest accesible
 
 - La última fase del cambio en el sitio ya no pide memorizar una secuencia: se enciende un piloto, parpadea y espera

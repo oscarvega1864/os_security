@@ -244,12 +244,17 @@ local function activeAlias(player)
     local ok, dto = pcall(function() return exports[identityResource]:GetActiveCharacter(player) end)
     return ok and type(dto) == 'table' and type(dto.alias) == 'string' and dto.alias or nil
 end
+-- ID de os_devtools del vehiculo (state bag osdev, que solo pone el servidor); sirve sin matricula (aviones).
+local function osdevId(entity)
+    local ok, bag = pcall(function() return Entity(entity).state.osdev end)
+    return ok and type(bag) == 'table' and math.tointeger(tonumber(bag.id)) or nil
+end
 local function vehicleOf(netId)
     if type(netId) ~= 'number' or netId % 1 ~= 0 then return nil end
     local entity = NetworkGetEntityFromNetworkId(netId)
     if not entity or entity == 0 or not DoesEntityExist(entity) or GetEntityType(entity) ~= 2 then return nil end
     local p = GetEntityCoords(entity)
-    return { entity = entity, netId = netId, plate = GetVehicleNumberPlateText(entity), position = { x = p.x, y = p.y, z = p.z },
+    return { entity = entity, netId = netId, plate = GetVehicleNumberPlateText(entity), id = osdevId(entity), position = { x = p.x, y = p.y, z = p.z },
         bucket = GetEntityRoutingBucket(entity) }
 end
 -- Vehiculo mas cercano al jugador que cumpla 'accept' (para la ganzua): lo elige el servidor, no el cliente,
@@ -345,7 +350,7 @@ local carVehicles = {
         local vehicle = GetVehiclePedIsIn(ped, false)
         if not vehicle or vehicle == 0 or GetPedInVehicleSeat(vehicle, -1) ~= ped then return nil end
         local v = GetEntityVelocity(vehicle)
-        return { plate = GetVehicleNumberPlateText(vehicle), engine = GetIsVehicleEngineRunning(vehicle) == true or GetIsVehicleEngineRunning(vehicle) == 1,
+        return { plate = GetVehicleNumberPlateText(vehicle), id = osdevId(vehicle), engine = GetIsVehicleEngineRunning(vehicle) == true or GetIsVehicleEngineRunning(vehicle) == 1,
             speed = math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z) }
     end
 }
