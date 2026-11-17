@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.26.1 — Guardado bloqueado tras sustituir una pieza
+
+- **Arreglado**: tras sustituir una pieza, al pasar el equipo a mantenimiento el guardado fallaba con
+  `[storage:integrity] Serialización altera los datos` y el almacenamiento quedaba bloqueado hasta reiniciar. Las
+  horas de uso de una pieza recién puesta (1 s = 0,000277… h) tenían una mantisa larga que el JSON del runtime no
+  relee exacta. Los valores de desgaste se guardan ahora con como mucho 9 decimales.
+- La comprobación de integridad (y la de cambios reproducibles al cargar) acepta diferencias de redondeo de coma
+  flotante por debajo de una milmillonésima relativa; enteros, textos y estructura se siguen comparando exactos.
+
 ## 0.26.0 — Sustitución en el sitio con visita al cliente
 
 - En G6 Operations, «Sustituir» una pieza (o el nuevo «Sustituir todo el equipo») de un equipo **de un cliente** ya

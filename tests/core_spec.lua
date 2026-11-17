@@ -93,7 +93,7 @@ test('Manifest paths, loading order, versión and Lua 5.4 syntax', function()
     equal(declarations, { fx_version = 'cerulean', game = 'gta5' })
     for _, file in ipairs(__luaFiles) do assert(loadfile(root .. file)) end
     for _, file in ipairs(clientScripts) do assert(loadfile(root .. file)) end
-    assert(OSSecurity.Config.Version == '0.26.0')
+    assert(OSSecurity.Config.Version == '0.26.1')
     assert(nuiPage == 'web/index.html' and strictMode == 'true')
     for _, file in ipairs(nuiFiles) do if not file:find('*', 1, true) then local handle = assert(io.open(root .. file, 'rb')); handle:close() end end
     assert(#scripts > 0 and scripts[#scripts] == 'server/main.lua')
@@ -107,6 +107,17 @@ test('Text helpers cut by bytes without splitting letters and number ids per pre
     assert(util.clean('  hola <b>' .. string.char(10) .. ' mundo  ', 64) == 'hola b mundo' and util.clean('   ', 10) == nil and util.clean(5, 10) == nil)
     assert(util.clean('ab ñ', 4) == 'ab') -- sin media ñ ni espacio final
     assert(util.nextId({}, 'ct') == 'ct_000001' and util.nextId({ ct_000007 = true, ct_000002 = true }, 'ct') == 'ct_000008')
+end)
+
+test('Stored numbers survive the runtime JSON: wear values are short and integrity tolerates float rounding only', function()
+    local util, wear = OSSecurity.Util, OSSecurity.ComponentWear
+    -- 1 s de uso: antes 0.000277777777778 (mantisa larga que el JSON del runtime relee distinta).
+    local hours = wear.number(1 / 3600)
+    assert(hours == 0.000277778 and tonumber(('%.14g'):format(hours)) == hours)
+    assert(wear.number(1 / 3) == 0.333333333 and wear.number(100) == 100)
+    assert(util.sameData({ a = 0.0002777777777778 }, { a = 0.0002777777777777 })) -- redondeo del JSON
+    assert(not util.sameData({ a = 0.00027 }, { a = 0.00028 }) and not util.sameData({ a = 1 }, { a = 2 }))
+    assert(not util.sameData({ a = 'x' }, { a = 'y' }) and not util.sameData({ a = 1 }, { a = 1, b = 2 }))
 end)
 
 test('Missing files initialize an empty registry without writing', function()

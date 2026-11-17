@@ -30,6 +30,24 @@ function util.round(value, decimals)
     return rounded
 end
 
+-- Igualdad de datos tras serializar: como util.equal, pero dos decimales que solo difieren en el redondeo del
+-- JSON (error relativo menor de 1e-9) cuentan como iguales. Enteros, textos y estructura se comparan exactos.
+function util.sameData(left, right)
+    if type(left) == 'number' and type(right) == 'number' then
+        if left == right then return true end
+        if math.type(left) == 'integer' and math.type(right) == 'integer' then return false end
+        if not util.finite(left) or not util.finite(right) then return false end
+        return math.abs(left - right) <= 1e-9 * math.max(math.abs(left), math.abs(right))
+    end
+    if type(left) ~= type(right) then return false end
+    if type(left) ~= 'table' then return left == right end
+    for key, item in pairs(left) do
+        if not util.sameData(item, right[key]) then return false end
+    end
+    for key in pairs(right) do if left[key] == nil then return false end end
+    return true
+end
+
 function util.finite(value)
     return type(value) == 'number' and value == value
         and value ~= math.huge and value ~= -math.huge

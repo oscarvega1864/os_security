@@ -131,7 +131,7 @@ function OSSecurity.JsonStorage.new(options)
         end
         local decoded, reason = decode(encoded)
         if not decoded then return reject('serialization', 'Serialización inválida: ' .. reason) end
-        if not OSSecurity.Util.equal(snapshot, decoded) then
+        if not OSSecurity.Util.sameData(snapshot, decoded) then
             return reject('integrity', 'Serialización altera los datos.', difference(snapshot, decoded, '$'))
         end
         -- Detectar ediciones/corrupcion externa antes de sobrescribir un slot.

@@ -208,7 +208,7 @@ function validation.successor(older, newer, limits)
     for id, previous in pairs(older.devices) do
         local current = newer.devices[id]
         if not current then return nil, 'Eliminación permanente no permitida.' end
-        if not util.equal(previous, current) then
+        if not util.sameData(previous, current) then
             changes = changes + 1
             local expected
             if #current.history == #previous.history + 1 and current.schemaVersion == previous.schemaVersion then
@@ -220,7 +220,7 @@ function validation.successor(older, newer, limits)
                 expected, reason = OSSecurity.ComponentLifecycle.apply(previous, current.maintenance.lastOperation, limits)
                 if not expected then return nil, 'Servicio no reproducible: ' .. tostring(reason) end
             end
-            if not expected or not util.equal(expected, current) then return nil, 'Cambio no reproducible o historial alterado.' end
+            if not expected or not util.sameData(expected, current) then return nil, 'Cambio no reproducible o historial alterado.' end
         end
     end
     for id, current in pairs(newer.devices) do

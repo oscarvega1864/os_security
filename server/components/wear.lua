@@ -5,9 +5,11 @@ OSSecurity.ComponentWear = wear
 
 -- dkjson usa 14 cifras significativas. Canonizar los escalares nuevos a 12
 -- antes de persistir permite una ida/vuelta exacta sin relajar la integridad.
+-- 12 cifras significativas y como mucho 9 decimales: los valores diminutos con mantisa larga (p. ej. las horas de
+-- una pieza recien cambiada, 1 s = 0,000277... h) no los relee exactos el JSON del runtime y bloqueaban el guardado.
 function wear.number(value)
     if not OSSecurity.Util.finite(value) then return value end
-    return tonumber(('%.12g'):format(value))
+    return OSSecurity.Util.round(tonumber(('%.12g'):format(value)), 9)
 end
 
 function wear.state(health)
