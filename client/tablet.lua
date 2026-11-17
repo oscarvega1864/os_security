@@ -141,7 +141,9 @@ function OSSecurity.ClientTablet.new(options)
                     options.notify(message or OSSecurity.Brand.Text.failed, result.ok and 'success' or 'error')
                 end)
             end
-            if options.minigame then options.minigame(function(ok) finish(ok) end, 'install', nil, { focus = response.swap.position, prop = false }) else finish(true) end
+            if options.minigame then
+                options.minigame(function(ok) finish(ok) end, 'install', 'swap', { focus = response.swap.position, prop = false, modules = response.swap.modules })
+            else finish(true) end
         end)
     end
     -- Marcar zona desde la tablet: el servidor reserva el marcado y cierra la sesion; la tablet se oculta

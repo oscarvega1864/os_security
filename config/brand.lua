@@ -98,7 +98,26 @@ OSSecurity.Brand = {
             removeTitle = 'Desmontaje', unplugTitle = 'Desconectar el cableado',
             unplugHelp = 'Arrastra cada cable fuera de su borne hasta la bandeja de la izquierda.', unplugged = 'Desconectado',
             unscrewTitle = 'Desatornillar el soporte', unscrewHelp = 'Pulsa sobre un tornillo y gira el ratón en sentido ANTIHORARIO hasta sacarlo. Sin forzar.',
-            unscrewed = 'Tornillo fuera'
+            unscrewed = 'Tornillo fuera',
+            -- Sustitucion en el sitio (variante 'swap'): diagnostico, extraer, encajar y autotest.
+            swap = {
+                title = 'Sustitución G6', mistakes = 'Errores',
+                diagnoseTitle = 'Diagnosticar el equipo',
+                diagnoseHelp = 'Mantén pulsado el polímetro sobre la toma (círculo) de cada módulo para medirlo. Después pulsa sobre los que estén fuera de rango para marcarlos como averiados.',
+                measuring = 'Midiendo...', progress = 'Medición', inRange = 'En rango', outOfRange = 'Fuera de rango',
+                marked = 'Marcado como averiado', wrongMark = 'Ese módulo está bien: no lo marques', measureFirst = 'Mídelo antes de marcarlo',
+                extractTitle = 'Extraer el módulo',
+                extractHelp = 'Desliza el pestillo amarillo hacia la derecha y tira del módulo hacia abajo poco a poco: si tiras rápido se doblan los pines.',
+                tension = 'Tensión del conector', latchOpen = 'Pestillo abierto', bent = 'Pines doblados: vuelve a tirar más despacio',
+                extracted = 'Módulo fuera', whole = 'Equipo completo', latchFirst = 'Abre antes el pestillo',
+                insertTitle = 'Encajar el módulo nuevo',
+                insertHelp = 'Gira el módulo con la rueda del ratón (o el botón ⟳) hasta que su muesca quede arriba, como la de la ranura, y arrástralo dentro.',
+                rotate = '⟳', notch = 'La muesca no coincide: así no entra', inserted = 'Módulo encajado',
+                testTitle = 'Autotest de arranque',
+                testHelp = 'El equipo enciende una secuencia de pilotos. Repítela pulsándolos en el mismo orden.',
+                watch = 'Mira la secuencia...', yourTurn = 'Tu turno: repite la secuencia', wrongLed = 'Secuencia incorrecta: se repite',
+                passed = 'Autotest superado'
+            }
         },
         placementMount = 'Montaje',
         miniInstallAction = 'Instalar cámara mini (interior)', domeInstallAction = 'Instalar cámara domo 360',

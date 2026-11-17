@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.27.0 — Minijuego propio para la sustitución en el sitio
+
+- «Hacer el cambio» tiene su propio minijuego, distinto del de montar y del de calibrar, en cuatro fases:
+  1. **Diagnóstico** con el polímetro: mantener en la toma de cada módulo para medirlo y marcar los que salen fuera
+     de rango (marcar uno sano cuenta como error).
+  2. **Extraer**: abrir el pestillo y tirar del módulo despacio; si tiras rápido, sube la tensión del conector y se
+     doblan los pines.
+  3. **Encajar** el módulo nuevo girándolo (rueda del ratón o ⟳) hasta que la muesca coincida con la de la ranura.
+  4. **Autotest de arranque**: repetir la secuencia de pilotos que enciende el equipo.
+- Con «Sustituir todo el equipo» todas las piezas salen averiadas en el diagnóstico y el autotest es más largo.
+  Tres errores en una fase cancelan el cambio.
+
 ## 0.26.2 — La visita llega siempre al dueño
 
 - «Sustituir» en un equipo montado crea siempre la visita y avisa a su dueño, también cuando el dueño es el propio

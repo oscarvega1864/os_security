@@ -363,7 +363,15 @@ function OSSecurity.InstallationService.new(options)
             end
         end
         swaps[source] = { token = session.token, deviceId = device.id, orderId = order.id, expires = options.now() + config.PlacementSeconds }
-        return { deviceId = device.id, model = installation.model, seconds = config.PlacementSeconds, position = util.copy(installation.position), slot = order.slot }
+        -- Piezas para el minijuego: todas las del equipo, marcando las que se cambian (solo presentacion).
+        local modules = {}
+        for slot in pairs(device.condition.components) do
+            local label = OSSecurity.Brand.Text.slotLabels and OSSecurity.Brand.Text.slotLabels[slot] or slot
+            modules[#modules + 1] = { key = slot, label = (label:gsub('^%S+%s+', '')), bad = order.slot == 'all' or order.slot == slot }
+        end
+        table.sort(modules, function(a, b) return a.key < b.key end)
+        return { deviceId = device.id, model = installation.model, seconds = config.PlacementSeconds, position = util.copy(installation.position),
+            slot = order.slot, modules = modules }
     end
     function service.swapConfirm(source, session, deviceId)
         local context = swaps[source]

@@ -236,3 +236,14 @@ select{font:inherit;font-size:11px;color:var(--ink);background:var(--surface);bo
 .cam-icon:before{content:"";position:absolute;left:7px;top:9px;width:16px;height:12px;border-radius:3px;background:var(--accent)}.cam-icon:after{content:"";position:absolute;left:12px;top:12px;width:6px;height:6px;border-radius:50%;background:var(--surface)}.app-bodycams{background:linear-gradient(150deg,#ef7b5f,#b8382a)}
 .transport-card{margin-bottom:18px}.transport-offer{border-color:#e6be5a}.transport-running{margin-top:22px;display:flex;flex-direction:column;gap:8px}.app-cash_transport{background:linear-gradient(150deg,#6fb784,#2f6b42)}
 .route-name{flex:1;min-width:160px;padding:8px 10px;border-radius:7px;border:1px solid color-mix(in srgb,var(--muted) 30%,transparent);background:var(--surface);color:var(--ink);font:inherit;font-size:11px}.patrol-card.running{border-color:var(--accent)}.app-patrols{background:linear-gradient(150deg,#8f8bd6,#4d4996)}
+/* Minijuego de sustitucion en el sitio (variante swap) */
+.sw-module{fill:#22302a;stroke:#5c6b63;stroke-width:2}.sw-card{cursor:pointer}.sw-card.good .sw-module{stroke:#64b06b}.sw-card.bad .sw-module{stroke:#d65a4a}
+.sw-card.flagged .sw-module{fill:#3a1f1c;stroke:#d65a4a;stroke-width:3}.sw-led{fill:#2a312d;stroke:#4a5751}.sw-card.good .sw-led{fill:#64b06b}.sw-card.bad .sw-led{fill:#d65a4a}
+.sw-name{fill:#edf3e8;font:700 12px Arial,sans-serif;text-transform:capitalize;pointer-events:none}.sw-reading{fill:#d8b45a;font:700 15px Consolas,monospace;pointer-events:none}
+.sw-card.good .sw-reading{fill:#8fd19e}.sw-card.bad .sw-reading{fill:#f28b82}.sw-pad{fill:#0b1210;stroke:#d8b45a;stroke-width:2;stroke-dasharray:3 3;cursor:crosshair}
+.sw-card.good .sw-pad,.sw-card.bad .sw-pad{stroke-dasharray:none;stroke:#5c6b63}
+.sw-slot{fill:#0b1210;stroke:#4a5751;stroke-width:2;stroke-dasharray:5 4}.sw-slot.filled{stroke:#64b06b;stroke-dasharray:none}.sw-pin{stroke:#c9a64a;stroke-width:3}
+.sw-moving{cursor:grab}.sw-latch{fill:#e0c049;stroke:#7a6420;cursor:ew-resize}.sw-new{fill:#2b3a33;stroke:#a9c66f;cursor:grab}
+.sw-notch{fill:#e0c049}.sw-notch-slot{fill:#e0c049;opacity:.8}.sw-rotate circle{fill:#1a2420;stroke:#a9c66f;cursor:pointer}.sw-rotate text{fill:#a9c66f;font:700 16px Arial,sans-serif;pointer-events:none}
+.sw-test{stroke:#0b1210;stroke-width:3;opacity:.35;cursor:pointer;transition:opacity .08s}.sw-test.lit{opacity:1;filter:drop-shadow(0 0 8px currentColor)}
+.sw-test.red{fill:#d65a4a;color:#d65a4a}.sw-test.green{fill:#64b06b;color:#64b06b}.sw-test.blue{fill:#4f8fd6;color:#4f8fd6}.sw-test.yellow{fill:#e0c049;color:#e0c049}

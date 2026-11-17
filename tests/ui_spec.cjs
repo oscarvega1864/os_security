@@ -385,6 +385,58 @@ async function main() {
     }
     await until(`document.getElementById('minigame').hidden && window.__calls.some(x => x.endpoint === 'minigame' && x.body.ok === true)`);
     console.log('PASS removal minigame: unplug cables to the tray and unscrew counter-clockwise');
+    // Sustitucion en el sitio (variante swap): diagnostico, extraer, encajar con la muesca y autotest.
+    await evaluate(`window.__calls.length = 0; window.postMessage({type:'minigame',text:window.__brand.Text.minigame,variant:'swap',data:{modules:[{key:'optics',label:'óptica',bad:true},{key:'power',label:'alimentación',bad:false}]}},'*')`);
+    await until(`document.querySelectorAll('.sw-card').length === 2`);
+    fs.writeFileSync(path.join(output, 'minigame-swap-diagnose.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    const cardCenters = await evaluate(`Array.from(document.querySelectorAll('.sw-card .sw-module')).map(n => { const r = n.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height * 0.3 }; })`);
+    await mouse('mouseMoved', cardCenters[0].x, cardCenters[0].y); await mouse('mousePressed', cardCenters[0].x, cardCenters[0].y, 1); await mouse('mouseReleased', cardCenters[0].x, cardCenters[0].y);
+    assert(await evaluate(`document.querySelectorAll('.mg-strike.on').length === 0 && !document.querySelector('.sw-card.flagged')`), 'Marking before measuring is not allowed and is not a mistake');
+    for (const pad of await centers('.sw-pad')) {
+      await mouse('mouseMoved', pad.x, pad.y); await mouse('mousePressed', pad.x, pad.y, 1); await pause(1200); await mouse('mouseReleased', pad.x, pad.y);
+    }
+    assert(await evaluate(`document.querySelectorAll('.sw-card.bad').length === 1 && document.querySelectorAll('.sw-card.good').length === 1`), 'Measuring shows the faulty module out of range');
+    await mouse('mouseMoved', cardCenters[1].x, cardCenters[1].y); await mouse('mousePressed', cardCenters[1].x, cardCenters[1].y, 1); await mouse('mouseReleased', cardCenters[1].x, cardCenters[1].y);
+    assert(await evaluate(`document.querySelectorAll('.mg-strike.on').length === 1`), 'Marking a healthy module counts a mistake');
+    await mouse('mouseMoved', cardCenters[0].x, cardCenters[0].y); await mouse('mousePressed', cardCenters[0].x, cardCenters[0].y, 1); await mouse('mouseReleased', cardCenters[0].x, cardCenters[0].y);
+    await until(`document.querySelector('.sw-latch')`);
+    fs.writeFileSync(path.join(output, 'minigame-swap-extract.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    const swapScale = await scale();
+    const latch = (await centers('.sw-latch'))[0];
+    await mouse('mouseMoved', latch.x, latch.y); await mouse('mousePressed', latch.x, latch.y, 1);
+    for (let dx = 4; dx <= 44 * swapScale; dx += 4) { await mouse('mouseMoved', latch.x + dx, latch.y, 1); await pause(20); }
+    await mouse('mouseReleased', latch.x + 44 * swapScale, latch.y);
+    let module = (await centers('.sw-moving'))[0];
+    await mouse('mouseMoved', module.x, module.y); await mouse('mousePressed', module.x, module.y, 1);
+    await mouse('mouseMoved', module.x, module.y + 60 * swapScale, 1); await pause(400); await mouse('mouseReleased', module.x, module.y + 60 * swapScale);
+    assert(await evaluate(`document.querySelectorAll('.mg-strike.on').length === 1`), 'A sudden yank bends the pins');
+    module = (await centers('.sw-moving'))[0];
+    await mouse('mouseMoved', module.x, module.y); await mouse('mousePressed', module.x, module.y, 1);
+    for (let dy = 3; dy <= 130 * swapScale; dy += 3) { await mouse('mouseMoved', module.x, module.y + dy, 1); await pause(40); }
+    await mouse('mouseReleased', module.x, module.y + 130 * swapScale);
+    await until(`document.querySelector('.sw-rotate')`);
+    const slotCenter = (await centers('.sw-slot'))[0];
+    const dragNew = async () => {
+      const piece = (await centers('.sw-new'))[0];
+      await mouse('mouseMoved', piece.x, piece.y); await mouse('mousePressed', piece.x, piece.y, 1);
+      for (let i = 1; i <= 10; i++) await mouse('mouseMoved', piece.x + (slotCenter.x - piece.x) * i / 10, piece.y + (slotCenter.y - piece.y) * i / 10, 1);
+      await mouse('mouseReleased', slotCenter.x, slotCenter.y);
+    };
+    await dragNew();
+    assert(await evaluate(`document.querySelectorAll('.mg-strike.on').length === 1 && !document.querySelector('.sw-slot.filled')`), 'A module with the notch turned does not go in');
+    const rotateButton = (await centers('.sw-rotate circle'))[0];
+    for (let i = 0; i < 4 && !(await evaluate(`/rotate\\(0\\)/.test(document.querySelector('.sw-new').parentNode.getAttribute('transform'))`)); i++) {
+      await mouse('mouseMoved', rotateButton.x, rotateButton.y); await mouse('mousePressed', rotateButton.x, rotateButton.y, 1); await mouse('mouseReleased', rotateButton.x, rotateButton.y);
+    }
+    await dragNew();
+    await until(`document.querySelectorAll('.sw-test').length === 4`);
+    await evaluate(`window.__seq = []; document.querySelectorAll('.sw-test').forEach((led, i) => new MutationObserver(() => { if (led.classList.contains('lit')) window.__seq.push(i); }).observe(led, { attributes: true }))`);
+    await until(`document.querySelector('.mg-status').textContent === window.__brand.Text.minigame.swap.yourTurn`);
+    fs.writeFileSync(path.join(output, 'minigame-swap-test.png'), Buffer.from((await send('Page.captureScreenshot', { format: 'png' })).data, 'base64'));
+    const seq = await evaluate(`window.__seq.slice()`); const ledCenters = await centers('.sw-test');
+    for (const index of seq) { await mouse('mouseMoved', ledCenters[index].x, ledCenters[index].y); await mouse('mousePressed', ledCenters[index].x, ledCenters[index].y, 1); await mouse('mouseReleased', ledCenters[index].x, ledCenters[index].y); await pause(120); }
+    await until(`document.getElementById('minigame').hidden && window.__calls.some(x => x.endpoint === 'minigame' && x.body.ok === true)`);
+    console.log('PASS swap minigame: diagnose with the probe, pull the module out slowly, insert with the notch aligned, repeat the self-test');
     await evaluate(`window.__calls.length = 0; window.postMessage({type:'minigame',text:window.__brand.Text.minigame},'*')`);
     await until(`!document.getElementById('minigame').hidden`);
     await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}))`);

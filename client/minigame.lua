@@ -17,7 +17,7 @@ function OSSecurity.ClientMinigame.new(options)
         options.send({ type = 'minigameClose' })
         callback(ok, not ok and type(result) == 'table' and result.reason == 'cancelled' and 'cancelled' or nil)
     end
-    -- variant: nil (CCTV y alarmas) o 'detector' (arco detector: sus textos sustituyen a los comunes).
+    -- variant: nil (CCTV y alarmas), 'detector' (arco detector: sus textos sustituyen a los comunes) o 'swap'.
     -- extra (opcional): { focus = posicion del montaje (camara cercana), prop = modelo del paso final o false }.
     function minigame.run(callback, mode, variant, extra)
         if pending then minigame.finish({ ok = false, reason = 'cancelled' }) end
@@ -31,7 +31,13 @@ function OSSecurity.ClientMinigame.new(options)
             for key, value in pairs(OSSecurity.Brand.Text.minigame) do text[key] = value end
             for key, value in pairs(OSSecurity.Brand.Text.checkpoint.minigame) do text[key] = value end
         end
-        options.send({ type = 'minigame', text = text, mode = mode == 'remove' and 'remove' or 'install', variant = variant == 'detector' and 'detector' or nil })
+        -- 'swap' (sustitucion en el sitio): minijuego propio (diagnostico, extraer, encajar y autotest) con las piezas.
+        local data = nil
+        if variant == 'swap' then
+            data = { modules = type(extra) == 'table' and type(extra.modules) == 'table' and extra.modules or {} }
+        end
+        options.send({ type = 'minigame', text = text, mode = mode == 'remove' and 'remove' or 'install',
+            variant = (variant == 'detector' or variant == 'swap') and variant or nil, data = data })
         options.timeout(function()
             if current == generation and pending then minigame.finish({ ok = false, reason = 'timeout' }) end
         end)

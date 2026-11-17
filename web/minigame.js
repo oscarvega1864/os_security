@@ -301,11 +301,218 @@
     });
   }
 
+  // ---------------------------------------------------------------------------------------------------
+  // Sustitucion en el sitio (variante 'swap'), distinta del montaje: 1) diagnosticar con el polimetro y marcar
+  // lo averiado, 2) abrir el pestillo y sacar el modulo sin doblar los pines, 3) encajar el nuevo con la muesca
+  // bien orientada y 4) repetir la secuencia del autotest de arranque. Tres errores en una fase: falla.
+  const SW_STEPS = 4;
+  const swapText = () => run.text.swap || {};
+  const swapTitle = () => swapText().title || run.text.title;
+  function swapShell(title, help, step) {
+    const parts = shell(title, help, step, SW_STEPS);
+    parts.board.parentElement.querySelector('.mg-overline').textContent = `${swapTitle()} · ${step}/${SW_STEPS}`;
+    return parts;
+  }
+  function swapModules() {
+    const list = Array.isArray(run.data?.modules) ? run.data.modules : [];
+    const modules = list.slice(0, 4).map(m => ({ key: String(m.key || ''), label: String(m.label || m.key || ''), bad: m.bad === true }));
+    if (!modules.length) modules.push({ key: 'power', label: 'alimentación', bad: true });
+    if (!modules.some(m => m.bad)) modules[0].bad = true;
+    return modules;
+  }
+  const BAD_READINGS = ['0,0 V', '3,1 V', '17,8 V', 'ERR', '0,4 V'];
+
+  // Fase 1: medir cada modulo manteniendo el polimetro en su toma y marcar los que estan fuera de rango.
+  function diagnose() {
+    run.phase = 'diagnose'; const t = swapText(); fx({ phase: 'cables' });
+    const { board, meters, status } = swapShell(t.diagnoseTitle, t.diagnoseHelp, 1);
+    const modules = swapModules(); run.modules = modules;
+    board.append(svg('rect', { x: 26, y: 24, width: W - 52, height: H - 48, rx: 14, class: 'mg-plate' }));
+    const gap = 12, width = (W - 100 - gap * (modules.length - 1)) / modules.length;
+    const cards = modules.map((module, index) => {
+      const x = 50 + index * (width + gap), cx = x + width / 2;
+      const group = svg('g', { class: 'sw-card' });
+      const box = svg('rect', { x, y: 44, width, height: 170, rx: 10, class: 'sw-module' });
+      const led = svg('circle', { cx, cy: 64, r: 6, class: 'sw-led' });
+      const name = Object.assign(svg('text', { x: cx, y: 96, class: 'sw-name', 'text-anchor': 'middle' }), { textContent: module.label });
+      const reading = Object.assign(svg('text', { x: cx, y: 130, class: 'sw-reading', 'text-anchor': 'middle' }), { textContent: '— V' });
+      const pad = svg('circle', { cx, cy: 178, r: 13, class: 'sw-pad' });
+      group.append(box, led, name, reading, pad); board.append(group);
+      return { module, x, cx, width, group, box, reading, pad, measured: false, flagged: false, value: module.bad ? BAD_READINGS[Math.floor(Math.random() * BAD_READINGS.length)] : `${(11.8 + Math.random() * 0.4).toFixed(1).replace('.', ',')} V` };
+    });
+    const progress = meter(meters, t.progress); const showErrors = strikes(meters, t.mistakes);
+    let holding = null, held = 0, errors = 0;
+    const mistake = message => { errors++; showErrors(errors); fx({ cue: 'wrong' }); status.textContent = message; if (errors >= 3) finish(false, 'misdiagnosed'); };
+    board.addEventListener('pointerdown', event => {
+      const p = point(board, event);
+      const onPad = cards.find(card => Math.hypot(card.cx - p.x, 178 - p.y) <= 16);
+      if (onPad && !onPad.measured) { holding = onPad; held = 0; board.setPointerCapture?.(event.pointerId); status.textContent = t.measuring; return; }
+      const card = cards.find(c => p.x >= c.x && p.x <= c.x + c.width && p.y >= 44 && p.y <= 160);
+      if (!card || card.flagged) return;
+      if (!card.measured) { status.textContent = t.measureFirst; return; }
+      if (!card.module.bad) { mistake(t.wrongMark); return; }
+      card.flagged = true; card.group.classList.add('flagged'); fx({ cue: 'connected' }); status.textContent = `${t.marked}: ${card.module.label}`;
+      if (cards.filter(c => c.module.bad).every(c => c.flagged)) setTimeout(() => { if (run && run.phase === 'diagnose') extract(); }, 450);
+    });
+    const release = () => { if (holding && !holding.measured) { status.textContent = ''; progress(0); } holding = null; };
+    board.addEventListener('pointerup', release); board.addEventListener('pointercancel', release);
+    board.addEventListener('pointermove', event => {
+      if (!holding) return; const p = point(board, event);
+      if (Math.hypot(holding.cx - p.x, 178 - p.y) > 22) release();
+    });
+    loop(dt => {
+      if (run.phase !== 'diagnose') return false;
+      if (!holding) return;
+      held += dt; progress(held / 0.9);
+      if (held >= 0.9) {
+        const card = holding; holding = null; card.measured = true; progress(0);
+        card.reading.textContent = card.value; card.group.classList.add(card.module.bad ? 'bad' : 'good');
+        status.textContent = card.module.bad ? t.outOfRange : t.inRange;
+      }
+    });
+  }
+
+  // Fase 2: abrir el pestillo y tirar del modulo hacia abajo; tirar rapido sube la tension y dobla los pines.
+  function extract() {
+    run.phase = 'extract'; const t = swapText(); fx({ phase: 'screw' });
+    const { board, meters, status } = swapShell(t.extractTitle, t.extractHelp, 2);
+    const bad = run.modules.filter(m => m.bad);
+    const label = bad.length === run.modules.length && run.modules.length > 1 ? t.whole : bad[0].label;
+    board.append(svg('rect', { x: 150, y: 16, width: 100, height: 232, rx: 10, class: 'mg-panel-box' }));
+    board.append(svg('rect', { x: 165, y: 30, width: 70, height: 100, rx: 6, class: 'sw-slot' }));
+    for (let i = 0; i < 5; i++) board.append(svg('line', { x1: 175 + i * 12, y1: 30, x2: 175 + i * 12, y2: 40, class: 'sw-pin' }));
+    const START = 36, OUT = 120;
+    const group = svg('g');
+    const body = svg('rect', { x: 170, y: 0, width: 60, height: 88, rx: 6, class: 'sw-module sw-moving' });
+    const name = Object.assign(svg('text', { x: 200, y: 50, class: 'sw-name', 'text-anchor': 'middle' }), { textContent: label });
+    group.append(body, name); board.append(group);
+    const latch = svg('rect', { x: 236, y: 52, width: 26, height: 14, rx: 3, class: 'sw-latch' }); board.append(latch);
+    const tension = meter(meters, t.tension); const showErrors = strikes(meters, t.mistakes);
+    let latchX = 0, offset = 0, drag = null, pressure = 0, over = 0, errors = 0, done = false;
+    const place = () => { group.setAttribute('transform', `translate(0 ${START + offset})`); latch.setAttribute('x', 236 + latchX); };
+    place();
+    board.addEventListener('pointerdown', event => {
+      const p = point(board, event);
+      if (Math.abs(p.x - (249 + latchX)) <= 18 && Math.abs(p.y - 59) <= 14 && latchX < 30) { drag = { kind: 'latch', x: p.x, base: latchX }; }
+      else if (p.x >= 165 && p.x <= 235 && p.y >= START + offset && p.y <= START + offset + 88) {
+        if (latchX < 30) { status.textContent = t.latchFirst; return; }
+        drag = { kind: 'module', y: p.y, base: offset, last: performance.now(), lastY: p.y };
+      } else return;
+      board.setPointerCapture?.(event.pointerId);
+    });
+    board.addEventListener('pointermove', event => {
+      if (!drag || done) return; const p = point(board, event);
+      if (drag.kind === 'latch') {
+        latchX = Math.max(0, Math.min(30, drag.base + p.x - drag.x)); place();
+        if (latchX >= 30) { drag = null; fx({ cue: 'connected' }); status.textContent = t.latchOpen; }
+        return;
+      }
+      const now = performance.now(); const dt = Math.max(0.008, (now - drag.last) / 1000);
+      const speed = Math.max(0, (p.y - drag.lastY) / dt); drag.last = now; drag.lastY = p.y;
+      pressure = Math.max(pressure, Math.min(1, speed / 420));
+      if (speed > 1400) { over = 1; return; } // tiron brusco: dobla los pines al momento (lo cuenta el bucle)
+      offset = Math.max(0, Math.min(OUT, drag.base + p.y - drag.y)); place();
+      if (offset >= OUT) { done = true; drag = null; fx({ cue: 'connected' }); status.textContent = t.extracted; setTimeout(() => { if (run && run.phase === 'extract') insert(); }, 450); }
+    });
+    const release = () => { drag = null; };
+    board.addEventListener('pointerup', release); board.addEventListener('pointercancel', release);
+    loop(dt => {
+      if (run.phase !== 'extract') return false;
+      if (done) return;
+      pressure = Math.max(0, pressure - dt * 1.6); tension(pressure);
+      over = over >= 1 ? over : (pressure > 0.85 && drag?.kind === 'module' ? over + dt : 0);
+      if (over > 0.18) {
+        errors++; showErrors(errors); fx({ cue: 'wrong' }); status.textContent = t.bent;
+        drag = null; offset = 0; pressure = 0; over = 0; place();
+        if (errors >= 3) { finish(false, 'bent'); return false; }
+      }
+    });
+  }
+
+  // Fase 3: el modulo nuevo llega girado; la rueda (o el boton) lo gira 90 grados y solo entra con la muesca arriba.
+  function insert() {
+    run.phase = 'insert'; const t = swapText(); fx({ phase: 'cables' });
+    const { board, meters, status } = swapShell(t.insertTitle, t.insertHelp, 3);
+    board.append(svg('rect', { x: 230, y: 16, width: 120, height: 232, rx: 10, class: 'mg-panel-box' }));
+    const slot = svg('rect', { x: 255, y: 70, width: 70, height: 100, rx: 6, class: 'sw-slot' }); board.append(slot);
+    board.append(svg('path', { d: 'M 282 70 L 290 80 L 298 70 Z', class: 'sw-notch-slot' }));
+    board.append(svg('rect', { x: 30, y: 50, width: 150, height: 160, rx: 12, class: 'mg-tray' }));
+    const HOME = { x: 105, y: 125 };
+    let angle = 90 * (1 + Math.floor(Math.random() * 3)), pos = { ...HOME }, drag = null, errors = 0, done = false;
+    const group = svg('g');
+    group.append(svg('rect', { x: -32, y: -46, width: 64, height: 92, rx: 6, class: 'sw-module sw-new' }), svg('path', { d: 'M -8 -46 L 0 -36 L 8 -46 Z', class: 'sw-notch' }));
+    board.append(group);
+    const turn = svg('g', { class: 'sw-rotate' });
+    turn.append(svg('circle', { cx: 105, cy: 232, r: 13 }), Object.assign(svg('text', { x: 105, y: 237, 'text-anchor': 'middle' }), { textContent: t.rotate || '⟳' }));
+    board.append(turn);
+    const showErrors = strikes(meters, t.mistakes);
+    const place = () => group.setAttribute('transform', `translate(${pos.x} ${pos.y}) rotate(${angle})`);
+    const rotate = step => { if (done || drag) return; angle = (angle + step + 360) % 360; place(); fx({ cue: 'connected' }); };
+    place();
+    board.addEventListener('wheel', event => { event.preventDefault(); rotate(event.deltaY > 0 ? 90 : -90); }, { passive: false });
+    board.addEventListener('pointerdown', event => {
+      if (done) return; const p = point(board, event);
+      if (Math.hypot(p.x - 105, p.y - 232) <= 15) { rotate(90); return; }
+      if (Math.abs(p.x - pos.x) <= 40 && Math.abs(p.y - pos.y) <= 50) { drag = { dx: p.x - pos.x, dy: p.y - pos.y }; board.setPointerCapture?.(event.pointerId); }
+    });
+    board.addEventListener('pointermove', event => { if (!drag) return; const p = point(board, event); pos = { x: p.x - drag.dx, y: p.y - drag.dy }; place(); });
+    board.addEventListener('pointerup', () => {
+      if (!drag) return; drag = null;
+      const inSlot = Math.abs(pos.x - 290) <= 30 && Math.abs(pos.y - 120) <= 40;
+      if (!inSlot) return;
+      if (angle % 360 !== 0) {
+        errors++; showErrors(errors); fx({ cue: 'wrong' }); status.textContent = t.notch; pos = { ...HOME }; place();
+        if (errors >= 3) finish(false, 'notch');
+        return;
+      }
+      done = true; pos = { x: 290, y: 120 }; place(); slot.classList.add('filled'); fx({ cue: 'connected' }); status.textContent = t.inserted;
+      setTimeout(() => { if (run && run.phase === 'insert') selftest(); }, 450);
+    });
+  }
+
+  // Fase 4: el equipo enciende una secuencia de pilotos y hay que repetirla en el mismo orden.
+  function selftest() {
+    run.phase = 'selftest'; const t = swapText(); fx({ phase: 'cables' });
+    const { board, meters, status } = swapShell(t.testTitle, t.testHelp, 4);
+    const id = run.id;
+    board.append(svg('rect', { x: 50, y: 60, width: W - 100, height: 140, rx: 14, class: 'mg-plate' }));
+    const colors = ['red', 'green', 'blue', 'yellow'];
+    const leds = colors.map((color, index) => {
+      const node = svg('circle', { cx: 105 + index * 63, cy: 130, r: 22, class: `sw-test ${color}` }); board.append(node); return node;
+    });
+    const length = run.modules.filter(m => m.bad).length > 1 ? 5 : 4;
+    const sequence = Array.from({ length }, () => Math.floor(Math.random() * leds.length));
+    const showErrors = strikes(meters, t.mistakes);
+    let input = [], playing = false, errors = 0;
+    const flash = (index, ms) => { leds[index].classList.add('lit'); setTimeout(() => leds[index]?.classList.remove('lit'), ms); };
+    const play = () => {
+      playing = true; input = []; status.textContent = t.watch;
+      sequence.forEach((index, step) => setTimeout(() => { if (run && run.id === id) flash(index, 380); }, 600 + step * 560));
+      setTimeout(() => { if (run && run.id === id) { playing = false; status.textContent = t.yourTurn; } }, 600 + sequence.length * 560);
+    };
+    board.addEventListener('pointerdown', event => {
+      if (playing) return; const p = point(board, event);
+      const index = leds.findIndex((_, i) => Math.hypot(105 + i * 63 - p.x, 130 - p.y) <= 24);
+      if (index < 0) return;
+      flash(index, 220); input.push(index);
+      if (sequence[input.length - 1] !== index) {
+        errors++; showErrors(errors); fx({ cue: 'wrong' }); status.textContent = t.wrongLed;
+        if (errors >= 3) { finish(false, 'selftest'); return; }
+        setTimeout(() => { if (run && run.id === id) play(); }, 700);
+        return;
+      }
+      fx({ cue: 'connected' });
+      if (input.length === sequence.length) { status.textContent = t.passed; playing = true; setTimeout(() => { if (run && run.id === id) finish(true); }, 500); }
+    });
+    play();
+  }
+
   window.addEventListener('keydown', event => { if (run && event.key === 'Escape') finish(false, 'cancelled'); });
   window.addEventListener('message', event => {
     if (event.data?.type === 'minigame' && event.data.text) {
-      stop(); run = { id: ++runs, text: event.data.text, mode: event.data.mode === 'remove' ? 'remove' : 'install', variant: event.data.variant === 'detector' ? 'detector' : 'cctv' };
-      if (run.mode === 'remove') unplug(); else drill();
+      const variant = ['detector', 'swap'].includes(event.data.variant) ? event.data.variant : 'cctv';
+      stop(); run = { id: ++runs, text: event.data.text, mode: event.data.mode === 'remove' ? 'remove' : 'install', variant, data: event.data.data || null };
+      if (variant === 'swap') diagnose(); else if (run.mode === 'remove') unplug(); else drill();
     }
     else if (event.data?.type === 'minigameClose') stop();
   });
