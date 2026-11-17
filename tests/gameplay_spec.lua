@@ -582,6 +582,19 @@ test('Replacing parts of a client device creates an on-site visit; the swap need
     assert(device.condition.components.power.id ~= power and device.state == 'active')
 end)
 
+test('A mounted device owned by the technician himself still gets the on-site visit and notice', function()
+    local c = fixture(); kit(c)
+    c.players[2].principal = c.players[1].principal -- el dueno del montaje es el propio tecnico
+    anchor(c)
+    local session = open(c, 1, 'operations')
+    assert(call(c, 1, session, 'place_begin').ok)
+    local id = call(c, 1, session, 'place_confirm', proposal()).data.id
+    assert(call(c, 1, session, 'device', { deviceId = id }).data.clientOwned == true)
+    local visit = call(c, 1, session, 'maintain', { deviceId = id, action = 'replace', slot = 'power' }); assert(visit.ok and visit.data.visit, visit.error)
+    local order = c.game.inventory.snapshot().orders[visit.data.visit.id]
+    assert(order.client == c.players[1].principal and order.technician == c.players[1].principal and order.kind == 'replace')
+end)
+
 test('Supervisors cannot uninstall; the device owner can from the Client tablet', function()
     local c = fixture(); kit(c); anchor(c)
     local tech = open(c, 1, 'operations'); assert(call(c, 1, tech, 'place_begin').ok)

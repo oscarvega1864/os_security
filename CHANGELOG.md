@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.26.2 — La visita llega siempre al dueño
+
+- «Sustituir» en un equipo montado crea siempre la visita y avisa a su dueño, también cuando el dueño es el propio
+  técnico (antes, en ese caso, se cambiaba a distancia sin solicitud).
+
 ## 0.26.1 — Guardado bloqueado tras sustituir una pieza
 
 - **Arreglado**: tras sustituir una pieza, al pasar el equipo a mantenimiento el guardado fallaba con
@@ -11,7 +16,7 @@
 
 ## 0.26.0 — Sustitución en el sitio con visita al cliente
 
-- En G6 Operations, «Sustituir» una pieza (o el nuevo «Sustituir todo el equipo») de un equipo **de un cliente** ya
+- En G6 Operations, «Sustituir» una pieza (o el nuevo «Sustituir todo el equipo») de un equipo **montado con dueño** ya
   no la cambia a distancia: crea una **visita** (orden de trabajo «Sustitución en el sitio») a nombre del técnico y
   avisa al cliente, con el punto en el mapa, de que irá a su propiedad. El cliente la ve en sus solicitudes.
 - En el sitio, **«Hacer el cambio»** (en la ficha del equipo o en la orden): junto al equipo y con taladro y

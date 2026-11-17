@@ -258,7 +258,6 @@ function OSSecurity.OrderService.new(options)
             if existing.technician ~= actor.principal then return nil, ('Ya hay una visita de %s pendiente para este equipo.'):format(existing.techName or 'otro técnico') end
             return { message = OSSecurity.Brand.Text.orders.visitPending:format(existing.id), id = existing.id, position = util.copy(existing.position) }
         end
-        if visit.client == actor.principal then return nil, 'Este equipo es tuyo: no hace falta una visita.' end
         local list = all()
         prune(list)
         local now = options.now()

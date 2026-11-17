@@ -65,9 +65,9 @@ function OSSecurity.TabletService.new(options)
                 and (actor.kind == 'operations' and OSSecurity.GameplayConfig.Profiles[actor.role] and OSSecurity.GameplayConfig.Profiles[actor.role].install == true
                     and options.auth.access(actor, device, 'repair') == true or (actor.kind == 'client' and options.ownerOf(device) == actor.principal)),
             remoteVideo = false,
-            -- Equipo de un cliente montado en su sitio: Sustituir crea una visita y el cambio se hace alli.
+            -- Equipo montado con dueno: Sustituir crea una visita (aviso al dueno) y el cambio se hace alli.
             clientOwned = installation ~= nil and installation.status == 'committed' and installation.deviceId == device.id
-                and options.ownerOf(device) ~= nil and options.ownerOf(device) ~= actor.principal or nil,
+                and options.ownerOf(device) ~= nil or nil,
             swap = actor.kind == 'operations' and options.orders and (function()
                 local order = options.orders.swapFor(device.id, actor.role ~= 'admin' and actor.principal or nil)
                 return order and { orderId = order.id, slot = order.slot } or nil
@@ -266,7 +266,8 @@ function OSSecurity.TabletService.new(options)
             local installationId = device.metadata and device.metadata.installationId
             local installation = installationId and snapshot and snapshot.installations[installationId]
             local owner = options.ownerOf(device)
-            if type(installation) == 'table' and installation.status == 'committed' and installation.deviceId == device.id and owner and owner ~= actor.principal then
+            -- Siempre que este montado y tenga dueno (aunque sea el propio tecnico): la solicitud llega al dueno.
+            if type(installation) == 'table' and installation.status == 'committed' and installation.deviceId == device.id and owner then
                 if device.schemaVersion ~= 2 then return nil, 'Esquema antiguo: equipa el registro antes de sustituir piezas.' end
                 local slot = action == 'replaceAll' and 'all' or args.slot
                 if slot ~= 'all' and not (type(slot) == 'string' and device.condition.components[slot]) then return nil, 'Pieza no válida.' end

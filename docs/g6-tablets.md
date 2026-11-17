@@ -155,7 +155,7 @@ inventario, validados por `InventoryState.detector/custody`. Requiere el inventa
 
 ## Sustitución en el sitio (0.26)
 
-- En un equipo **de un cliente** y montado físicamente, «Sustituir» (una pieza) o «Sustituir todo el equipo» no cambia
+- En un equipo montado físicamente y con dueño (aunque sea el propio técnico), «Sustituir» (una pieza) o «Sustituir todo el equipo» no cambia
   nada a distancia: crea una orden `replace` a nombre del técnico (`device`, `slot` o `all`) y avisa al cliente, con
   el punto en el mapa, de que el técnico irá al sitio. El cliente la ve en sus solicitudes; no puede pedirla él.
 - En el sitio, «Hacer el cambio» (ficha del equipo u orden de trabajo): `swap_begin` exige la visita pendiente, estar a
