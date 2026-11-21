@@ -1801,6 +1801,12 @@ test('Metal detector: any on-duty company places it with the item, it beeps for 
     c.savedWeapons = { [4] = { { name = 'WEAPON_PISTOL', ammo = 12 } } }
     assert(cp.pass(4, 'md_000001', {}).alarm)
     c.savedWeapons = nil
+    -- Arma como objeto del inventario (os_inventory), guardada y sin informar por el cliente: pita igual.
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Checkpoint.PassCooldown + 1
+    assert(cp.pass(4, 'md_000001', {}).alarm == false)
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Checkpoint.PassCooldown + 1
+    e.give(4, 'weapon_pistol')
+    assert(cp.pass(4, 'md_000001', {}).alarm)
     c.players[3].point = { x = 30, y = 0, z = 1 }
     assert(cp.pass(3, 'md_000001', {}) == nil) -- lejos del arco
     local restarted = fixture(c.core.files, e); assert(restarted.loaded, restarted.loadError)

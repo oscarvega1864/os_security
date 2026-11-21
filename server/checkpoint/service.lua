@@ -195,7 +195,12 @@ function OSSecurity.CheckpointService.new(options)
         for _, weapon in ipairs(weaponsOf(weapons, source)) do if OSSecurity.Weapons.List[weapon.name].metal then metal = true end end
         if not metal then
             local holder = holderOf(source)
-            for item in pairs(holder and options.items.contents(holder) or {}) do if config.Metal[item] then metal = true end end
+            -- Objetos metalicos y armas que son objetos del inventario (os_inventory 0.2.0+): pitan aunque no se lleven
+            -- en la mano y el cliente no las informe.
+            for item in pairs(holder and options.items.contents(holder) or {}) do
+                local weapon = OSSecurity.Weapons.List[item]
+                if config.Metal[item] or (weapon and weapon.metal) then metal = true end
+            end
         end
         broadcast(detector.position, detector.bucket, 30.0, 'detector', { id = detector.id, alarm = metal })
         if metal then

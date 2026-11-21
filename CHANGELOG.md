@@ -1,5 +1,11 @@
 # Changelog
 
+## Sin publicar
+
+- **Arreglado**: el arco detector no pitaba con un arma guardada en el inventario (os_inventory 0.2.0+) si no se
+  llevaba en la mano: solo contaba los objetos de la lista de metal. Ahora pitan también las armas metálicas que son
+  objetos del inventario, las informe o no el cliente.
+
 ## 0.27.2 — Aviones, helicópteros y barcos con llave
 
 - **Arreglado**: los aviones, helicópteros y barcos de os_devtools no tienen matrícula en GTA y el servidor no los
