@@ -203,8 +203,8 @@ function state.custodyId(id) return type(id) == 'string' and id:match('^cu_%d%d%
 function state.company(value) return type(value) == 'string' and #value >= 1 and #value <= 32 and value:match('^[%w_%-]+$') ~= nil end
 local function itemName(value) return type(value) == 'string' and #value <= 64 and value:match('^[%w_]+$') ~= nil end
 function state.detector(value)
-    return util.object(value, { id = true, company = true, placedBy = true, position = true, heading = true, bucket = true, createdAt = true })
-        and state.detectorId(value.id) and state.company(value.company) and identity.valid(value.placedBy)
+    return util.object(value, { id = true, company = true, placedBy = true, position = true, heading = true, bucket = true, createdAt = true, off = true })
+        and (value.off == nil or value.off == true) and state.detectorId(value.id) and state.company(value.company) and identity.valid(value.placedBy)
         and state.vector(value.position, 1000000) and type(value.heading) == 'number' and value.heading >= 0 and value.heading < 360
         and util.integer(value.bucket, 0, 2147483647) and util.integer(value.createdAt, 0, 253402300799)
 end

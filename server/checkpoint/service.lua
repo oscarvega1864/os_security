@@ -82,7 +82,7 @@ function OSSecurity.CheckpointService.new(options)
         local result = {}
         for _, detector in pairs(detectors()) do
             result[#result + 1] = { id = detector.id, x = detector.position.x, y = detector.position.y, z = detector.position.z,
-                h = detector.heading, bucket = detector.bucket, company = detector.company }
+                h = detector.heading, bucket = detector.bucket, company = detector.company, off = detector.off == true }
         end
         table.sort(result, function(a, b) return a.id < b.id end)
         return result
@@ -162,6 +162,22 @@ function OSSecurity.CheckpointService.new(options)
         unmounting[ready.detector.id] = { source = source, expires = options.now() + UNMOUNT_SECONDS }
         return ready
     end
+    -- Encender o apagar: empleado de servicio de la empresa del arco, a su lado (sin herramientas).
+    -- on: true enciende, false apaga, nil cambia al contrario. Apagado no detecta, no pita ni avisa.
+    function service.power(source, on)
+        local job = company(source)
+        if not job then return nil, T.needJob end
+        local detector = nearest(source, config.PickupDistance, function(item) return item.company == job end)
+        if not detector then return nil, T.noOwnNear end
+        local wantOff = (on == nil) and not detector.off or on == false
+        if wantOff == (detector.off == true) then return nil, wantOff and T.alreadyOff or T.alreadyOn end
+        local updated = util.copy(detector); updated.off = wantOff or nil
+        local saved, err = options.inventory.apply({ kind = 'detector', detectorId = detector.id, detector = updated })
+        if not saved then return nil, err end
+        changed()
+        options.audit(wantOff and 'detector_off' or 'detector_on', source, detector.id)
+        return { message = wantOff and T.turnedOff or T.turnedOn, off = wantOff }
+    end
     function service.unmountCancel(source)
         for id, busy in pairs(unmounting) do if busy.source == source then unmounting[id] = nil end end
         return { cancelled = true }
@@ -210,7 +226,7 @@ function OSSecurity.CheckpointService.new(options)
         if not OSSecurity.InventoryState.detectorId(detectorId) then return nil end
         local detector = detectors()[detectorId]
         local here, bucket = where(source)
-        if not detector or not here or bucket ~= detector.bucket then return nil end
+        if not detector or detector.off or not here or bucket ~= detector.bucket then return nil end
         if not under(here, detector) then return nil end
         local key = source .. ':' .. detectorId
         local now = options.now()
@@ -232,7 +248,7 @@ function OSSecurity.CheckpointService.new(options)
             local here, bucket = where(player)
             if here then
                 for id, detector in pairs(list) do
-                    if bucket == detector.bucket and under(here, detector) then
+                    if not detector.off and bucket == detector.bucket and under(here, detector) then
                         local key = player .. ':' .. id
                         local recent = (passes[key] and now - passes[key] < config.PassCooldown) or (scanned[key] and now - scanned[key] < config.PassCooldown)
                         if not recent then

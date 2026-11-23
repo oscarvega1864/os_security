@@ -105,11 +105,19 @@ CreateThread(function()
                 if glow and GetGameTimer() < glow.untilAt then
                     local r, g = glow.alarm and 255 or 40, glow.alarm and 30 or 230
                     DrawLightWithRange(center.x, center.y, center.z + 1.3, r, g, 40, 3.0, 6.0)
+                elseif not detector.off then
+                    DrawLightWithRange(center.x, center.y, center.z + 1.3, 40, 230, 40, 1.2, 1.5) -- encendido: luz verde tenue
+                end
+                if detector.off and d < 8.0 then -- apagado: rotulo encima del arco
+                    SetDrawOrigin(center.x, center.y, center.z + 1.35, 0)
+                    SetTextScale(0.3, 0.3); SetTextFont(4); SetTextCentre(true); SetTextColour(255, 120, 120, 230); SetTextOutline()
+                    BeginTextCommandDisplayText('STRING'); AddTextComponentSubstringPlayerName(T.offLabel); EndTextCommandDisplayText(0.0, 0.0)
+                    ClearDrawOrigin()
                 end
                 -- Cruce: cambio de lado sobre el eje de paso dentro del hueco del arco.
                 local rel = vector2(here.x - center.x, here.y - center.y)
                 local along, across = rel.x * forward.x + rel.y * forward.y, rel.x * side.x + rel.y * side.y
-                if math.abs(across) < 0.6 and math.abs(here.z - center.z) < 2.0 and math.abs(along) < 1.2 and not IsPedInAnyVehicle(ped, false) then
+                if not detector.off and math.abs(across) < 0.6 and math.abs(here.z - center.z) < 2.0 and math.abs(along) < 1.2 and not IsPedInAnyVehicle(ped, false) then
                     local now = along >= 0
                     if sides[id] ~= nil and sides[id] ~= now then TriggerServerEvent('os_security:checkpoint:pass', id, myWeapons()) end
                     sides[id] = now
@@ -193,8 +201,12 @@ end)
 
 -- /arco recoger: el servidor comprueba empresa, arco y herramientas; despues, minijuego de desmontaje.
 RegisterCommand('arco', function(_, args)
-    if args[1] == 'recoger' then TriggerServerEvent('os_security:checkpoint:unmountBegin')
-    else notify('Uso: /arco recoger (junto a un arco de tu empresa, con taladro y destornillador). Para colocarlo, usa el objeto.', 'info') end
+    local action = args[1]
+    if action == 'recoger' then TriggerServerEvent('os_security:checkpoint:unmountBegin')
+    elseif action == 'encender' then TriggerServerEvent('os_security:checkpoint:power', true)
+    elseif action == 'apagar' then TriggerServerEvent('os_security:checkpoint:power', false)
+    elseif action == 'interruptor' then TriggerServerEvent('os_security:checkpoint:power', nil)
+    else notify('Uso: /arco encender | apagar | recoger (junto a un arco de tu empresa). Para colocarlo, usa el objeto.', 'info') end
 end, false)
 RegisterNetEvent('os_security:checkpoint:unmountGame', function()
     if source ~= 65535 or not OSSecurity.Minigame then return end
@@ -230,7 +242,7 @@ RegisterCommand('cacheo', function()
 end, false)
 TriggerEvent('chat:addSuggestion', '/cacheo', 'Pedir permiso para cachear a la persona que tienes delante (empleado de servicio)')
 TriggerEvent('chat:addSuggestion', '/custodia', 'Recoger los objetos que te retuvieron (en el mismo sitio)')
-TriggerEvent('chat:addSuggestion', '/arco', 'Arco detector: /arco recoger (junto a un arco de tu empresa)')
+TriggerEvent('chat:addSuggestion', '/arco', 'Arco detector junto a uno de tu empresa', { { name = 'accion', help = 'encender | apagar | recoger' } })
 
 local consenting = false -- false | 'frisk' (pedir permiso para cachear) | 'retain' (entregar lo retenido)
 RegisterNetEvent('os_security:checkpoint:friskAsk', function(data)

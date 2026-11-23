@@ -1843,6 +1843,17 @@ test('Metal detector: any on-duty company places it with the item, it beeps for 
     cp.scan(); local got = sentTo(c, 3, 'detector'); assert(#got == heard + 1 and got[#got].alarm)
     cp.scan(); assert(#sentTo(c, 3, 'detector') == heard + 1) -- no se repite mientras sigue debajo
     assert(cp.pass(3, 'md_000001', {}) == nil) -- el aviso del cliente justo despues tampoco repite
+    -- Interruptor: solo su empresa, a su lado; apagado no detecta (ni el aviso del cliente ni la vigilancia).
+    assert(not cp.power(3, false)) -- sin empresa
+    local off = assert(cp.power(1, false)); assert(off.off == true and cp.list()[1].off == true)
+    local _, again = cp.power(1, false); assert(again:find('ya está apagado'))
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Checkpoint.PassCooldown + 1
+    heard = #sentTo(c, 3, 'detector')
+    assert(cp.pass(3, 'md_000001', {}) == nil); cp.scan(); assert(#sentTo(c, 3, 'detector') == heard)
+    assert(fixture(c.core.files, e).game.checkpoint.list()[1].off == true) -- se guarda: sigue apagado tras reiniciar
+    assert(cp.power(1).off == false) -- sin decir nada: cambia al contrario
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Checkpoint.PassCooldown + 1
+    assert(cp.pass(3, 'md_000001', {}).alarm)
     c.players[3].point = { x = 30, y = 0, z = 1 }
     assert(cp.pass(3, 'md_000001', {}) == nil) -- lejos del arco
     local restarted = fixture(c.core.files, e); assert(restarted.loaded, restarted.loadError)

@@ -772,6 +772,13 @@ RegisterNetEvent('os_security:checkpoint:unmountBegin', function()
     if ready then TriggerClientEvent('os_security:checkpoint:unmountGame', player)
     else TriggerClientEvent('os_security:alarm:alert', player, err or OSSecurity.Brand.Text.failed, 'warning') end
 end)
+RegisterNetEvent('os_security:checkpoint:power', function(on)
+    local player = source
+    if not lockAllowed(player) then return end
+    local wanted = nil -- true enciende, false apaga, nil cambia al contrario
+    if on == true then wanted = true elseif on == false then wanted = false end
+    checkpointReply(player, lockCall(function() return gameplay.checkpoint.power(player, wanted) end))
+end)
 RegisterNetEvent('os_security:checkpoint:unmountCancel', function()
     local player = source
     if not lockAllowed(player) then return end

@@ -1,5 +1,11 @@
 # Changelog
 
+## Sin publicar
+
+- **Arco detector con interruptor**: `/arco encender`, `/arco apagar` (o `/arco interruptor` para cambiar) junto a un
+  arco de tu empresa, de servicio. Apagado no detecta, no pita ni avisa (tampoco la vigilancia del servidor) y muestra
+  el rótulo "ARCO APAGADO"; encendido tiene una luz verde tenue. El estado se guarda y sobrevive a reinicios.
+
 ## 0.27.5 — Arco detector vigilado por el servidor
 
 - **Arco detector vigilado por el servidor**: antes solo sonaba si el cliente avisaba al cruzarlo, así que un cliente
