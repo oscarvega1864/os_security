@@ -1,5 +1,12 @@
 # Changelog
 
+## Sin publicar
+
+- **Localizador GPS de vehículo** (nuevo en la tienda G6, $2.200): se instala al volante con destornillador y el
+  minijuego de cableado (no necesita el cierre). El dueño ve el vehículo en la tablet G6 Client (Localizadores) y lo
+  marca en el GPS con `/localizar [matrícula]`. Si alguien lo conduce sin llave, el dueño recibe un aviso (como mucho
+  cada 2 min) y un punto rojo en el mapa que sigue al vehículo; en la tablet sale "ROBADO".
+
 ## 0.27.10 — Tildes en los mensajes
 
 - Textos: tildes que faltaban en 28 mensajes al jugador ("Ya estás cacheando", "Está cerrado", "El personaje activo

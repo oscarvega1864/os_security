@@ -327,6 +327,15 @@ local carVehicles = {
     end)(),
     alias = activeAlias,
     -- Posicion de un vehiculo por matricula (Localizadores de la tablet Client), redondeada.
+    locateId = function(id)
+        for _, entity in ipairs(GetAllVehicles()) do
+            if osdevId(entity) == id then
+                local p = GetEntityCoords(entity)
+                return { x = math.floor(p.x * 10 + 0.5) / 10, y = math.floor(p.y * 10 + 0.5) / 10, z = math.floor(p.z * 10 + 0.5) / 10 }
+            end
+        end
+        return nil
+    end,
     locate = function(plate)
         for _, entity in ipairs(GetAllVehicles()) do
             local text = GetVehicleNumberPlateText(entity)
@@ -832,8 +841,26 @@ CreateThread(function()
         if gameplay.status() then
             local ok = pcall(function()
                 gameplay.cars.tick()
-                local players
+                local players -- ped -> jugador (se calcula una vez por pasada, solo si hace falta)
                 for _, entity in ipairs(GetAllVehicles()) do
+                    -- Localizador: alguien al volante sin llave -> el dueno lo sigue en el mapa.
+                    local driverPed = GetPedInVehicleSeat(entity, -1)
+                    if driverPed and driverPed ~= 0 then
+                        if not players then
+                            players = {}
+                            for _, value in ipairs(GetPlayers()) do local id = tonumber(value); local ped = GetPlayerPed(id); if ped and ped ~= 0 then players[ped] = id end end
+                        end
+                        local driver = players[driverPed]
+                        if driver then
+                            local theft = gameplay.cars.theft(driver, vehicleOf(NetworkGetNetworkIdFromEntity(entity)))
+                            if theft then
+                                for _, value in ipairs(GetPlayers()) do
+                                    local player = tonumber(value)
+                                    if activeAlias(player) == theft.owner then TriggerClientEvent('os_security:car:track', player, theft) end
+                                end
+                            end
+                        end
+                    end
                     local want = gameplay.cars.desired(GetVehicleNumberPlateText(entity))
                     if want then
                         carState(entity, want)
@@ -857,6 +884,20 @@ CreateThread(function()
         end
     end
 end)
+
+-- /localizar [matricula]: marca en el mapa un vehiculo propio con localizador.
+local locateAt = {}
+RegisterCommand('localizar', function(player, args)
+    if player == 0 then return end
+    local now = GetGameTimer()
+    if locateAt[player] and now - locateAt[player] < 3000 then return end
+    locateAt[player] = now
+    local found, err = lockCall(function() return gameplay.cars.locateOwn(player, args[1]) end)
+    if not found then return TriggerClientEvent('os_security:car:result', player, false, err or OSSecurity.Brand.Text.failed) end
+    found.manual = true
+    TriggerClientEvent('os_security:car:track', player, found)
+end, false)
+AddEventHandler('playerDropped', function() locateAt[source] = nil end)
 
 -- Nivel del bombin (1 serie, 2 seguridad, 3 alta seguridad) de una puerta, para robos o ganzuas.
 exports('GetDoorSecurity', function(doorId)

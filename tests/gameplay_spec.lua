@@ -1249,7 +1249,7 @@ local function carFixture()
         employment = OSSecurity.Employment.new({ settings = config.Employment, read = function(source) return c.jobs[source] end }),
         isAdmin = function(source) return v.admins[source] == true end,
         vehicles = { asset = function(id) return v.assets[id] end, alias = function(source) return v.aliases[source] end,
-            driving = function(source) return v.driving[source] end },
+            driving = function(source) return v.driving[source] end, locateId = function(id) return v.spots and v.spots[id] end },
         effects = { locked = function(vehicle, locked, alarm, remote) v.log[#v.log + 1] = { 'locked', vehicle.plate, locked, alarm, remote } end,
             alarm = function(vehicle, seconds) v.log[#v.log + 1] = { 'alarm', vehicle.plate, seconds } end,
             notifyOwner = function(alias, text) v.log[#v.log + 1] = { 'notify', alias, text } end } })
@@ -1257,6 +1257,32 @@ local function carFixture()
 end
 local function carAt(x) return { plate = 'OS000012  ', position = { x = x or 0, y = 0, z = 1 } } end
 local function logged(v, kind) local n = 0; for _, entry in ipairs(v.log) do if entry[1] == kind then n = n + 1 end end; return n end
+
+test('Vehicle tracker: sold at the G6 shop, installed at the wheel, located by the owner and follows a car driven without the key', function()
+    local c, e, v = carFixture()
+    local sold = false; for _, p in ipairs(OSSecurity.ShopConfig and OSSecurity.ShopConfig.Products or {}) do if p.item == 'os_tracker_kit' then sold = true end end
+    assert(sold and OSSecurity.ItemCatalog.os_tracker_kit.usable == 'car')
+    local _, why = v.cars.locateOwn(2); assert(why:find('ningún vehículo con localizador'))
+    v.driving[2] = { plate = 'OS000012', engine = false, speed = 0 }
+    e.give(2, 'os_tracker_kit'); e.give(2, 'os_screwdriver')
+    local begun = assert(v.cars.installBegin(2, 'os_tracker_kit')); assert(begun.kind == 'tracker') -- no necesita cierre
+    local done = assert(v.cars.installFinish(2, true)); assert(done.kind == 'tracker' and done.message:find('Localizador') and e.count(2, 'os_tracker_kit') == 0)
+    _, why = v.cars.installBegin(2, 'os_tracker_kit'); assert(why:find('ya tiene localizador'))
+    -- Guardado: sin senal. En la calle: posicion por su ID.
+    _, why = v.cars.locateOwn(2); assert(why:find('guardado'))
+    v.spots = { [12] = { x = 100, y = 200, z = 30 } }
+    local found = assert(v.cars.locateOwn(2, 'os000012')); assert(found.position.x == 100 and found.plate == 'OS000012')
+    local owned = v.cars.owned(2); assert(#owned == 1 and owned[1].tracker and not owned[1].lock and owned[1].position.y == 200)
+    assert(#v.cars.owned(5) == 0) -- otro personaje no lo ve
+    -- Robo: alguien sin llave al volante -> aviso al dueno (no repetido enseguida) y el punto le sigue.
+    assert(v.cars.theft(2, { id = 12, plate = 'OS000012', position = { x = 1, y = 2, z = 3 } }) == nil) -- el dueno: nada
+    local first = assert(v.cars.theft(5, { id = 12, plate = 'OS000012', position = { x = 1, y = 2, z = 3 } }))
+    assert(first.owner == 'ana' and first.alert and first.position.x == 1)
+    local next = assert(v.cars.theft(5, { id = 12, plate = 'OS000012', position = { x = 4, y = 2, z = 3 } })); assert(not next.alert and next.position.x == 4)
+    assert(v.cars.owned(2)[1].stolen)
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Cars.TrackerAlertSeconds; assert(v.cars.theft(5, carAt()).alert)
+    v.assets[13] = { id = 13, plate = 'OS000013', owner = 'ana' }; assert(v.cars.theft(5, { id = 13, plate = 'OS000013', position = {} }) == nil) -- sin localizador
+end)
 
 test('Plates map to os_devtools vehicle IDs only in the OS + digits format', function()
     assert(OSSecurity.CarService.plateId('OS000012') == 12 and OSSecurity.CarService.plateId(' OS000012 ') == 12)

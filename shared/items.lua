@@ -13,7 +13,7 @@ OSSecurity.ItemCatalog = {
     os_lock_kit_high = { name = prefix .. 'Bombín de alta seguridad', category = 'kit', weight = 1, usable = 'cylinder' },
     os_car_lock_kit = { name = prefix .. 'Cierre centralizado (vehículo)', category = 'kit', weight = 2, usable = 'car' },
     os_car_alarm_kit = { name = prefix .. 'Alarma de vehículo', category = 'kit', weight = 2, usable = 'car' },
-    os_tracker_kit = { name = prefix .. 'Kit localizador', category = 'kit', weight = 1 },
+    os_tracker_kit = { name = prefix .. 'Localizador GPS (vehículo)', category = 'kit', weight = 1, usable = 'car' },
     os_lockpick = { name = prefix .. 'Ganzúa', category = 'tool', weight = 0, usable = 'lockpick' },
     os_drill = { name = prefix .. 'Taladro', category = 'tool', weight = 2 },
     os_screwdriver = { name = prefix .. 'Destornillador', category = 'tool', weight = 1 },

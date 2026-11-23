@@ -98,7 +98,8 @@ function state.carId(id)
     return type(id) == 'string' and id:match('^%d+$') ~= nil and #id <= 10 and tonumber(id) >= 1
 end
 function state.car(value)
-    if not util.object(value, { id = true, plate = true, lock = true, alarm = true, locked = true, changes = true, updatedAt = true })
+    if not util.object(value, { id = true, plate = true, lock = true, alarm = true, locked = true, changes = true, updatedAt = true, tracker = true })
+        or (value.tracker ~= nil and type(value.tracker) ~= 'boolean')
         or not util.integer(value.id, 1, 2147483646) or not util.text(value.plate, 8) or not value.plate:match('^[%w]+$')
         or type(value.lock) ~= 'boolean' or type(value.alarm) ~= 'boolean' or type(value.locked) ~= 'boolean'
         or not util.integer(value.changes, 0, 2147483647) or not util.integer(value.updatedAt, 0, 253402300799) then return false end

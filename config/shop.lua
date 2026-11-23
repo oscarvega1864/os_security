@@ -20,6 +20,7 @@ OSSecurity.ShopConfig = {
         { item = 'os_lock_kit_high', price = 2400, audience = 'public' },
         { item = 'os_car_lock_kit', price = 1250, audience = 'public' },
         { item = 'os_car_alarm_kit', price = 1900, audience = 'public' },
+        { item = 'os_tracker_kit', price = 2200, audience = 'public' },
         { item = 'os_screwdriver', price = 60, audience = 'public' },
         { item = 'os_battery', price = 45, audience = 'public' },
         -- Cualquier empresa lo compra; solo lo coloca quien esta de servicio en una empresa.

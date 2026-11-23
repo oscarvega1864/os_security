@@ -188,9 +188,9 @@
     if (!data.items.length) { content.append(el('div', T.empty, 'empty')); return; }
     const grid = el('div', null, 'grid');
     for (const car of data.items) {
-      const card = el('article', null, `card tracker${car.sounding ? ' sounding' : ''}`);
-      const head = el('div', null, 'card-head'); head.append(el('span', null, 'row-icon car-icon'), el('span', car.sounding ? T.sounding : (car.locked ? T.locked : T.open), 'badge'));
-      const kit = [car.lock ? T.lock : null, car.alarm ? T.alarm : null].filter(Boolean).join(' · ');
+      const card = el('article', null, `card tracker${car.sounding || car.stolen ? ' sounding' : ''}`);
+      const head = el('div', null, 'card-head'); head.append(el('span', null, 'row-icon car-icon'), el('span', car.stolen ? T.stolen : car.sounding ? T.sounding : (car.locked ? T.locked : T.open), 'badge'));
+      const kit = [car.lock ? T.lock : null, car.alarm ? T.alarm : null, car.tracker ? T.tracker : null].filter(Boolean).join(' · ');
       card.append(head, el('h3', car.plate), el('div', kit, 'subtle'));
       const footer = el('div', null, 'card-footer');
       if (car.position) {

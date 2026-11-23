@@ -18,6 +18,7 @@
   const LEADS = {
     lock: [{ id: '12v', name: '+12V', reading: '12.6 V' }, { id: 'gnd', name: 'Masa', reading: '0 V con continuidad' }, { id: 'can', name: 'CAN', reading: '2.5 V de datos' }],
     alarm: [{ id: '12v', name: '+12V', reading: '12.6 V' }, { id: 'gnd', name: 'Masa', reading: '0 V con continuidad' }, { id: 'door', name: 'Puerta', reading: '12 V, cae al abrir' }],
+    tracker: [{ id: '12v', name: '+12V', reading: '12.6 V permanente' }, { id: 'gnd', name: 'Masa', reading: '0 V con continuidad' }, { id: 'ign', name: 'Contacto', reading: '12 V con la llave puesta' }],
     // Puente: unir la bateria (+12V) con el cable de la llave (contacto).
     hotwire: [{ id: 'bat', name: '+12V', reading: '12.6 V' }, { id: 'ign', name: 'Llave', reading: '0 V; 12 V al girar la llave' }]
   };

@@ -23,7 +23,8 @@ function OSSecurity.CarService.new(options)
     local cars = {}
     local installs, sounding, lastAlarm = {}, {}, {}
     local hotwires, hotwired = {}, {} -- source -> intento en curso; carId -> source que le hizo el puente
-    local LABELS = { lock = 'cierre centralizado', alarm = 'alarma' }
+    local LABELS = { lock = 'cierre centralizado', alarm = 'alarma', tracker = 'localizador' }
+    local stolenAt = {} -- carId -> ultimo aviso de robo al dueno
 
     local function records() return options.inventory.cars() or {} end
     local function trim(plate) return type(plate) == 'string' and (plate:gsub('%s+', '')) or nil end
@@ -116,7 +117,8 @@ function OSSecurity.CarService.new(options)
         if not saved then options.holdings.refund(operation); return nil, saveError end
         options.audit('car_' .. context.kind, source, tostring(record.id))
         return { kind = context.kind, plate = record.plate,
-            message = context.kind == 'lock' and 'Cierre centralizado instalado: abre y cierra con el mando (L).'
+            message = context.kind == 'tracker' and 'Localizador instalado: lo ves en la tablet G6 Client (Localizadores) y con /localizar. Si alguien se lo lleva sin llave, te avisa y lo sigues en el mapa.'
+                or context.kind == 'lock' and 'Cierre centralizado instalado: abre y cierra con el mando (L).'
                 or 'Alarma instalada: se arma al cerrar con el mando.' }
     end
 
@@ -265,21 +267,60 @@ function OSSecurity.CarService.new(options)
         return { locked = record.locked, alarm = record.alarm }
     end
     -- Tablet Client (Localizadores): vehiculos del personaje activo con equipo G6 y su posicion si existen.
+    -- Posicion del vehiculo en el mundo: por su ID (marca de os_devtools, tambien aviones) o por matricula.
+    local function where(car)
+        if options.vehicles.locateId then
+            local point = options.vehicles.locateId(car.id)
+            if point then return point end
+        end
+        return options.vehicles.locate and options.vehicles.locate(car.plate) or nil
+    end
     function cars.owned(source)
         local alias = options.vehicles.alias(source)
         local result = {}
         if not alias then return result end
         for _, record in pairs(records()) do
-            if record.lock or record.alarm then
+            if record.lock or record.alarm or record.tracker then
                 local car = asset({ plate = record.plate, id = record.id })
                 if car and car.owner == alias then
                     result[#result + 1] = { plate = car.plate, lock = record.lock == true, alarm = record.alarm == true, locked = record.locked == true,
-                        sounding = sounding[record.id] ~= nil, position = options.vehicles.locate and options.vehicles.locate(car.plate) or nil }
+                        tracker = record.tracker == true, stolen = stolenAt[record.id] ~= nil,
+                        sounding = sounding[record.id] ~= nil, position = where(car) }
                 end
             end
         end
         table.sort(result, function(a, b) return a.plate < b.plate end)
         return result
+    end
+    -- /localizar [matricula]: vehiculo propio con localizador (el primero si no se indica). Devuelve su posicion.
+    function cars.locateOwn(source, plate)
+        local wanted = trim(plate)
+        wanted = wanted and wanted:upper() or nil
+        local found, any = nil, false
+        for _, car in ipairs(cars.owned(source)) do
+            if car.tracker then
+                any = true
+                if not wanted or car.plate:upper() == wanted then found = car; break end
+            end
+        end
+        if not found then
+            return nil, any and 'No tienes ningún vehículo con localizador con esa matrícula.' or 'No tienes ningún vehículo con localizador (cómpralo en la tienda Gruppe Sechs e instálalo al volante).'
+        end
+        if not found.position then return nil, ('Tu vehículo %s está guardado: el localizador no da señal.'):format(found.plate) end
+        return { plate = found.plate, position = found.position, stolen = found.stolen }
+    end
+    -- Robo con localizador: alguien sin llave al volante. Devuelve a quien avisar y donde esta (o nil).
+    -- alert = true la primera vez y cada TrackerAlertSeconds; el resto solo actualiza el punto del mapa.
+    function cars.theft(driver, vehicle)
+        if type(vehicle) ~= 'table' or not driver then return nil end
+        local car = asset(vehicle)
+        local record = car and records()[tostring(car.id)]
+        if not record or not record.tracker or not car.owner then return nil end
+        if owns(driver, car) then stolenAt[car.id] = nil; return nil end
+        local now = options.now()
+        local alert = not stolenAt[car.id] or now - stolenAt[car.id] >= (config.TrackerAlertSeconds or 120)
+        if alert then stolenAt[car.id] = now; options.audit('car_tracker_theft', driver, tostring(car.id)) end
+        return { owner = car.owner, plate = record.plate, position = vehicle.position, alert = alert }
     end
     function cars.describe()
         local lines, ids = {}, {}
@@ -288,8 +329,8 @@ function OSSecurity.CarService.new(options)
         table.sort(ids)
         for _, id in ipairs(ids) do
             local record = list[tostring(id)]
-            lines[#lines + 1] = ('%s | cierre: %s | alarma: %s | %s'):format(record.plate, record.lock and 'si' or 'no', record.alarm and 'si' or 'no',
-                record.locked and 'cerrado' or 'abierto')
+            lines[#lines + 1] = ('%s | cierre: %s | alarma: %s | localizador: %s | %s'):format(record.plate, record.lock and 'si' or 'no', record.alarm and 'si' or 'no',
+                record.tracker and 'si' or 'no', record.locked and 'cerrado' or 'abierto')
         end
         return lines
     end
@@ -301,6 +342,6 @@ function OSSecurity.CarService.new(options)
         installs[source], hotwires[source] = nil, nil
         for id, player in pairs(hotwired) do if player == source then hotwired[id] = nil end end
     end
-    function cars.clear() installs, sounding, lastAlarm, hotwires, hotwired = {}, {}, {}, {}, {} end
+    function cars.clear() installs, sounding, lastAlarm, hotwires, hotwired, stolenAt = {}, {}, {}, {}, {}, {} end
     return cars
 end

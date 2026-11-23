@@ -153,7 +153,7 @@ OSSecurity.Brand = {
         },
         cars = {
             minigame = {
-                title = 'Instalación en vehículo', cancel = 'Cancelar (Esc)', kinds = { lock = 'Cierre centralizado', alarm = 'Alarma', hotwire = 'Puente' },
+                title = 'Instalación en vehículo', cancel = 'Cancelar (Esc)', kinds = { lock = 'Cierre centralizado', alarm = 'Alarma', tracker = 'Localizador', hotwire = 'Puente' },
                 hotwireTitle = 'Vehículo sin llave', coverTitle = 'Quitar la tapa de la columna', coverHelp = 'Manten pulsado sobre cada grapa y suelta cuando la tensión este en la franja verde. Si te pasas, la grapa se rompe.',
                 starterTitle = 'Dar al motor de arranque', starterHelp = 'Manten pulsado ARRANCAR y suelta cuando la carga este en la franja verde. Antes no arranca; si te pasas, se quema el fusible.',
                 start = 'ARRANCAR', charge = 'Arranque', fuses = 'Fusibles', cranking = 'Girando el motor...', started = 'Arranca',
@@ -227,8 +227,8 @@ OSSecurity.Brand = {
         },
         doors = { title = 'Cerraduras de tus propiedades', help = 'Puertas con bombín G6 en tus propiedades y negocios. La llave la lleva tu personaje.',
             empty = 'No hay puertas con cerradura en tus propiedades.', locked = 'Cerrada con llave', open = 'Abierta', level = 'Nivel %d' },
-        trackers = { title = 'Tus vehículos protegidos', help = 'Vehículos con cierre centralizado o alarma G6. Si están en la calle, puedes marcarlos en el GPS.',
-            empty = 'No tienes vehículos con equipo G6.', lock = 'Cierre centralizado', alarm = 'Alarma', locked = 'Cerrado', open = 'Abierto',
+        trackers = { title = 'Tus vehículos protegidos', help = 'Vehículos con cierre centralizado, alarma o localizador G6. Si están en la calle, puedes marcarlos en el GPS (también con /localizar).',
+            empty = 'No tienes vehículos con equipo G6.', lock = 'Cierre centralizado', alarm = 'Alarma', tracker = 'Localizador', stolen = 'ROBADO · SIGUE EL PUNTO ROJO', locked = 'Cerrado', open = 'Abierto',
             sounding = 'ALARMA SONANDO', gps = 'Marcar en el GPS', away = 'Guardado o fuera de alcance' },
         incidents = { title = 'Historial de incidencias', help = 'Últimos sucesos de todas tus alarmas, del más reciente al más antiguo.',
             empty = 'Sin incidencias registradas.' },

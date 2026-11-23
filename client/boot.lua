@@ -363,6 +363,40 @@ end)
 RegisterNetEvent('os_security:car:alarm', function(netId, seconds)
     if source == 65535 and type(netId) == 'number' and type(seconds) == 'number' then cars.alarm(netId, seconds) end
 end)
+-- Localizador: punto en el mapa del vehiculo (rojo si se lo llevan sin llave). Se quita a los 5 min sin noticias.
+local trackBlips = {}
+RegisterNetEvent('os_security:car:track', function(data)
+    if source ~= 65535 or type(data) ~= 'table' or type(data.plate) ~= 'string' or type(data.position) ~= 'table' then return end
+    local p = data.position
+    if type(p.x) ~= 'number' or type(p.y) ~= 'number' then return end
+    local entry = trackBlips[data.plate]
+    if not entry or not DoesBlipExist(entry.blip) then
+        entry = { blip = AddBlipForCoord(p.x + 0.0, p.y + 0.0, (p.z or 0.0) + 0.0) }
+        trackBlips[data.plate] = entry
+        SetBlipSprite(entry.blip, 225); SetBlipScale(entry.blip, 0.95)
+    else SetBlipCoords(entry.blip, p.x + 0.0, p.y + 0.0, (p.z or 0.0) + 0.0) end
+    local stolen = data.stolen == true or data.manual ~= true
+    SetBlipColour(entry.blip, stolen and 1 or 2)
+    SetBlipFlashes(entry.blip, stolen)
+    BeginTextCommandSetBlipName('STRING'); AddTextComponentSubstringPlayerName((stolen and 'Robado: ' or 'Tu vehículo: ') .. data.plate); EndTextCommandSetBlipName(entry.blip)
+    entry.until_ = GetGameTimer() + 300000
+    if data.manual then
+        SetNewWaypoint(p.x + 0.0, p.y + 0.0)
+        OSSecurity.Notify(('Localizador: %s marcado en el GPS.'):format(data.plate), 'info')
+    elseif data.alert then
+        OSSecurity.Notify(('¡Se están llevando tu vehículo %s sin llave! Síguelo en el mapa (punto rojo).'):format(data.plate), 'error')
+        PlaySoundFrontend(-1, 'TIMER_STOP', 'HUD_MINI_GAME_SOUNDSET', true)
+    end
+end)
+CreateThread(function()
+    while true do
+        Wait(10000)
+        for plate, entry in pairs(trackBlips) do
+            if GetGameTimer() > entry.until_ then if DoesBlipExist(entry.blip) then RemoveBlip(entry.blip) end; trackBlips[plate] = nil end
+        end
+    end
+end)
+TriggerEvent('chat:addSuggestion', '/localizar', 'Marca en el mapa tu vehículo con localizador G6', { { name = 'matricula', help = 'Opcional: si tienes varios' } })
 RegisterNetEvent('os_security:car:result', function(ok, message)
     if source ~= 65535 or type(message) ~= 'string' then return end
     OSSecurity.Notify(message, ok and 'success' or 'error')

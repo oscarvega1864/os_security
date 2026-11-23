@@ -93,7 +93,10 @@ OSSecurity.GameplayConfig = {
     -- Lector de tarjetas y camarita de la bodycam: se configuran en config/shared_gameplay.lua (los usa el cliente).
     CardSwipe = OSSecurity.SharedGameplay.CardSwipe,
     Cars = {
-        Kits = { os_car_lock_kit = 'lock', os_car_alarm_kit = 'alarm' }, Tools = { 'os_screwdriver' },
+        Kits = { os_car_lock_kit = 'lock', os_car_alarm_kit = 'alarm', os_tracker_kit = 'tracker' }, Tools = { 'os_screwdriver' },
+        -- Localizador: con alguien sin llave al volante, el dueno ve el vehiculo en el mapa (punto rojo que lo sigue)
+        -- y le llega un aviso cada TrackerAlertSeconds como mucho.
+        TrackerAlertSeconds = 120,
         InstallSeconds = 180, InstallMinSeconds = 2, KeyDistance = 15.0, ManualDistance = 3.5, TamperDistance = 8.0, AlarmSeconds = 30, AlarmCooldown = 45,
         AlarmHearing = 150.0, SyncSeconds = 3,
         -- Puente: con destornillador, al volante de un vehiculo ajeno con el motor apagado. Nivel 1 sin kit,
