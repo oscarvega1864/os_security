@@ -2,6 +2,6 @@
 OSSecurity = OSSecurity or {}
 
 OSSecurity.Config = {
-    Version = '0.27.8',
+    Version = '0.27.9',
     Debug = false -- Activa informacion adicional de inicio en la consola.
 }

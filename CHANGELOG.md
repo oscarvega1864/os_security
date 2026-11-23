@@ -1,6 +1,6 @@
 # Changelog
 
-## Sin publicar
+## 0.27.9 — Teclado de alarma contra fuerza bruta
 
 - **Teclado de alarma contra fuerza bruta**: los códigos fallidos cuentan por teclado y no por jugador, así que
   reconectarse o turnarse entre varios ya no reinicia los intentos. Cada bloqueo seguido dura el doble (60 s, 120 s,
