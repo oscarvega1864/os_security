@@ -1,5 +1,10 @@
 # Changelog
 
+## Sin publicar
+
+- Textos: tildes que faltaban en 28 mensajes al jugador ("Ya estás cacheando", "Está cerrado", "El personaje activo
+  cambió", "Estás aquí", "Aún no se conoce tu posición"...).
+
 ## 0.27.9 — Teclado de alarma contra fuerza bruta
 
 - **Teclado de alarma contra fuerza bruta**: los códigos fallidos cuentan por teclado y no por jugador, así que

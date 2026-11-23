@@ -104,7 +104,7 @@ function OSSecurity.CarService.new(options)
         local driving = options.vehicles.driving(source)
         local same = driving and asset(driving)
         if not same or same.id ~= context.carId then return nil, 'Has salido del vehículo; no se ha gastado nada.' end
-        if options.holdings.holder(source) ~= context.holder then return nil, 'El personaje activo cambio; no se ha gastado nada.' end
+        if options.holdings.holder(source) ~= context.holder then return nil, 'El personaje activo cambió; no se ha gastado nada.' end
         local car = asset(driving)
         local record = car and (records()[tostring(car.id)] or blank(car))
         if not record or record.changes ~= context.changes or record[context.kind] then return nil, 'El vehículo ha cambiado; no se ha gastado nada.' end
@@ -153,8 +153,8 @@ function OSSecurity.CarService.new(options)
         if not record or not record.locked then return nil end
         local point, bucket = options.world(source)
         if not point or (vehicle.bucket ~= nil and bucket ~= vehicle.bucket) or distance(point, vehicle.position) > config.TamperDistance then return nil end
-        if owns(source, car) then return nil, 'Esta cerrado: ábrelo con el mando (L).' end
-        if not record.alarm then return nil, 'Esta cerrado.' end
+        if owns(source, car) then return nil, 'Está cerrado: ábrelo con el mando (L).' end
+        if not record.alarm then return nil, 'Está cerrado.' end
         local now = options.now()
         if sounding[record.id] and sounding[record.id] > now then return true end
         if lastAlarm[record.id] and now - lastAlarm[record.id] < config.AlarmCooldown then return nil end
@@ -180,13 +180,13 @@ function OSSecurity.CarService.new(options)
         if type(vehicle) ~= 'table' then return nil, 'Vehículo no disponible.' end
         local car = asset(vehicle)
         local record = car and records()[tostring(car.id)]
-        if not record or not record.locked then return nil, 'Ese vehículo no esta cerrado.' end
+        if not record or not record.locked then return nil, 'Ese vehículo no está cerrado.' end
         return { id = record.id, tier = record.lock and 2 or 1, owner = car.owner, plate = record.plate, alarm = record.alarm }
     end
     function cars.forceOpen(source, vehicle)
         local car = vehicle and asset(vehicle)
         local record = car and records()[tostring(car.id)]
-        if not record or not record.locked then return nil, 'El vehículo ya no esta cerrado.' end
+        if not record or not record.locked then return nil, 'El vehículo ya no está cerrado.' end
         record.locked = false
         local saved, err = save(record)
         if not saved then return nil, err end
@@ -216,7 +216,7 @@ function OSSecurity.CarService.new(options)
     function cars.hotwireBegin(source)
         local driving = options.vehicles.driving(source)
         if not driving then return nil, 'Siéntate al volante.' end
-        if driving.engine then return nil, 'El motor ya esta en marcha.' end
+        if driving.engine then return nil, 'El motor ya está en marcha.' end
         local car = asset(driving)
         if not car then return nil, 'Este vehículo no necesita llave.' end
         if owns(source, car) or hotwired[car.id] == source then return nil, 'Ya puedes arrancarlo con la llave.' end
@@ -244,7 +244,7 @@ function OSSecurity.CarService.new(options)
     function cars.hotwireFinish(source, success)
         local attempt = hotwires[source]
         hotwires[source] = nil
-        if not attempt then return nil, 'No estas haciendo ningún puente.' end
+        if not attempt then return nil, 'No estás haciendo ningún puente.' end
         if success ~= true then return nil, 'El puente no ha salido.' end
         local now = options.now()
         if now > attempt.expires or now - attempt.started < config.Hotwire.MinSeconds then return nil, 'El puente no ha salido.' end

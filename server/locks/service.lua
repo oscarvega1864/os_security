@@ -242,7 +242,7 @@ function OSSecurity.LockService.new(options)
     function locks.pickTarget(source, reach)
         local door, err = nearest(source, reach)
         if not door then return nil, err end
-        if not door.locked then return nil, 'Esa puerta ya esta abierta.' end
+        if not door.locked then return nil, 'Esa puerta ya está abierta.' end
         for _, context in pairs(changes) do if context.doorId == door.id then return nil, 'Están cambiando el bombín de esta puerta.' end end
         local site = ownedSites()[key(door.site)]
         return { id = door.id, tier = door.tier, position = util.copy(door.position), owner = site and site.owner or nil,
@@ -250,7 +250,7 @@ function OSSecurity.LockService.new(options)
     end
     function locks.forceOpen(doorId)
         local door = active()[doorId]
-        if not door or not door.locked then return nil, 'La puerta ya no esta cerrada.' end
+        if not door or not door.locked then return nil, 'La puerta ya no está cerrada.' end
         for _, leaf in ipairs(group(door, active())) do
             leaf.locked = false
             local saved, err = write(leaf)
@@ -279,7 +279,7 @@ function OSSecurity.LockService.new(options)
             if not options.holdings.has(actor, tool, 1) then return nil, 'Necesitas un destornillador.' end
         end
         for player, context in pairs(changes) do
-            if player ~= source and context.doorId == door.id then return nil, 'Otra persona esta cambiando este bombín.' end
+            if player ~= source and context.doorId == door.id then return nil, 'Otra persona está cambiando este bombín.' end
         end
         changes[source] = { doorId = door.id, item = item, holder = holder, changes = door.changes, started = options.now(), expires = options.now() + config.ChangeSeconds }
         return { doorId = door.id, from = tierLabel(door.tier), to = tierLabel(tier), tier = tier }
@@ -299,7 +299,7 @@ function OSSecurity.LockService.new(options)
             return nil, 'La puerta ha cambiado o te has alejado; no se ha gastado nada.'
         end
         local holder = options.holdings.holder(source)
-        if holder ~= context.holder then return nil, 'El personaje activo cambio; no se ha gastado nada.' end
+        if holder ~= context.holder then return nil, 'El personaje activo cambió; no se ha gastado nada.' end
         local operation = { id = ('g6lk:%s:%d'):format(door.id, door.changes + 1), holder = holder, materials = { [context.item] = 1 } }
         local taken, takeError = options.holdings.take(operation)
         if not taken then

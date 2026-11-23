@@ -139,7 +139,7 @@ function OSSecurity.DispatchService.new(options)
             noteLength = config.NoteLength, cooldown = wait, active = activePanic(actor.principal) ~= nil }
     end
     function service.panic(actor, args)
-        if not util.object(args, { place = true, note = true }) or type(args.place) ~= 'string' then return nil, 'Elige donde estas.' end
+        if not util.object(args, { place = true, note = true }) or type(args.place) ~= 'string' then return nil, 'Elige dónde estás.' end
         if activePanic(actor.principal) then return nil, 'Ya tienes un aviso de emergencia en curso.' end
         local now = options.now()
         if lastPanic[actor.principal] and now - lastPanic[actor.principal] < config.PanicCooldown then
@@ -172,7 +172,7 @@ function OSSecurity.DispatchService.new(options)
         if not util.object(args, { callId = true }) then return nil, 'Aviso no válido.' end
         local call = getCall(args.callId)
         if not call or call.client ~= actor.principal or call.kind ~= 'panic' then return nil, 'Aviso no encontrado.' end
-        if not ACTIVE[call.status] then return nil, 'Este aviso ya esta cerrado.' end
+        if not ACTIVE[call.status] then return nil, 'Este aviso ya está cerrado.' end
         local technician = call.technician
         call.status, call.resolution = 'cancelled', T.falseAlarm
         local saved, err = save(call)
@@ -204,7 +204,7 @@ function OSSecurity.DispatchService.new(options)
         if not util.object(args, fields) then return nil, 'Aviso no válido.' end
         local call = getCall(args.callId)
         if not call then return nil, 'Aviso no encontrado.' end
-        if not ACTIVE[call.status] then return nil, 'Este aviso ya esta cerrado.' end
+        if not ACTIVE[call.status] then return nil, 'Este aviso ya está cerrado.' end
         return call
     end
     local function give(call, principal, techName)

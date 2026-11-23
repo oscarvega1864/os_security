@@ -1309,7 +1309,7 @@ test('Only the owner locks with the key fob (not an admin with another character
     c.players[2].point = { x = 5, y = 0, z = 1 }
     local locked = assert(v.cars.toggle(2, carAt())); assert(locked.locked and v.log[#v.log][1] == 'locked' and v.log[#v.log][3] == true)
     assert(v.cars.desired('OS000012').locked == true and v.cars.desired('OS999999') == nil)
-    _, why = v.cars.tamper(5, carAt()); assert(why == 'Esta cerrado.' and logged(v, 'alarm') == 0) -- sin alarma no suena
+    _, why = v.cars.tamper(5, carAt()); assert(why == 'Está cerrado.' and logged(v, 'alarm') == 0) -- sin alarma no suena
     _, why = v.cars.tamper(2, carAt()); assert(why:find('mando'))
     assert(v.cars.toggle(2, carAt())) -- abrir para instalar la alarma
     e.give(2, 'os_car_alarm_kit'); assert(v.cars.installBegin(2, 'os_car_alarm_kit')); assert(v.cars.installFinish(2, true))
@@ -1347,7 +1347,7 @@ test('Without a kit the owner still locks with the key next to the car, and only
     c.players[2].point = { x = 3, y = 0, z = 1 }
     local locked = assert(v.cars.toggle(2, carAt())); assert(locked.locked and v.log[#v.log][5] == false) -- sin destellos de mando
     assert(v.cars.desired('OS000012').locked == true)
-    _, why = v.cars.tamper(5, carAt()); assert(why == 'Esta cerrado.')
+    _, why = v.cars.tamper(5, carAt()); assert(why == 'Está cerrado.')
     assert(not v.cars.toggle(2, carAt()).locked and v.cars.desired('OS000012') == nil)
     _, why = v.cars.engine(2); assert(why:find('volante'))
     v.driving[5] = { plate = 'OS000012', engine = false, speed = 0 }; _, why = v.cars.engine(5); assert(why:find('llave'))

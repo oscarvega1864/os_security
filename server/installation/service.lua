@@ -179,7 +179,7 @@ function OSSecurity.InstallationService.new(options)
         if options.holdings.external() then
             -- El personaje debe seguir siendo el de la sesion: nunca cobrar a otro personaje de la cuenta.
             holder = options.holdings.holder(source)
-            if not holder or holder ~= session.actor.holder then return nil, 'El personaje activo cambio; vuelve a abrir la tablet.' end
+            if not holder or holder ~= session.actor.holder then return nil, 'El personaje activo cambió; vuelve a abrir la tablet.' end
             local missing = holdingsCheck(session.actor, product(context.kit))
             if missing then return nil, missing end
         end
@@ -296,7 +296,7 @@ function OSSecurity.InstallationService.new(options)
         -- Un desmontaje a la vez por dispositivo: otro tecnico no puede empezar mientras alguien lo esta quitando.
         for other, context in pairs(removals) do
             if other ~= source and context.deviceId == device.id and context.expires >= options.now() then
-                return nil, 'Otra persona ya esta desmontando este dispositivo.'
+                return nil, 'Otra persona ya está desmontando este dispositivo.'
             end
         end
         removals[source] = { token = session.token, deviceId = device.id, expires = options.now() + config.PlacementSeconds, origin = point }

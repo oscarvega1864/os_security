@@ -12,7 +12,7 @@ function OSSecurity.TabletService.new(options)
         local installationId = device.metadata and device.metadata.installationId
         local installation = installationId and snapshot and snapshot.installations[installationId]
         if not installation or installation.status ~= 'committed' or installation.deviceId ~= device.id then
-            return nil, 'Sin señal: la cámara no esta instalada físicamente.'
+            return nil, 'Sin señal: la cámara no está instalada físicamente.'
         end
         if not LIVE_STATES[device.state] then
             local label = OSSecurity.Brand.Text.states and OSSecurity.Brand.Text.states[device.state] or device.state

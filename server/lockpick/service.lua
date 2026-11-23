@@ -44,7 +44,7 @@ function OSSecurity.LockpickService.new(options)
     function service.finish(source, success)
         local attempt = attempts[source]
         attempts[source] = nil
-        if not attempt then return nil, 'No estas forzando nada.' end
+        if not attempt then return nil, 'No estás forzando nada.' end
         local now = options.now()
         local point = options.world(source)
         if not point or distance(point, attempt.position) > math.max(config.Reach, config.VehicleReach) + 1.0 then

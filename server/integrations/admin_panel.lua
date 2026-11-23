@@ -145,7 +145,7 @@ function OSSecurity.AdminPanel.build(run)
                   return { ok = true, close = true, message = 'Buscando la carretera de Union Depository...' }
               end },
             { id = 'tiendaaqui', label = 'Tienda: mover a mi posición', ace = ace, self = true, confirm = true,
-              description = 'El mostrador de la tienda G6 pasa a donde estas ahora.',
+              description = 'El mostrador de la tienda G6 pasa a donde estás ahora.',
               handler = function(source)
                   local hook = OSSecurity.AdminPanel.hooks.shopHere
                   if not hook then return { ok = false, message = 'No disponible.' } end
