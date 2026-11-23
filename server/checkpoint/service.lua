@@ -181,38 +181,68 @@ function OSSecurity.CheckpointService.new(options)
         return { message = T.pickedUp }
     end
     -- Paso por el arco: el cliente avisa al cruzarlo; el servidor comprueba sitio, bucket y repeticion.
+    -- Metal que lleva un jugador: armas que informa su cliente (si las hay), armas guardadas en el personaje y
+    -- objetos del inventario (metalicos o armas metalicas, que con os_inventory son objetos).
+    local function carriesMetal(source, weapons)
+        for _, weapon in ipairs(weaponsOf(weapons, source)) do if OSSecurity.Weapons.List[weapon.name].metal then return true end end
+        local holder = holderOf(source)
+        for item in pairs(holder and options.items.contents(holder) or {}) do
+            local weapon = OSSecurity.Weapons.List[item]
+            if config.Metal[item] or (weapon and weapon.metal) then return true end
+        end
+        return false
+    end
+    local function sound(source, detector, metal)
+        broadcast(detector.position, detector.bucket, 30.0, 'detector', { id = detector.id, alarm = metal })
+        if not metal then return end
+        for _, player in ipairs(options.players and options.players() or {}) do
+            local point, playerBucket = where(player)
+            if player ~= source and company(player) == detector.company and point and playerBucket == detector.bucket
+                and distance(point, detector.position) <= config.AlertRadius then
+                notify(player, T.alarm:format(name(source)), 'warning', detector.position)
+            end
+        end
+    end
+    local function under(point, detector)
+        return flat(point, detector.position) <= config.PassRadius and math.abs(point.z - detector.position.z) <= 2.5
+    end
     function service.pass(source, detectorId, weapons)
         if not OSSecurity.InventoryState.detectorId(detectorId) then return nil end
         local detector = detectors()[detectorId]
         local here, bucket = where(source)
         if not detector or not here or bucket ~= detector.bucket then return nil end
-        if flat(here, detector.position) > config.PassRadius or math.abs(here.z - detector.position.z) > 2.5 then return nil end
+        if not under(here, detector) then return nil end
         local key = source .. ':' .. detectorId
         local now = options.now()
         if passes[key] and now - passes[key] < config.PassCooldown then return nil end
         passes[key] = now
-        local metal = false
-        for _, weapon in ipairs(weaponsOf(weapons, source)) do if OSSecurity.Weapons.List[weapon.name].metal then metal = true end end
-        if not metal then
-            local holder = holderOf(source)
-            -- Objetos metalicos y armas que son objetos del inventario (os_inventory 0.2.0+): pitan aunque no se lleven
-            -- en la mano y el cliente no las informe.
-            for item in pairs(holder and options.items.contents(holder) or {}) do
-                local weapon = OSSecurity.Weapons.List[item]
-                if config.Metal[item] or (weapon and weapon.metal) then metal = true end
-            end
-        end
-        broadcast(detector.position, detector.bucket, 30.0, 'detector', { id = detector.id, alarm = metal })
-        if metal then
-            for _, player in ipairs(options.players and options.players() or {}) do
-                local point, playerBucket = where(player)
-                if player ~= source and company(player) == detector.company and point and playerBucket == detector.bucket
-                    and distance(point, detector.position) <= config.AlertRadius then
-                    notify(player, T.alarm:format(name(source)), 'warning', detector.position)
+        local metal = carriesMetal(source, weapons)
+        sound(source, detector, metal)
+        return { alarm = metal }
+    end
+    -- Vigilancia del servidor: no depende de que el cliente avise al cruzar (un cliente modificado puede no
+    -- hacerlo). Solo hace sonar el arco si encuentra metal con lo que sabe el servidor; el paso "limpio" (luz
+    -- verde) lo sigue dando el aviso del cliente, que ademas aporta las armas que lleva en la mano.
+    local scanned = {}
+    function service.scan()
+        local list = detectors()
+        if next(list) == nil then return end
+        local now = options.now()
+        for _, player in ipairs(options.players and options.players() or {}) do
+            local here, bucket = where(player)
+            if here then
+                for id, detector in pairs(list) do
+                    if bucket == detector.bucket and under(here, detector) then
+                        local key = player .. ':' .. id
+                        local recent = (passes[key] and now - passes[key] < config.PassCooldown) or (scanned[key] and now - scanned[key] < config.PassCooldown)
+                        if not recent then
+                            scanned[key] = now
+                            if carriesMetal(player, nil) then passes[key] = now; sound(player, detector, true) end
+                        end
+                    end
                 end
             end
         end
-        return { alarm = metal }
     end
 
     -- Cacheo ------------------------------------------------------------------------------------------
@@ -414,6 +444,7 @@ function OSSecurity.CheckpointService.new(options)
         endFrisk(source)
         for guard, frisk in pairs(frisks) do if frisk.target == source then endFrisk(guard); notify(guard, T.cancelled, 'info') end end
         for key in pairs(passes) do if key:match('^' .. source .. ':') then passes[key] = nil end end
+        for key in pairs(scanned) do if key:match('^' .. source .. ':') then scanned[key] = nil end end
         service.unmountCancel(source)
     end
     return service

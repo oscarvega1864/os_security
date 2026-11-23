@@ -788,6 +788,13 @@ RegisterNetEvent('os_security:checkpoint:pickup', function()
     if not lockAllowed(player) then return end
     checkpointReply(player, lockCall(function() return gameplay.checkpoint.pickup(player) end))
 end)
+-- Arcos detectores vigilados por el servidor (4 veces por segundo; no hace nada si no hay arcos).
+CreateThread(function()
+    while true do
+        Wait(250)
+        if gameplay.status() then tick('arcos-paso', gameplay.checkpoint.scan) end
+    end
+end)
 CreateThread(function()
     local contractTick = 0
     while true do

@@ -1832,6 +1832,17 @@ test('Metal detector: any on-duty company places it with the item, it beeps for 
     c.core.time = c.core.time + OSSecurity.GameplayConfig.Checkpoint.PassCooldown + 1
     e.give(4, 'weapon_pistol')
     assert(cp.pass(4, 'md_000001', {}).alarm)
+    -- El servidor vigila el arco aunque el cliente no avise al cruzar (cliente modificado): con metal, pita.
+    c.players[4].point = { x = 100, y = 0, z = 1 }; c.players[5].point = { x = 100, y = 10, z = 1 }
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Checkpoint.PassCooldown + 1
+    c.players[3].point = { x = 2, y = 0.1, z = 1 }
+    local heard = #sentTo(c, 3, 'detector')
+    cp.scan(); assert(#sentTo(c, 3, 'detector') == heard) -- sin metal: el servidor no hace nada (la luz verde la da el cliente)
+    e.give(3, 'os_lockpick')
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Checkpoint.PassCooldown + 1
+    cp.scan(); local got = sentTo(c, 3, 'detector'); assert(#got == heard + 1 and got[#got].alarm)
+    cp.scan(); assert(#sentTo(c, 3, 'detector') == heard + 1) -- no se repite mientras sigue debajo
+    assert(cp.pass(3, 'md_000001', {}) == nil) -- el aviso del cliente justo despues tampoco repite
     c.players[3].point = { x = 30, y = 0, z = 1 }
     assert(cp.pass(3, 'md_000001', {}) == nil) -- lejos del arco
     local restarted = fixture(c.core.files, e); assert(restarted.loaded, restarted.loadError)

@@ -1,5 +1,12 @@
 # Changelog
 
+## Sin publicar
+
+- **Arco detector vigilado por el servidor**: antes solo sonaba si el cliente avisaba al cruzarlo, así que un cliente
+  modificado podía pasar sin que pitara. Ahora el servidor comprueba 4 veces por segundo quién está bajo cada arco y,
+  si lleva metal en el inventario (objetos metálicos o armas), lo hace sonar y avisa a la empresa aunque el cliente
+  no diga nada. El paso limpio (luz verde) lo sigue dando el aviso del cliente.
+
 ## 0.27.4 — Tiempo mínimo en los minijuegos
 
 - **Seguridad**: los minijuegos de instalar cierre o alarma en un coche, cambiar el bombín y sustituir piezas en una
