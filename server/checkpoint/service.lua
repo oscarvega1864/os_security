@@ -47,6 +47,7 @@ function OSSecurity.CheckpointService.new(options)
         return OSSecurity.InventoryState.company(value) and value or nil
     end
     local function canFrisk(source) return company(source) ~= nil or (options.isStaff and options.isStaff(source)) end
+    function service.companyOf(source) return company(source) end
     local function holderOf(source) return options.items and options.items.holder(source) or nil end
     -- Armas: las que informa el cliente mas las que el servidor tiene guardadas para el personaje (os_devtools),
     -- asi un cliente no puede esconder al arco o al cacheo un arma que ya consta en su personaje.

@@ -1,5 +1,10 @@
 # Changelog
 
+## Sin publicar
+
+- **Arco detector al acercarte**: junto a un arco de tu empresa (de servicio) sale la ayuda en pantalla: **E** lo
+  enciende o apaga y **mantener E** lo desmonta (con taladro y destornillador). Los comandos `/arco` siguen igual.
+
 ## 0.27.6 — Interruptor del arco detector
 
 - **Arco detector con interruptor**: `/arco encender`, `/arco apagar` (o `/arco interruptor` para cambiar) junto a un

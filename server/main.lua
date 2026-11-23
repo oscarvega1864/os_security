@@ -700,6 +700,17 @@ local function checkpointReply(player, result, err)
     if result and result.message then TriggerClientEvent('os_security:alarm:alert', player, result.message, 'success')
     elseif err then TriggerClientEvent('os_security:alarm:alert', player, err, 'warning') end
 end
+local companyAsked = {}
+RegisterNetEvent('os_security:checkpoint:company', function()
+    local player = source
+    if not lockAllowed(player) then return end
+    local now = GetGameTimer()
+    if companyAsked[player] and now - companyAsked[player] < 2000 then return end
+    companyAsked[player] = now
+    local ok, company = pcall(gameplay.checkpoint.companyOf, player)
+    TriggerClientEvent('os_security:checkpoint:company', player, ok and company or false)
+end)
+AddEventHandler('playerDropped', function() companyAsked[source] = nil end)
 RegisterNetEvent('os_security:checkpoint:list', function()
     local player = source
     if not lockAllowed(player) then return end

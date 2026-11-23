@@ -348,3 +348,49 @@ AddEventHandler('onResourceStop', function(resource)
     stopHands()
     if frisking or consenting then SetNuiFocus(false, false) end
 end)
+
+-- Junto a un arco de tu empresa (estando de servicio): E enciende o apaga; mantener E lo desmonta. La empresa se pregunta al
+-- servidor al acercarse (y se refresca cada 15 s); el servidor vuelve a comprobarlo todo al pulsar.
+local myCompany, companyAt = nil, -10000000
+RegisterNetEvent('os_security:checkpoint:company', function(value)
+    if source ~= 65535 then return end
+    myCompany = type(value) == 'string' and value or nil
+end)
+CreateThread(function()
+    local lastPress, heldSince = 0, nil
+    local HOLD = 1200 -- ms manteniendo E para desmontar
+    while true do
+        local wait = 750
+        local ped = PlayerPedId()
+        if next(detectors) and not placing and not IsPedInAnyVehicle(ped, false) and not IsEntityDead(ped) then
+            local here = GetEntityCoords(ped)
+            local best, bestDistance
+            for _, detector in pairs(detectors) do
+                local d = #(here - vector3(detector.x, detector.y, detector.z))
+                if d < 2.6 and (not bestDistance or d < bestDistance) then best, bestDistance = detector, d end
+            end
+            if best then
+                local now = GetGameTimer()
+                if now - companyAt > 15000 then companyAt = now; TriggerServerEvent('os_security:checkpoint:company') end
+                if myCompany and myCompany == best.company then
+                    wait = 0
+                    BeginTextCommandDisplayHelp('STRING')
+                    local holding = heldSince and math.min(100, math.floor((now - heldSince) * 100 / HOLD)) or nil
+                    AddTextComponentSubstringPlayerName(('~INPUT_CONTEXT~ %s~n~Mantén ~INPUT_CONTEXT~ %s%s'):format(best.off and T.promptOn or T.promptOff, T.promptUnmount:lower(),
+                        holding and (' (%d%%)'):format(holding) or ''))
+                    EndTextCommandDisplayHelp(0, false, false, -1)
+                    if now - lastPress > 1000 then
+                        if IsControlJustPressed(0, 38) then heldSince = now end
+                        if heldSince and IsControlPressed(0, 38) and now - heldSince >= HOLD then
+                            heldSince, lastPress = nil, now; TriggerServerEvent('os_security:checkpoint:unmountBegin')
+                        elseif heldSince and IsControlJustReleased(0, 38) then
+                            heldSince, lastPress = nil, now; TriggerServerEvent('os_security:checkpoint:power', best.off == true)
+                        end
+                    end
+                else heldSince = nil
+                end
+            else heldSince = nil end
+        end
+        Wait(wait)
+    end
+end)

@@ -256,6 +256,7 @@ OSSecurity.Brand = {
             unmountBusy = 'Otra persona ya esta desmontando este arco.', notStarted = 'Empieza el desmontaje con /arco recoger.',
             turnedOn = 'Arco detector encendido: ya detecta metal.', turnedOff = 'Arco detector apagado: no detecta ni avisa.',
             alreadyOn = 'Este arco ya está encendido.', alreadyOff = 'Este arco ya está apagado.', offLabel = 'ARCO APAGADO',
+            promptOn = 'Encender el arco', promptOff = 'Apagar el arco', promptUnmount = 'Desmontar el arco',
             -- Retener en el cacheo: el cacheado acepta o se niega a entregar lo que se le quiere retener.
             retainAsked = 'Pides a %s que entregue lo que quieres retener...', waitingAnswer = 'Esperando a que acepte o rechace la retención.',
             retainRefused = '%s se niega a entregar los objetos: no se retiene nada.', youRefusedRetain = 'Te has negado a entregar los objetos.',
