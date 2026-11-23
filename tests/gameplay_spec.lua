@@ -228,6 +228,9 @@ test('On-duty gruppe6 employment grants technician/supervisor operations profile
     for _, job in ipairs({ { job = 'police', rank = 'tecnico', duty = true }, { job = 'gruppe6', rank = 'empleado', duty = false }, 'gruppe6', false }) do
         c.jobs[5] = job; assert(not denied(5, 'operations').ok)
     end
+    -- Contratado pero fuera de servicio: el aviso dice que tiene que fichar.
+    c.core.time = c.core.time + 10; c.jobs[5] = { job = 'gruppe6', rank = 'empleado', duty = false }
+    local offDuty = denied(5, 'operations'); assert(not offDuty.ok and tostring(offDuty.error):find('de servicio'), tostring(offDuty.error))
     c.jobs[5] = { job = 'gruppe6', rank = 'tecnico', duty = true }; c.jobsFail = true; assert(not denied(5, 'operations').ok)
     -- Los ACE siguen teniendo prioridad y funcionan sin empleo
     c.jobsFail = false; c.jobs[1] = nil; grant(c, 1, 'g6_operations_tablet'); open(c, 1, 'operations')

@@ -112,8 +112,18 @@ function OSSecurity.ClientCars.new(options)
         started[vehicle] = true
         SetVehicleEngineOn(vehicle, true, false, true)
     end
+    -- Respuesta del servidor: ya no tienes la llave del vehiculo que llevas -> motor apagado y sin control.
+    function cars.verified(ok)
+        if ok then return end
+        local vehicle = GetVehiclePedIsIn(PlayerPedId(), false)
+        if vehicle == 0 or not started[vehicle] then return end
+        started[vehicle] = nil
+        SetVehicleEngineOn(vehicle, false, true, true)
+        options.notify('Ya no tienes la llave de este vehículo.', 'error')
+    end
     CreateThread(function()
         local last, driven, keepUntil = 0, 0, 0
+        local seated, checkAt = 0, 0 -- vehiculo al volante y proxima comprobacion de la llave
         while true do
             local ped = PlayerPedId()
             local vehicle = GetVehiclePedIsTryingToEnter(ped)
@@ -122,6 +132,11 @@ function OSSecurity.ClientCars.new(options)
             SetPedConfigFlag(ped, 429, keyed) -- no arrancar solo al subir
             local exiting = GetIsTaskActive(ped, 2) -- CTaskExitVehicle
             if keyed and GetPedInVehicleSeat(vehicle, -1) == ped and not exiting then
+                -- Al subirse y cada 15 s: el servidor confirma que la llave sigue valiendo.
+                if started[vehicle] and (seated ~= vehicle or GetGameTimer() > checkAt) then
+                    seated, checkAt = vehicle, GetGameTimer() + 15000
+                    TriggerServerEvent('os_security:car:verify')
+                end
                 if not started[vehicle] and GetIsVehicleEngineRunning(vehicle) then SetVehicleEngineOn(vehicle, false, true, true) end
                 if started[vehicle] then driven = vehicle; SetVehicleKeepEngineOnWhenAbandoned(vehicle, true) end
             end
@@ -133,6 +148,7 @@ function OSSecurity.ClientCars.new(options)
                     if not exiting and GetGameTimer() > keepUntil then driven = 0 end
                 else driven = 0 end
             end
+            if vehicle == 0 or GetPedInVehicleSeat(vehicle, -1) ~= ped then seated = 0 end
             if vehicle ~= last then
                 if last ~= 0 and not DoesEntityExist(last) then started[last] = nil end
                 last = vehicle

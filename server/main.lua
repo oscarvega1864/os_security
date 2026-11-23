@@ -677,6 +677,14 @@ RegisterNetEvent('os_security:car:engine', function()
     local result, err, canHotwire = lockCall(function() return gameplay.cars.engine(player) end)
     TriggerClientEvent('os_security:car:engineResult', player, result ~= nil, err, canHotwire == true)
 end)
+-- El cliente lo pregunta al subirse al volante de un coche que arranco con la llave y cada poco mientras conduce:
+-- si ya no tiene la llave (coche cedido, cerradura cambiada) se le apaga el motor.
+RegisterNetEvent('os_security:car:verify', function()
+    local player = source
+    if not lockAllowed(player) then return end
+    local result = lockCall(function() return gameplay.cars.engine(player) end)
+    TriggerClientEvent('os_security:car:verified', player, result ~= nil)
+end)
 RegisterNetEvent('os_security:car:hotwire', function()
     local player = source
     if not lockAllowed(player) then return end

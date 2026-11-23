@@ -17,8 +17,13 @@ function OSSecurity.TabletAuthorization.new(options)
         if kind == 'inventory' then return { principal = principal, holder = holder, role = 'inventory', kind = kind, source = source } end
         local tablet = OSSecurity.Brand.Tablets[kind]
         if not tablet or not options.holdings.has({ principal = principal, holder = holder }, tablet.item, 1) then return nil, 'No posee la tablet correspondiente.' end
-        local jobRole = kind == 'operations' and options.employment and options.employment(source, holder) or nil
-        if not options.ace(source, config.Ace[kind]) and not jobRole then return nil, 'Tablet no autorizada para este perfil.' end
+        local jobRole, jobWhy
+        if kind == 'operations' and options.employment then jobRole, jobWhy = options.employment(source, holder) end
+        if not options.ace(source, config.Ace[kind]) and not jobRole then
+            local WHY = { off_duty = 'Tienes que estar de servicio en Gruppe Sechs (ficha con E en su punto de servicio) para usar esta tablet.',
+                other_character = 'Esta tablet es de otro personaje.', no_role = 'Tu rango en Gruppe Sechs no tiene acceso a esta tablet.' }
+            return nil, WHY[jobWhy] or 'Tablet no autorizada para este perfil.'
+        end
         if kind == 'client' then return { principal = principal, holder = holder, role = 'client', kind = kind, source = source } end
         local role
         if options.ace(source, config.Ace.admin) then role = 'admin'

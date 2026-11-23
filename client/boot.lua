@@ -335,6 +335,7 @@ RegisterNetEvent('os_security:car:fx', function(netId, locked, remote) if source
 RegisterCommand('g6motor', function() if not carwireOpen and not cylinderOpen then cars.engine() end end, false)
 RegisterKeyMapping('g6motor', 'Arrancar / apagar el motor (Gruppe Sechs)', 'keyboard', 'Y')
 RegisterNetEvent('os_security:car:engineResult', function(ok, message, canHotwire) if source == 65535 then cars.engineResult(ok == true, message, canHotwire == true) end end)
+RegisterNetEvent('os_security:car:verified', function(ok) if source == 65535 then cars.verified(ok == true) end end)
 -- Puente: minijuego del vehiculo en modo puente; el servidor valida y, si sale, el motor arranca.
 local hotwireOpen = false
 RegisterNetEvent('os_security:car:hotwireStart', function(data)

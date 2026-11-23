@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **Arreglado**: tras ceder un vehículo (o cambiar su cerradura), quien lo había arrancado con su llave podía seguir
+  conduciéndolo, incluso bajando y volviendo a subir. Ahora el cliente vuelve a comprobar la llave con el servidor al
+  subirse al volante y cada 15 s mientras conduce; si ya no vale, se apaga el motor.
+- La tablet G6 Operations explica por qué no abre: fuera de servicio ("ficha con E en su punto de servicio"), tablet de
+  otro personaje o rango sin acceso.
 - **Arreglado**: los empleados de Gruppe Sechs con rangos creados en el menú del negocio (por ejemplo "empleado" o
   "jefaso") no podían abrir la tablet G6 Operations ("sin permiso"): solo valían los rangos `tecnico` y `supervisor`.
   Ahora un rango que no está en la lista entra como técnico (`Employment.DefaultRole`); los que deban ser supervisor se
