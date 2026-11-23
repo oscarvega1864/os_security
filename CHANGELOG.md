@@ -1,6 +1,6 @@
 # Changelog
 
-## Sin publicar
+## 0.27.6 — Interruptor del arco detector
 
 - **Arco detector con interruptor**: `/arco encender`, `/arco apagar` (o `/arco interruptor` para cambiar) junto a un
   arco de tu empresa, de servicio. Apagado no detecta, no pita ni avisa (tampoco la vigilancia del servidor) y muestra
