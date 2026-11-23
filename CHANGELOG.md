@@ -1,6 +1,6 @@
 # Changelog
 
-## Sin publicar
+## 0.27.4 — Tiempo mínimo en los minijuegos
 
 - **Seguridad**: los minijuegos de instalar cierre o alarma en un coche, cambiar el bombín y sustituir piezas en una
   visita tienen un tiempo mínimo en el servidor (2, 2 y 3 s). Un "superado" instantáneo de un cliente modificado se
