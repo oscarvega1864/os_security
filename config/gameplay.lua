@@ -70,7 +70,7 @@ OSSecurity.GameplayConfig = {
     -- Alarmas (central con teclado). Zona: esfera alrededor del teclado.
     Alarm = {
         Radius = 10.0, InteractDistance = 2.0, ExitDelay = 30, EntryDelay = 30, SirenSeconds = 90,
-        PinMin = 4, PinMax = 6, MaxPinAttempts = 3, LockoutSeconds = 60, MaxTags = 10, MaxEvents = 20,
+        PinMin = 4, PinMax = 6, MaxPinAttempts = 3, LockoutSeconds = 60, LockoutMaxSeconds = 900, MaxTags = 10, MaxEvents = 20,
         NotifyRadius = 150.0 -- la sirena la genera la NUI de cada cliente; se oye hasta 150 m
     },
     -- Cerraduras de puertas: las puertas reales (mapa o MLO) de cada propiedad o negocio con titular se

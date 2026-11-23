@@ -1,5 +1,12 @@
 # Changelog
 
+## Sin publicar
+
+- **Teclado de alarma contra fuerza bruta**: los códigos fallidos cuentan por teclado y no por jugador, así que
+  reconectarse o turnarse entre varios ya no reinicia los intentos. Cada bloqueo seguido dura el doble (60 s, 120 s,
+  240 s... hasta 15 min, `LockoutMaxSeconds`) y el código correcto lo pone a cero. El aviso de manipulación al titular
+  dice cuánto dura el bloqueo; el titular puede seguir usando la tablet o la chapa.
+
 ## 0.27.8 — Alarma del vehículo vigilada por el servidor
 
 - **Alarma del vehículo vigilada por el servidor**: antes solo saltaba si el cliente avisaba al intentar entrar. Ahora,

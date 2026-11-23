@@ -12,7 +12,9 @@ function OSSecurity.AlarmService.new(options)
     local util = OSSecurity.Util
     local alarms = {}
     local runtime = {}   -- deviceId -> { armedFrom, entry = { deadline, by }, sirenUntil }
-    local attempts = {}  -- deviceId..':'..source -> { count, lockedUntil }
+    -- Codigos fallidos por teclado (no por jugador): reconectarse o turnarse entre varios no reinicia la cuenta.
+    -- Cada bloqueo seguido dura el doble (hasta LockoutMaxSeconds); el codigo correcto lo pone a cero.
+    local attempts = {}  -- deviceId -> { count, lockedUntil, strikes }
 
     local function record(deviceId)
         return options.inventory.alarm(deviceId) or { mode = 'disarmed', updatedAt = 0, tags = {}, events = {} }
@@ -75,7 +77,7 @@ function OSSecurity.AlarmService.new(options)
         if not device then return nil, err end
         if not near(source, device) then return nil, 'Acércate al teclado.' end
         local alarm = record(device.id)
-        local lock = attempts[device.id .. ':' .. source]
+        local lock = attempts[device.id]
         local state = runtime[device.id]
         return { deviceId = device.id, label = label(device), mode = alarm.mode, hasPin = alarm.pin ~= nil, tags = options.tagsSupported(),
             locked = lock and lock.lockedUntil and math.max(0, lock.lockedUntil - options.now()) or 0,
@@ -90,7 +92,7 @@ function OSSecurity.AlarmService.new(options)
         if not near(source, device) then return nil, 'Acércate al teclado.' end
         local mode = ACTIONS[action]
         if not mode then return nil, 'Acción no válida.' end
-        local key = device.id .. ':' .. source
+        local key = device.id
         local lock = attempts[key]
         if lock and lock.lockedUntil and options.now() < lock.lockedUntil then
             return nil, ('Teclado bloqueado %d s por intentos fallidos.'):format(lock.lockedUntil - options.now())
@@ -98,14 +100,16 @@ function OSSecurity.AlarmService.new(options)
         local alarm = record(device.id)
         if not alarm.pin then return nil, 'Código no configurado: el titular debe crearlo desde la tablet.' end
         if type(pin) ~= 'string' or not pin:match('^%d+$') or #pin < config.PinMin or #pin > config.PinMax or not options.verify(pin, alarm.pin) then
-            lock = lock or { count = 0 }
+            lock = lock or { count = 0, strikes = 0 }
             lock.count = lock.count + 1
             attempts[key] = lock
             if lock.count >= config.MaxPinAttempts then
-                lock.count, lock.lockedUntil = 0, options.now() + config.LockoutSeconds
+                local seconds = math.min(config.LockoutSeconds * 2 ^ (lock.strikes or 0), config.LockoutMaxSeconds or config.LockoutSeconds)
+                seconds = math.floor(seconds)
+                lock.count, lock.strikes, lock.lockedUntil = 0, (lock.strikes or 0) + 1, options.now() + seconds
                 save(device.id, alarm, 'lockout', options.who(source))
-                options.alert(device, ('Manipulación del teclado en %s: bloqueado por intentos fallidos.'):format(label(device)), 'warning', 'tamper')
-                return nil, ('Código incorrecto. Teclado bloqueado %d s.'):format(config.LockoutSeconds)
+                options.alert(device, ('Manipulación del teclado en %s: bloqueado %d s por intentos fallidos.'):format(label(device), seconds), 'warning', 'tamper')
+                return nil, ('Código incorrecto. Teclado bloqueado %d s.'):format(seconds)
             end
             save(device.id, alarm, 'wrong_pin', options.who(source))
             return nil, ('Código incorrecto (%d/%d).'):format(lock.count, config.MaxPinAttempts)
@@ -249,8 +253,6 @@ function OSSecurity.AlarmService.new(options)
     end
     function alarms.forgetDevice(deviceId) stopSiren(deviceId) end
     function alarms.clear() for deviceId in pairs(runtime) do stopSiren(deviceId) end; runtime, attempts = {}, {} end
-    function alarms.forget(source)
-        for key in pairs(attempts) do if key:match(':' .. source .. '$') then attempts[key] = nil end end
-    end
+    function alarms.forget(source) end -- los intentos son del teclado, no del jugador: no se borran al salir
     return alarms
 end

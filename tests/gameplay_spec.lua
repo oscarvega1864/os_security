@@ -366,8 +366,23 @@ test('Alarm keypad: code from the tablet, arm with exit delay, wrong codes lock 
     local armed = assert(c.game.alarms.keypad(2, panel.id, 'arm', '1234')); assert(armed.mode == 'armed')
     assert(c.game.inventory.alarm(panel.id).mode == 'armed' and c.game.inventory.alarm(panel.id).pin ~= '1234')
     c.players[5].point = { x = 1, y = 1, z = 1 }
-    for attempt = 1, 3 do assert(not c.game.alarms.keypad(5, panel.id, 'disarm', '0000')) end
+    -- La cuenta es del teclado: dos fallos de uno y uno de otro jugador (o del mismo tras reconectarse) lo bloquean.
+    for attempt = 1, 2 do assert(not c.game.alarms.keypad(5, panel.id, 'disarm', '0000')) end
+    c.game.alarms.forget(5) -- se desconecta: no borra la cuenta
+    c.players[3].point = { x = 1, y = 1, z = 1 }
+    local _, third = c.game.alarms.keypad(3, panel.id, 'disarm', '0000'); assert(third:find('bloqueado 60 s'))
     assert(not c.game.alarms.keypad(5, panel.id, 'disarm', '1234')) -- bloqueado aunque ahora acierte
+    assert(not c.game.alarms.keypad(2, panel.id, 'disarm', '1234')) -- tambien para el titular (tiene la tablet y la chapa)
+    -- El siguiente bloqueo dura el doble; el codigo correcto lo pone a cero.
+    c.core.time = c.core.time + 61
+    for attempt = 1, 2 do c.game.alarms.keypad(5, panel.id, 'disarm', '0000') end
+    local _, second = c.game.alarms.keypad(5, panel.id, 'disarm', '0000'); assert(second:find('bloqueado 120 s'))
+    c.core.time = c.core.time + 121
+    assert(c.game.alarms.keypad(2, panel.id, 'disarm', '1234').mode == 'disarmed')
+    for attempt = 1, 2 do c.game.alarms.keypad(5, panel.id, 'arm', '0000') end
+    local _, reset = c.game.alarms.keypad(5, panel.id, 'arm', '0000'); assert(reset:find('bloqueado 60 s'))
+    c.core.time = c.core.time + 61
+    assert(c.game.alarms.keypad(2, panel.id, 'arm', '1234').mode == 'armed')
     assert(#logged(c, 'alert') >= 1 and logged(c, 'alert')[1][2] == 2) -- aviso de manipulacion al titular
     local restarted = fixture(c.core.files); assert(restarted.game.inventory.alarm(panel.id).mode == 'armed')
 end)
