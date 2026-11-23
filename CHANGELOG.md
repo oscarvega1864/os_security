@@ -1,6 +1,6 @@
 # Changelog
 
-## Sin publicar
+## 0.27.7 — Arco detector al acercarte
 
 - **Arco detector al acercarte**: junto a un arco de tu empresa (de servicio) sale la ayuda en pantalla: **E** lo
   enciende o apaga y **mantener E** lo desmonta (con taladro y destornillador). Los comandos `/arco` siguen igual.
