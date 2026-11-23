@@ -1,5 +1,14 @@
 local test, coreFixture, create, equal = StorageTest.test, StorageTest.fixture, StorageTest.create, StorageTest.equal
 local util, config, codec = OSSecurity.Util, OSSecurity.GameplayConfig, OSSecurity.JsonCodec
+-- Tiempo minimo de los minijuegos (instalar en coche, cambiar bombin, sustituir piezas). Los tests que no tratan de
+-- eso lo dejan a 0; los que lo comprueban activan los valores reales con minimums(true).
+local MINIMUMS = { swap = config.SwapMinSeconds, change = config.Locks.ChangeMinSeconds, install = config.Cars.InstallMinSeconds }
+local function minimums(on)
+    config.SwapMinSeconds = on and MINIMUMS.swap or 0
+    config.Locks.ChangeMinSeconds = on and MINIMUMS.change or 0
+    config.Cars.InstallMinSeconds = on and MINIMUMS.install or 0
+end
+minimums(false)
 local bootNumber = 0
 
 local function fixture(files, external)
@@ -568,7 +577,13 @@ test('Replacing parts of a client device creates an on-site visit; the swap need
     assert(not call(c, 1, session, 'swap_begin', { deviceId = id }).ok)
     c.players[1].point = { x = 0, y = 0, z = 1 }
     local begun = call(c, 1, session, 'swap_begin', { deviceId = id }); assert(begun.ok and begun.swap.slot == 'optics', begun.error)
+    -- Un "superado" instantaneo (cliente modificado) no vale: hay que volver a empezar y tardar lo minimo.
+    minimums(true)
+    local fast = call(c, 1, session, 'swap_confirm', { deviceId = id }); assert(not fast.ok and fast.error:find('demasiado'))
+    assert(call(c, 1, session, 'swap_begin', { deviceId = id }).ok)
+    c.core.time = c.core.time + MINIMUMS.swap
     local done = call(c, 1, session, 'swap_confirm', { deviceId = id }); assert(done.ok, done.error)
+    minimums(false)
     local device = c.core.registry.get(0, id)
     assert(device.condition.components.optics.id ~= before and device.state == 'active')
     assert(c.game.inventory.snapshot().orders.ot_000001.done == true and call(c, 1, session, 'device', { deviceId = id }).data.swap == nil)
@@ -1133,7 +1148,12 @@ test('Changing the cylinder needs the open door, a screwdriver and the kit; char
     local _, cancelled = c.game.locks.changeFinish(2, false); assert(cancelled:find('no se ha gastado'))
     assert(e.count(2, 'os_lock_kit') == 1 and c.game.locks.security('p7_1') == 1)
     assert(c.game.locks.changeBegin(2, 'os_lock_kit'))
+    minimums(true)
+    _, why = c.game.locks.changeFinish(2, true); assert(why:find('demasiado rápido') and e.count(2, 'os_lock_kit') == 1)
+    assert(c.game.locks.changeBegin(2, 'os_lock_kit'))
+    c.core.time = c.core.time + MINIMUMS.change
     local done = assert(c.game.locks.changeFinish(2, true))
+    minimums(false)
     assert(done.tier == 2 and e.count(2, 'os_lock_kit') == 0 and c.game.locks.security('p7_1') == 2)
     assert(not c.game.locks.changeFinish(2, true)) -- un solo uso
     _, why = c.game.locks.changeBegin(2, 'os_lock_kit'); assert(why:find('ya tiene'))
@@ -1249,7 +1269,12 @@ test('Installing in a vehicle needs the driver seat, engine off, ownership or a 
     v.driving[2] = nil; assert(not v.cars.installFinish(2, true) and e.count(2, 'os_car_lock_kit') == 1) -- salio del coche
     v.driving[2] = { plate = 'OS000012', engine = false, speed = 0 }
     assert(v.cars.installBegin(2, 'os_car_lock_kit'))
+    minimums(true)
+    _, why = v.cars.installFinish(2, true); assert(why:find('demasiado rápida') and e.count(2, 'os_car_lock_kit') == 1)
+    assert(v.cars.installBegin(2, 'os_car_lock_kit'))
+    c.core.time = c.core.time + MINIMUMS.install
     assert(v.cars.installFinish(2, true).kind == 'lock' and e.count(2, 'os_car_lock_kit') == 0 and e.count(2, 'os_screwdriver') == 1)
+    minimums(false)
     _, why = v.cars.installBegin(2, 'os_car_lock_kit'); assert(why:find('ya tiene'))
     c.jobs[5] = { job = 'gruppe6', rank = 'tecnico', duty = true, characterId = e.holders[5] }
     e.give(5, 'os_car_alarm_kit')

@@ -89,7 +89,7 @@ function OSSecurity.CarService.new(options)
             if not options.holdings.has(actor, tool, 1) then return nil, 'Necesitas un destornillador.' end
         end
         installs[source] = { carId = car.id, plate = car.plate, item = item, kind = kind, holder = holder, changes = record.changes,
-            expires = options.now() + config.InstallSeconds }
+            started = options.now(), expires = options.now() + config.InstallSeconds }
         return { kind = kind, label = LABELS[kind], plate = car.plate }
     end
     -- Paso 2: resultado del minijuego. Cobra el kit y guarda el equipo del vehiculo.
@@ -99,6 +99,8 @@ function OSSecurity.CarService.new(options)
         if not context then return nil, 'No hay ninguna instalación en curso.' end
         if success ~= true then return nil, 'Instalación cancelada: no se ha gastado nada.' end
         if options.now() > context.expires then return nil, 'La instalación ha caducado.' end
+        -- El minijuego lleva su tiempo: un "superado" instantaneo viene de un cliente modificado.
+        if options.now() - context.started < (config.InstallMinSeconds or 0) then return nil, 'Instalación demasiado rápida: no se ha gastado nada.' end
         local driving = options.vehicles.driving(source)
         local same = driving and asset(driving)
         if not same or same.id ~= context.carId then return nil, 'Has salido del vehículo; no se ha gastado nada.' end

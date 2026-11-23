@@ -281,7 +281,7 @@ function OSSecurity.LockService.new(options)
         for player, context in pairs(changes) do
             if player ~= source and context.doorId == door.id then return nil, 'Otra persona esta cambiando este bombín.' end
         end
-        changes[source] = { doorId = door.id, item = item, holder = holder, changes = door.changes, expires = options.now() + config.ChangeSeconds }
+        changes[source] = { doorId = door.id, item = item, holder = holder, changes = door.changes, started = options.now(), expires = options.now() + config.ChangeSeconds }
         return { doorId = door.id, from = tierLabel(door.tier), to = tierLabel(tier), tier = tier }
     end
     -- Paso 2: resultado del minijuego. Cobra el bombin nuevo, guarda la puerta y devuelve el viejo.
@@ -291,6 +291,7 @@ function OSSecurity.LockService.new(options)
         if not context then return nil, 'No hay ningún cambio de bombín en curso.' end
         if success ~= true then return nil, 'Cambio de bombín cancelado: no se ha gastado nada.' end
         if options.now() > context.expires then return nil, 'El cambio de bombín ha caducado.' end
+        if options.now() - context.started < (config.ChangeMinSeconds or 0) then return nil, 'Cambio de bombín demasiado rápido: no se ha gastado nada.' end
         local door = active()[context.doorId]
         local point, bucket = options.world(source)
         if not door or door.changes ~= context.changes or door.locked or not point or bucket ~= door.bucket

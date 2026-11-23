@@ -1,5 +1,11 @@
 # Changelog
 
+## Sin publicar
+
+- **Seguridad**: los minijuegos de instalar cierre o alarma en un coche, cambiar el bombín y sustituir piezas en una
+  visita tienen un tiempo mínimo en el servidor (2, 2 y 3 s). Un "superado" instantáneo de un cliente modificado se
+  rechaza sin gastar nada, como ya pasaba con la ganzúa y el puente.
+
 ## 0.27.3 — Arco detector y armas del inventario
 
 - **Arreglado**: el arco detector no pitaba con un arma guardada en el inventario (os_inventory 0.2.0+) si no se

@@ -362,7 +362,7 @@ function OSSecurity.InstallationService.new(options)
                 return nil, 'Otra persona ya está haciendo el cambio en este equipo.'
             end
         end
-        swaps[source] = { token = session.token, deviceId = device.id, orderId = order.id, expires = options.now() + config.PlacementSeconds }
+        swaps[source] = { token = session.token, deviceId = device.id, orderId = order.id, started = options.now(), expires = options.now() + config.PlacementSeconds }
         -- Piezas para el minijuego: todas las del equipo, marcando las que se cambian (solo presentacion).
         local modules = {}
         for slot in pairs(device.condition.components) do
@@ -379,6 +379,7 @@ function OSSecurity.InstallationService.new(options)
         if not context or context.token ~= session.token or context.deviceId ~= deviceId or options.now() > context.expires then
             return nil, 'Cambio no válido o caducado.'
         end
+        if options.now() - context.started < (config.SwapMinSeconds or 0) then return nil, 'Cambio demasiado rápido: vuelve a empezar.' end
         local device, installation, order = swappable(source, session, deviceId)
         if not device then return nil, installation end
         if order.id ~= context.orderId then return nil, 'La visita ha cambiado; vuelve a empezar.' end

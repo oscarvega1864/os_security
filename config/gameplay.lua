@@ -2,7 +2,8 @@
 OSSecurity.GameplayConfig = {
     StorageBase = 'data/inventory', MaxAccounts = 256, MaxItemQuantity = 100, MaxTotalItems = 500,
     MaxInstallations = 1000, MaxAnchors = 512, MaxGrantsPerAccount = 1000, MaxFileBytes = 8 * 1024 * 1024,
-    SessionSeconds = 90, PlacementSeconds = 180, PageSize = 12, RequestWindow = 10, RequestsPerWindow = 25,
+    -- *MinSeconds: tiempo minimo de un minijuego; un "superado" mas rapido viene de un cliente modificado y se rechaza.
+    SessionSeconds = 90, PlacementSeconds = 180, SwapMinSeconds = 3, PageSize = 12, RequestWindow = 10, RequestsPerWindow = 25,
     OpenRequestsPerWindow = 3, PlacementDistance = 4.0, AnchorAimDistance = 10.0, MaxPlacementMove = 6.0, MinDepth = -0.15, MaxDepth = 0.3, MaxPivotOffset = 0.75,
     StreamDistance = 80.0, MaxStreamedProps = 40, CameraModel = 'prop_cctv_cam_01a',
     Models = { prop_cctv_cam_01a = true, hei_prop_bank_cctv_01 = true, prop_cctv_cam_05a = true,
@@ -76,7 +77,7 @@ OSSecurity.GameplayConfig = {
     -- detectan solas y quedan con el bombin de serie (las de propiedades, cerradas). El titular abre y cierra con su llave (E) y puede
     -- cambiar el bombin por uno mas seguro con el kit; el nivel queda para robos y ganzuas futuros.
     Locks = {
-        InteractDistance = 2.0, ChangeSeconds = 180, MaxDoors = 256, MaxDoorsPerSite = 8, DuplicateDistance = 0.5,
+        InteractDistance = 2.0, ChangeSeconds = 180, ChangeMinSeconds = 2, MaxDoors = 256, MaxDoorsPerSite = 8, DuplicateDistance = 0.5,
         -- Deteccion automatica: puertas del mapa a DetectRadius del punto de la propiedad, informadas por
         -- un jugador a menos de ReportRange. Las hojas a PairDistance se abren juntas (puertas dobles).
         DetectRadius = 15.0, ReportRange = 60.0, ScanCooldown = 60, PairDistance = 2.6,
@@ -93,7 +94,7 @@ OSSecurity.GameplayConfig = {
     CardSwipe = OSSecurity.SharedGameplay.CardSwipe,
     Cars = {
         Kits = { os_car_lock_kit = 'lock', os_car_alarm_kit = 'alarm' }, Tools = { 'os_screwdriver' },
-        InstallSeconds = 180, KeyDistance = 15.0, ManualDistance = 3.5, TamperDistance = 8.0, AlarmSeconds = 30, AlarmCooldown = 45,
+        InstallSeconds = 180, InstallMinSeconds = 2, KeyDistance = 15.0, ManualDistance = 3.5, TamperDistance = 8.0, AlarmSeconds = 30, AlarmCooldown = 45,
         AlarmHearing = 150.0, SyncSeconds = 3,
         -- Puente: con destornillador, al volante de un vehiculo ajeno con el motor apagado. Nivel 1 sin kit,
         -- 2 con cierre centralizado, 3 con alarma (que salta al empezar). Decoys: cables de relleno; Band:
