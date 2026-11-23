@@ -1303,6 +1303,12 @@ test('Only the owner locks with the key fob (not an admin with another character
     c.players[5].point = { x = 1, y = 0, z = 1 }
     assert(v.cars.tamper(5, carAt()) and logged(v, 'alarm') == 1 and logged(v, 'notify') == 1)
     assert(v.cars.tamper(5, carAt()) and logged(v, 'alarm') == 1) -- ya esta sonando
+    -- Dentro sin llave (se colo sin avisar): la vigilancia del servidor hace saltar la alarma; con el dueno a bordo, no.
+    assert(v.cars.intrusion({ 5 }, carAt()) and logged(v, 'alarm') == 1) -- ya sonaba: no se repite
+    assert(v.cars.intrusion({ 2, 5 }, carAt()) == nil) -- el dueno va dentro: sus pasajeros no la disparan
+    assert(v.cars.intrusion({}, carAt()) == nil)
+    c.core.time = c.core.time + OSSecurity.GameplayConfig.Cars.AlarmCooldown + 1; v.cars.tick()
+    assert(v.cars.intrusion({ 5 }, carAt()) and logged(v, 'alarm') == 2 and logged(v, 'notify') == 2) -- pasado el enfriamiento vuelve a saltar
     local opened = assert(v.cars.toggle(2, carAt())); assert(not opened.locked and v.log[#v.log - 1][1] == 'alarm' and v.log[#v.log - 1][3] == 0)
     assert(not v.cars.tamper(5, carAt())) -- abierto: nada
     local _, adminWhy = v.cars.toggle(4, carAt()); assert(adminWhy:find('llave')) -- administrador con otro personaje: sin llave

@@ -164,6 +164,17 @@ function OSSecurity.CarService.new(options)
         options.audit('car_alarm', source, tostring(record.id))
         return true
     end
+    -- Vigilancia del servidor: alguien sentado dentro de un vehiculo cerrado con alarma sin que nadie a bordo tenga su
+    -- llave (se colo sin abrirlo: cliente modificado que no avisa). Salta la alarma como al intentar entrar.
+    -- occupants: jugadores en los asientos.
+    function cars.intrusion(occupants, vehicle)
+        if type(vehicle) ~= 'table' or type(occupants) ~= 'table' or #occupants == 0 then return nil end
+        local car = asset(vehicle)
+        local record = car and records()[tostring(car.id)]
+        if not record or not record.locked or not record.alarm then return nil end
+        for _, player in ipairs(occupants) do if owns(player, car) then return nil end end
+        return cars.tamper(occupants[1], vehicle)
+    end
     -- Ganzua: vehiculo cerrado (cualquiera puede intentarlo) y apertura forzada.
     function cars.pickTarget(vehicle)
         if type(vehicle) ~= 'table' then return nil, 'Vehículo no disponible.' end

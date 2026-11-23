@@ -1,5 +1,12 @@
 # Changelog
 
+## Sin publicar
+
+- **Alarma del vehículo vigilada por el servidor**: antes solo saltaba si el cliente avisaba al intentar entrar. Ahora,
+  en cada sincronización de vehículos, si alguien va sentado en un vehículo cerrado con alarma y nadie a bordo tiene
+  su llave (se coló sin abrirlo), salta la alarma y se avisa al dueño. Con el dueño o un poseedor de llave dentro,
+  sus pasajeros no la disparan.
+
 ## 0.27.7 — Arco detector al acercarte
 
 - **Arco detector al acercarte**: junto a un arco de tu empresa (de servicio) sale la ayuda en pantalla: **E** lo

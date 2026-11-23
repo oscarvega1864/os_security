@@ -832,9 +832,25 @@ CreateThread(function()
         if gameplay.status() then
             local ok = pcall(function()
                 gameplay.cars.tick()
+                local players
                 for _, entity in ipairs(GetAllVehicles()) do
                     local want = gameplay.cars.desired(GetVehicleNumberPlateText(entity))
-                    if want then carState(entity, want) end
+                    if want then
+                        carState(entity, want)
+                        -- Cerrado y con alarma: quien este dentro sin llave la hace saltar (aunque su cliente no avise).
+                        if want.locked and want.alarm then
+                            if not players then
+                                players = {}
+                                for _, value in ipairs(GetPlayers()) do local id = tonumber(value); local ped = GetPlayerPed(id); if ped and ped ~= 0 then players[ped] = id end end
+                            end
+                            local occupants = {}
+                            for seat = -1, 6 do
+                                local ped = GetPedInVehicleSeat(entity, seat)
+                                if ped and ped ~= 0 and players[ped] then occupants[#occupants + 1] = players[ped] end
+                            end
+                            if #occupants > 0 then gameplay.cars.intrusion(occupants, vehicleOf(NetworkGetNetworkIdFromEntity(entity))) end
+                        end
+                    end
                 end
             end)
             if not ok then storageLog('Fallo en la sincronización de vehículos; se reintentará.') end
