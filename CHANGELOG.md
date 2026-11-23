@@ -1,6 +1,6 @@
 # Changelog
 
-## Sin publicar
+## 0.27.5 — Arco detector vigilado por el servidor
 
 - **Arco detector vigilado por el servidor**: antes solo sonaba si el cliente avisaba al cruzarlo, así que un cliente
   modificado podía pasar sin que pitara. Ahora el servidor comprueba 4 veces por segundo quién está bajo cada arco y,
