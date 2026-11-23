@@ -1,5 +1,12 @@
 # Changelog
 
+## Sin publicar
+
+- **Arreglado**: los empleados de Gruppe Sechs con rangos creados en el menú del negocio (por ejemplo "empleado" o
+  "jefaso") no podían abrir la tablet G6 Operations ("sin permiso"): solo valían los rangos `tecnico` y `supervisor`.
+  Ahora un rango que no está en la lista entra como técnico (`Employment.DefaultRole`); los que deban ser supervisor se
+  añaden en `Employment.Ranks` (por ejemplo `jefaso = 'supervisor'`). Hace falta estar de servicio.
+
 ## 0.28.0 — Localizador GPS de vehículo
 
 - **Localizador GPS de vehículo** (nuevo en la tienda G6, $2.200): se instala al volante con destornillador y el

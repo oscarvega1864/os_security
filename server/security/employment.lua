@@ -14,7 +14,7 @@ function OSSecurity.Employment.new(options)
         if settings.RequireDuty ~= false and employment.duty ~= true then return nil end
         -- Con objetos por personaje, el empleo debe ser del mismo personaje que posee la tablet.
         if holder ~= nil and employment.characterId ~= holder then return nil end
-        local role = settings.Ranks and settings.Ranks[employment.rank]
+        local role = settings.Ranks and settings.Ranks[employment.rank] or settings.DefaultRole
         if role ~= 'technician' and role ~= 'supervisor' then return nil end
         return role
     end

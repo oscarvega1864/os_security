@@ -218,8 +218,14 @@ test('On-duty gruppe6 employment grants technician/supervisor operations profile
     session = open(c, 5, 'operations'); assert(session.profile == OSSecurity.Brand.Profiles.supervisor)
     assert(session.role == 'supervisor' and table.concat(session.abilities, ',') == 'view,inspect,beginMaintenance,endMaintenance' and not session.canInstall)
     c.core.time = c.core.time + 10
-    for _, job in ipairs({ { job = 'gruppe6', rank = 'vigilante', duty = true }, { job = 'gruppe6', rank = 'admin', duty = true },
-        { job = 'police', rank = 'tecnico', duty = true }, 'gruppe6', false }) do
+    -- Rangos creados en el menu del negocio (empleado, vigilante...): entran como tecnico (DefaultRole), nunca como admin.
+    for _, rank in ipairs({ 'empleado', 'vigilante', 'admin' }) do
+        c.core.time = c.core.time + 10
+        c.jobs[5] = { job = 'gruppe6', rank = rank, duty = true }
+        local s2 = open(c, 5, 'operations'); assert(s2.role == 'technician', rank)
+    end
+    c.core.time = c.core.time + 10
+    for _, job in ipairs({ { job = 'police', rank = 'tecnico', duty = true }, { job = 'gruppe6', rank = 'empleado', duty = false }, 'gruppe6', false }) do
         c.jobs[5] = job; assert(not denied(5, 'operations').ok)
     end
     c.jobs[5] = { job = 'gruppe6', rank = 'tecnico', duty = true }; c.jobsFail = true; assert(not denied(5, 'operations').ok)
@@ -235,6 +241,10 @@ test('Employment adapter requires the same character as the item holder and neve
     assert(role(1, 'oschar_0000000001') == 'technician' and role(1, nil) == 'technician')
     assert(role(1, 'oschar_0000000002') == nil)
     current = { job = 'gruppe6', rank = 'jefe', duty = true }; assert(role(1) == nil)
+    -- Con DefaultRole, un rango que no esta en la lista entra con ese perfil (y nunca admin).
+    local withDefault = OSSecurity.Employment.new({ settings = { Job = 'gruppe6', RequireDuty = true, Ranks = settings.Ranks, DefaultRole = 'technician' },
+        read = function() return { job = 'gruppe6', rank = 'empleado', duty = true } end })
+    assert(withDefault(1) == 'technician')
     assert(OSSecurity.Employment.new({ settings = settings })(1) == nil)
     local free = OSSecurity.Employment.new({ settings = { Job = 'gruppe6', RequireDuty = false, Ranks = settings.Ranks },
         read = function() return { job = 'gruppe6', rank = 'tecnico', duty = false } end })

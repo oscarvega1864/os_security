@@ -119,7 +119,10 @@ OSSecurity.GameplayConfig = {
     -- Solo de servicio. 'admin' y la tablet Client nunca se obtienen por empleo.
     Employment = {
         Job = 'gruppe6', RequireDuty = true,
-        Ranks = { tecnico = 'technician', supervisor = 'supervisor' }
+        -- Rango del trabajo -> perfil. Los rangos los crea el dueno del negocio en su menu: los que no esten aqui
+        -- entran con DefaultRole (nil = sin acceso). Ejemplo: jefaso = 'supervisor'.
+        Ranks = { tecnico = 'technician', supervisor = 'supervisor' },
+        DefaultRole = 'technician'
     },
     Profiles = {
         client = { view = true },
