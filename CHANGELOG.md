@@ -1,6 +1,6 @@
 # Changelog
 
-## Sin publicar
+## 0.27.10 — Tildes en los mensajes
 
 - Textos: tildes que faltaban en 28 mensajes al jugador ("Ya estás cacheando", "Está cerrado", "El personaje activo
   cambió", "Estás aquí", "Aún no se conoce tu posición"...).
