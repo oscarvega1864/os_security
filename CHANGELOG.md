@@ -1,6 +1,6 @@
 # Changelog
 
-## Sin publicar
+## 0.28.0 — Localizador GPS de vehículo
 
 - **Localizador GPS de vehículo** (nuevo en la tienda G6, $2.200): se instala al volante con destornillador y el
   minijuego de cableado (no necesita el cierre). El dueño ve el vehículo en la tablet G6 Client (Localizadores) y lo
