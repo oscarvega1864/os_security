@@ -1,6 +1,6 @@
 # Changelog
 
-## Sin publicar
+## 0.27.3 — Arco detector y armas del inventario
 
 - **Arreglado**: el arco detector no pitaba con un arma guardada en el inventario (os_inventory 0.2.0+) si no se
   llevaba en la mano: solo contaba los objetos de la lista de metal. Ahora pitan también las armas metálicas que son
