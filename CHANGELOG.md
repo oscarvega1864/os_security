@@ -1,6 +1,6 @@
 # Changelog
 
-## Sin publicar
+## 0.27.8 — Alarma del vehículo vigilada por el servidor
 
 - **Alarma del vehículo vigilada por el servidor**: antes solo saltaba si el cliente avisaba al intentar entrar. Ahora,
   en cada sincronización de vehículos, si alguien va sentado en un vehículo cerrado con alarma y nadie a bordo tiene
