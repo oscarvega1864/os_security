@@ -1,5 +1,12 @@
 # Changelog
 
+## Sin publicar
+
+- **Localizador con última señal**: si el vehículo con localizador deja de estar en el mundo (lo guardan, lo borran o
+  sale de alcance), el dueño ya no se queda sin nada: la tablet G6 Client (Localizadores) muestra "Sin señal · última
+  hace X min" con su botón de GPS, y `/localizar` marca ese último punto avisando de cuánto hace. Se recuerda en
+  memoria del servidor (tras reiniciar, solo vuelve a haber señal cuando el vehículo aparece).
+
 ## 0.28.1 — Llave cedida, tablet y rangos de G6
 
 - **Arreglado**: tras ceder un vehículo (o cambiar su cerradura), quien lo había arrancado con su llave podía seguir

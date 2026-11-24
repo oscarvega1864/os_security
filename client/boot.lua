@@ -383,7 +383,11 @@ RegisterNetEvent('os_security:car:track', function(data)
     entry.until_ = GetGameTimer() + 300000
     if data.manual then
         SetNewWaypoint(p.x + 0.0, p.y + 0.0)
-        OSSecurity.Notify(('Localizador: %s marcado en el GPS.'):format(data.plate), 'info')
+        if type(data.ago) == 'number' then
+            local minutes = math.floor(data.ago / 60)
+            OSSecurity.Notify(('Localizador: %s ya no da señal. Última señal %s, marcada en el GPS.'):format(data.plate,
+                minutes < 1 and 'hace menos de un minuto' or ('hace %d min'):format(minutes)), 'warning')
+        else OSSecurity.Notify(('Localizador: %s marcado en el GPS.'):format(data.plate), 'info') end
     elseif data.alert then
         OSSecurity.Notify(('¡Se están llevando tu vehículo %s sin llave! Síguelo en el mapa (punto rojo).'):format(data.plate), 'error')
         PlaySoundFrontend(-1, 'TIMER_STOP', 'HUD_MINI_GAME_SOUNDSET', true)

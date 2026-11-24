@@ -1295,6 +1295,13 @@ test('Vehicle tracker: sold at the G6 shop, installed at the wheel, located by t
     assert(v.cars.owned(2)[1].stolen)
     c.core.time = c.core.time + OSSecurity.GameplayConfig.Cars.TrackerAlertSeconds; assert(v.cars.theft(5, carAt()).alert)
     v.assets[13] = { id = 13, plate = 'OS000013', owner = 'ana' }; assert(v.cars.theft(5, { id = 13, plate = 'OS000013', position = {} }) == nil) -- sin localizador
+    -- Deja de existir en el mundo (guardado o borrado por el ladron): ultima senal y cuanto hace.
+    v.spots = {}
+    local before = c.core.time
+    c.core.time = before + 600
+    local last = assert(v.cars.locateOwn(2)); assert(last.ago == 600 and type(last.position.x) == 'number')
+    local card = v.cars.owned(2)[1]; assert(card.position == nil and card.lastSignal and card.lastSignal.ago == 600)
+    v.cars.clear(); assert(select(2, v.cars.locateOwn(2)):find('guardado')) -- sin registro (p. ej. tras reiniciar), sin senal
 end)
 
 test('Plates map to os_devtools vehicle IDs only in the OS + digits format', function()

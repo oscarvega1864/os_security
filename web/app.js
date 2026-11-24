@@ -196,6 +196,10 @@
       if (car.position) {
         footer.append(el('span', `${Math.round(car.position.x)}, ${Math.round(car.position.y)}`, 'subtle'),
           button(T.gps, () => post('waypoint', { x: car.position.x, y: car.position.y }).catch(() => {})));
+      } else if (car.lastSignal?.position) {
+        const minutes = Math.floor((Number(car.lastSignal.ago) || 0) / 60);
+        footer.append(el('span', minutes < 1 ? T.lastSignalNow : T.lastSignal.replace('%s', minutes), 'subtle'),
+          button(T.gps, () => post('waypoint', { x: car.lastSignal.position.x, y: car.lastSignal.position.y }).catch(() => {})));
       } else footer.append(el('span', T.away, 'subtle'));
       card.append(footer); grid.append(card);
     }

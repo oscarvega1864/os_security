@@ -25,6 +25,14 @@ function OSSecurity.CarService.new(options)
     local hotwires, hotwired = {}, {} -- source -> intento en curso; carId -> source que le hizo el puente
     local LABELS = { lock = 'cierre centralizado', alarm = 'alarma', tracker = 'localizador' }
     local stolenAt = {} -- carId -> ultimo aviso de robo al dueno
+    -- Localizador: ultima posicion conocida de cada vehiculo (en memoria). Si el vehiculo deja de existir en el mundo
+    -- (guardado, borrado o fuera de alcance) el dueno sigue viendo donde dio la ultima senal y hace cuanto.
+    local lastSeen = {} -- carId -> { position, at }
+    local function remember(id, point)
+        if id and type(point) == 'table' and type(point.x) == 'number' and type(point.y) == 'number' then
+            lastSeen[id] = { position = { x = point.x, y = point.y, z = tonumber(point.z) or 0.0 }, at = options.now() }
+        end
+    end
 
     local function records() return options.inventory.cars() or {} end
     local function trim(plate) return type(plate) == 'string' and (plate:gsub('%s+', '')) or nil end
@@ -283,9 +291,14 @@ function OSSecurity.CarService.new(options)
             if record.lock or record.alarm or record.tracker then
                 local car = asset({ plate = record.plate, id = record.id })
                 if car and car.owner == alias then
-                    result[#result + 1] = { plate = car.plate, lock = record.lock == true, alarm = record.alarm == true, locked = record.locked == true,
+                    local position = where(car)
+                    if position then remember(car.id, position) end
+                    local item = { plate = car.plate, lock = record.lock == true, alarm = record.alarm == true, locked = record.locked == true,
                         tracker = record.tracker == true, stolen = stolenAt[record.id] ~= nil,
-                        sounding = sounding[record.id] ~= nil, position = where(car) }
+                        sounding = sounding[record.id] ~= nil, position = position }
+                    local seen = not position and record.tracker and lastSeen[car.id]
+                    if seen then item.lastSignal = { position = seen.position, ago = math.max(0, options.now() - seen.at) } end
+                    result[#result + 1] = item
                 end
             end
         end
@@ -306,7 +319,12 @@ function OSSecurity.CarService.new(options)
         if not found then
             return nil, any and 'No tienes ningún vehículo con localizador con esa matrícula.' or 'No tienes ningún vehículo con localizador (cómpralo en la tienda Gruppe Sechs e instálalo al volante).'
         end
-        if not found.position then return nil, ('Tu vehículo %s está guardado: el localizador no da señal.'):format(found.plate) end
+        if not found.position then
+            if found.lastSignal then
+                return { plate = found.plate, position = found.lastSignal.position, stolen = found.stolen, ago = found.lastSignal.ago }
+            end
+            return nil, ('Tu vehículo %s está guardado: el localizador no da señal.'):format(found.plate)
+        end
         return { plate = found.plate, position = found.position, stolen = found.stolen }
     end
     -- Robo con localizador: alguien sin llave al volante. Devuelve a quien avisar y donde esta (o nil).
@@ -320,6 +338,7 @@ function OSSecurity.CarService.new(options)
         local now = options.now()
         local alert = not stolenAt[car.id] or now - stolenAt[car.id] >= (config.TrackerAlertSeconds or 120)
         if alert then stolenAt[car.id] = now; options.audit('car_tracker_theft', driver, tostring(car.id)) end
+        remember(car.id, vehicle.position)
         return { owner = car.owner, plate = record.plate, position = vehicle.position, alert = alert }
     end
     function cars.describe()
@@ -342,6 +361,6 @@ function OSSecurity.CarService.new(options)
         installs[source], hotwires[source] = nil, nil
         for id, player in pairs(hotwired) do if player == source then hotwired[id] = nil end end
     end
-    function cars.clear() installs, sounding, lastAlarm, hotwires, hotwired, stolenAt = {}, {}, {}, {}, {}, {} end
+    function cars.clear() installs, sounding, lastAlarm, hotwires, hotwired, stolenAt, lastSeen = {}, {}, {}, {}, {}, {}, {} end
     return cars
 end

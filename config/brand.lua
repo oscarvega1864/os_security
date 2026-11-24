@@ -229,7 +229,8 @@ OSSecurity.Brand = {
             empty = 'No hay puertas con cerradura en tus propiedades.', locked = 'Cerrada con llave', open = 'Abierta', level = 'Nivel %d' },
         trackers = { title = 'Tus vehículos protegidos', help = 'Vehículos con cierre centralizado, alarma o localizador G6. Si están en la calle, puedes marcarlos en el GPS (también con /localizar).',
             empty = 'No tienes vehículos con equipo G6.', lock = 'Cierre centralizado', alarm = 'Alarma', tracker = 'Localizador', stolen = 'ROBADO · SIGUE EL PUNTO ROJO', locked = 'Cerrado', open = 'Abierto',
-            sounding = 'ALARMA SONANDO', gps = 'Marcar en el GPS', away = 'Guardado o fuera de alcance' },
+            sounding = 'ALARMA SONANDO', gps = 'Marcar en el GPS', away = 'Guardado o fuera de alcance',
+            lastSignal = 'Sin señal · última hace %s min', lastSignalNow = 'Sin señal · última hace un momento' },
         incidents = { title = 'Historial de incidencias', help = 'Últimos sucesos de todas tus alarmas, del más reciente al más antiguo.',
             empty = 'Sin incidencias registradas.' },
         checkpoint = {
