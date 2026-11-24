@@ -1,6 +1,6 @@
 # Changelog
 
-## Sin publicar
+## 0.28.1 — Llave cedida, tablet y rangos de G6
 
 - **Arreglado**: tras ceder un vehículo (o cambiar su cerradura), quien lo había arrancado con su llave podía seguir
   conduciéndolo, incluso bajando y volviendo a subir. Ahora el cliente vuelve a comprobar la llave con el servidor al
