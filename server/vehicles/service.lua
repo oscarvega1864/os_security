@@ -267,6 +267,12 @@ function OSSecurity.CarService.new(options)
         options.audit('car_hotwired', source, tostring(attempt.carId))
         return { message = 'Puente hecho: el motor arranca. Y para arrancar o apagar.' }
     end
+    -- Repaso periodico de entidades: un vehiculo con localizador que esta en el mundo deja aqui su ultima senal.
+    function cars.seen(plate, point)
+        local id = idOf(plate)
+        local record = id and records()[tostring(id)]
+        if record and record.tracker then remember(id, point) end
+    end
     -- Estado que deben tener las entidades de ese vehiculo (sincronizacion periodica).
     function cars.desired(plate)
         local id = idOf(plate)

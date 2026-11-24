@@ -869,7 +869,10 @@ CreateThread(function()
                             end
                         end
                     end
-                    local want = gameplay.cars.desired(GetVehicleNumberPlateText(entity))
+                    local plateText = GetVehicleNumberPlateText(entity)
+                    local spot = GetEntityCoords(entity)
+                    gameplay.cars.seen(plateText, { x = spot.x, y = spot.y, z = spot.z })
+                    local want = gameplay.cars.desired(plateText)
                     if want then
                         carState(entity, want)
                         -- Cerrado y con alarma: quien este dentro sin llave la hace saltar (aunque su cliente no avise).

@@ -1302,6 +1302,9 @@ test('Vehicle tracker: sold at the G6 shop, installed at the wheel, located by t
     local last = assert(v.cars.locateOwn(2)); assert(last.ago == 600 and type(last.position.x) == 'number')
     local card = v.cars.owned(2)[1]; assert(card.position == nil and card.lastSignal and card.lastSignal.ago == 600)
     v.cars.clear(); assert(select(2, v.cars.locateOwn(2)):find('guardado')) -- sin registro (p. ej. tras reiniciar), sin senal
+    -- El repaso periodico del servidor deja la senal aunque el dueno no haya mirado (solo vehiculos con localizador).
+    v.cars.seen('OS000012', { x = 7, y = 8, z = 9 }); v.cars.seen('OS000013', { x = 1, y = 1, z = 1 })
+    assert(v.cars.locateOwn(2).position.x == 7)
 end)
 
 test('Plates map to os_devtools vehicle IDs only in the OS + digits format', function()
