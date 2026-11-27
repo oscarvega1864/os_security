@@ -1,6 +1,6 @@
 # Changelog
 
-## Sin publicar
+## 0.29.0 — Localizador con última señal
 
 - **Localizador con última señal**: si el vehículo con localizador deja de estar en el mundo (lo guardan, lo borran o
   sale de alcance), el dueño ya no se queda sin nada: la tablet G6 Client (Localizadores) muestra "Sin señal · última
